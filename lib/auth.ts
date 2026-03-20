@@ -1,4 +1,4 @@
-import { NextAuthOptions } from 'next-auth';
+import NextAuth, { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
 export const authOptions: NextAuthOptions = {
@@ -34,10 +34,16 @@ export const authOptions: NextAuthOptions = {
       }
       return session;
     },
+    async jwt({ token, user }) {
+        if (user) {
+            token.id = user.id;
+        }
+        return token;
+    }
   },
   pages: {
     signIn: '/login',
     error: '/login',
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET || 'tamizhtech-secret-key-123456',
 };

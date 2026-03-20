@@ -1,20 +1,32 @@
 import { NextAuthOptions } from 'next-auth';
-import GoogleProvider from 'next-auth/providers/google';
+import CredentialsProvider from 'next-auth/providers/credentials';
 
 export const authOptions: NextAuthOptions = {
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    CredentialsProvider({
+      name: 'TamizhTech Admin',
+      credentials: {
+        username: { label: "Username", type: "text", placeholder: "admin" },
+        password: { label: "Password", type: "password" }
+      },
+      async authorize(credentials) {
+        if (
+          credentials?.username === "adminTT" &&
+          credentials?.password === "adminTT"
+        ) {
+          return {
+            id: '1',
+            name: 'TamizhTech Admin',
+            email: 'admin@tamizhtech.in',
+          };
+        }
+        return null;
+      }
     }),
   ],
   callbacks: {
-    async signIn({ user }) {
-      const allowedEmail = process.env.ALLOWED_EMAIL || 'tamizhtechpvtltd@gmail.com';
-      if (user.email === allowedEmail) {
-        return true;
-      }
-      return false; // Access Denied
+    async signIn() {
+       return true;
     },
     async session({ session, token }) {
       if (session.user) {

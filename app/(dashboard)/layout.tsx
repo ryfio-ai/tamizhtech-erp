@@ -1,34 +1,28 @@
-'use client';
-
-import { useState } from 'react';
-import Sidebar from '@/components/layout/Sidebar';
-import TopBar from '@/components/layout/TopBar';
-import MobileNav from '@/components/layout/MobileNav';
+import { Sidebar } from "@/components/layout/Sidebar";
+import { TopBar } from "@/components/layout/TopBar";
+import { MobileNav } from "@/components/layout/MobileNav";
+import { Providers } from "@/app/providers";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Desktop Sidebar */}
-      <Sidebar />
+    <Providers>
+      <div className="flex h-screen overflow-hidden bg-gray-50/50">
+        <Sidebar />
+        
+        <div className="flex-1 flex flex-col md:ml-64 relative w-full h-full overflow-hidden">
+          <TopBar />
+          
+          <main className="flex-1 overflow-y-auto w-full p-4 sm:p-6 lg:p-8 pb-20 md:pb-8 relative">
+            {children}
+          </main>
+        </div>
 
-      {/* Mobile Sidebar Overlay */}
-      <MobileNav isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-
-      <div className="flex-1 flex flex-col md:pl-64">
-        {/* Header */}
-        <TopBar onMenuClick={() => setIsSidebarOpen(true)} />
-
-        {/* Content Area */}
-        <main className="flex-1 p-4 md:p-8 mt-16 overflow-y-auto">
-          {children}
-        </main>
+        <MobileNav />
       </div>
-    </div>
+    </Providers>
   );
 }

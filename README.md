@@ -1,73 +1,77 @@
-# TamizhTech Account & Client Tracking System
+# TamizhTech Custom ERP System
 
-A complete, production-ready web application for TamizhTech — a robotics and tech company based in Coimbatore.
+This is a modern, responsive, and robust Enterprise Resource Planning (ERP) application custom-built for **TamizhTech** — a robotics and tech company based in Coimbatore, Tamil Nadu.
 
-## 🚀 Features
+It acts as a complete CRM, billing, and system management hub powered by **Next.js**, **Prisma**, and **SQLite**.
 
-- **Dashboard**: Real-time stats, revenue charts, and upcoming follow-ups.
-- **Client Management**: Full CRUD with detailed profiles and billing history.
-- **Invoices**: Dynamic line-item forms, auto-GST calculation, and premium PDF generation.
-- **Payments**: Ledger with automated invoice status updates (Paid/Partial/Unpaid).
-- **Follow-ups**: Interactive schedule tracking with overdue alerts.
-- **Admissions Kanban**: Drag-responsive lead management board for workshop enrollments.
-- **Email Automation**: Automated alerts for new invoices, payments, and admission approvals.
+## Core Features
+1. **Dashboard Analytics:** Live metrics of revenue, overdue invoices, lead pipelines, and project status.
+2. **Finance Module:** Comprehensive financial tracking including revenue vs. expense charts and category breakdowns.
+3. **Audit & Activity Logs:** Centralized system to track every user action and data modification for accountability.
+4. **Clients CRM:** Manage client relationships, history, and associated documents with safe cascaded deletions.
+5. **Projects & Tasks:** Track milestones, budgets, and team deliveries with a clean board view.
+6. **Invoices & Billing:** Generate custom styled PDF invoices instantly.
+7. **Payment Tracking:** Log receipts and auto-compute invoice balances with UPI/Bank support.
+8. **Follow-ups:** Schedule calls/meetings with an interactive Kanban timeline view.
+9. **Lead Pipeline (Applications):** Kanban board for incoming inquiries and conversions.
+10. **Export Capabilities:** One-click CSV/Excel exports for all tables.
+11. **Automated Emails:** Backend templates using Nodemailer for sending welcome notes and receipts.
 
-## 🛠️ Tech Stack
+## Tech Stack
+- **Framework:** Next.js 14 (App Router)
+- **Database:** SQLite with Prisma ORM
+- **Authentication:** NextAuth.js (Credentials Provider)
+- **Styling:** Tailwind CSS + shadcn/ui components
+- **State & Validations:** React Hook Form + Zod + Zustand
+- **PDF Generation:** @react-pdf/renderer
+- **Charts:** Recharts
+- **Icons:** Lucide-react
 
-- **Framework**: Next.js 14+ (App Router)
-- **Styling**: Tailwind CSS + Shadcn/UI
-- **Database**: Google Sheets (via `google-spreadsheet` API)
-- **Auth**: NextAuth.js (Credentials Provider)
-- **Email**: Nodemailer (Gmail SMTP)
-- **PDF**: jsPDF with custom branding
+---
 
-## ⚙️ Setup Instructions
+## Setup & Local Development
 
 ### 1. Environment Variables
-Create a `.env.local` file in the root directory and add the following:
+Create a `.env` file in the root directory and populate it with the following:
 
 ```env
-# NEXT AUTH
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your_secret_here
+DATABASE_URL="file:./dev.db"
+NEXTAUTH_SECRET="<random_base64_string>"
+NEXTAUTH_URL="http://localhost:3000"
 
-# ADMIN CREDENTIALS
-ADMIN_EMAIL=admin@tamizhtech.in
-ADMIN_PASSWORD=tamizhtech@2024
-
-# GOOGLE SHEETS
-GOOGLE_SERVICE_ACCOUNT_EMAIL=your-service-account@project.iam.gserviceaccount.com
-GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-GOOGLE_SHEET_ID=your_spreadsheet_id_here
-
-# GMAIL SMTP
-GMAIL_USER=tamizhtechpvtltd@gmail.com
-GMAIL_APP_PASSWORD=your_gmail_app_password_here
+# Nodemailer setup
+GMAIL_USER="tamizhtechpvtltd@gmail.com"
+GMAIL_APP_PASSWORD="<your_app_password>"
 ```
 
-### 2. Sheet Initialization
-Run the initialization script to setup the necessary tabs and headers:
-
-```bash
-node scripts/setup-sheets.js
-```
-
-### 3. Run Development Server
-
+### 2. Install Dependencies
 ```bash
 npm install
+```
+
+### 3. Initialize Database
+Sync the schema and seed the initial data (Admin accounts, sample projects, etc.):
+
+```bash
+npx prisma db push
+npx prisma db seed
+```
+
+### 4. Run Development Server
+```bash
 npm run dev
 ```
 
-Visit [http://localhost:3000](http://localhost:3000) and login with the admin credentials.
-
-## 📁 Directory Structure
-
-- `/app`: API routes and dashboard pages.
-- `/components`: UI components organized by module.
-- `/lib`: Sheets service, Validations (Zod), and Mailer.
-- `/types`: TypeScript definitions.
-- `/scripts`: Setup and utility scripts.
+The system will start on `http://localhost:3000`. 
+**Default Credentials:** 
+- Email: `tamizharasan@tamizhtech.in`
+- Password: `Admin@123`
 
 ---
-&copy; 2024 TamizhTech. Built with ❤️ for Robotics Excellence.
+
+## Deployment
+This application is fully compatible with **Vercel** or any Node.js environment.
+1. Link the GitHub repository.
+2. Paste all the `.env` variables into the project environment settings.
+3. For Vercel, ensuring the `DATABASE_URL` is set to a persistent SQLite or migrating to PostgreSQL is recommended for production.
+4. Click **Deploy**.

@@ -1,0 +1,396 @@
+// ============================================================
+// TAMIZHTECH ERP — COMPLETE PRISMA SCHEMA
+// Production-Ready | Full ERP | All Modules
+// ============================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex", "relationJoins"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// ─── User & Auth ──────────────────────────────────────────
+model User {
+  id                String     @id @default(cuid())
+  name              String
+  email             String     @unique
+  emailVerified     DateTime?
+  image             String?
+  phone             String?
+  role              String     @default("VIEWER") // Enum: UserRole
+  status            String     @default("ACTIVE") // Enum: UserStatus
+  passwordHash      String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  sessions          Session[]
+  accounts          Account[]
+  employee          Employee?
+  assignedLeads     Lead[]          @relation("AssignedToLead")
+  assignedClients   Client[]        @relation("AssignedToClient")
+  assignedTickets   SupportTicket[] @relation("AssignedTo")
+  assignedTasks     Task[]          @relation("AssignedTo")
+  createdTasks      Task[]          @relation("CreatedBy")
+  activityLogs      ActivityLog[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  createdExpenses   Expense[]       @relation("CreatedBy")
+  approvedExpenses  Expense[]       @relation("ApprovedBy")
+  comments          Comment[]
+  createdProjects   Project[]       @relation("CreatedBy")
+  managedProjects   Project[]       @relation("Manager")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+}
+
+// ─── CRM & Marketing ──────────────────────────────────────
+model Client {
+  id                  String       @id @default(cuid())
+  clientCode          String       @unique
+  name                String
+  type                String       @default("INDIVIDUAL") // Enum: ClientType
+  status              String       @default("LEAD")       // Enum: ClientStatus
+  phone               String
+  email               String
+  city                String?
+  serviceType         String?
+  source              String?      // Enum: LeadSource
+  assignedToId        String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  contacts            ClientContact[]
+  invoices            Invoice[]
+  payments            Payment[]
+  followUps           FollowUp[]
+  applications        Application[]
+  projects            Project[]       @relation("ClientProjects")
+  assignedTo          User?           @relation("AssignedToClient", fields: [assignedToId], references: [id])
+}
+
+model ClientContact {
+  id          String      @id @default(cuid())
+  clientId    String
+  name        String
+  phone       String?
+  email       String?
+  type        String      @default("PRIMARY") // Enum: ContactType
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model Lead {
+  id               String     @id @default(cuid())
+  leadCode         String     @unique
+  name             String
+  email            String?
+  phone            String?
+  status           String     @default("NEW") // Enum: LeadStatus
+  source           String?    // Enum: LeadSource
+  assignedToId     String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  assignedTo   User?    @relation("AssignedToLead", fields: [assignedToId], references: [id])
+  followUps    FollowUp[]
+}
+
+// ─── Sales ────────────────────────────────────────────────
+model Invoice {
+  id               String        @id @default(cuid())
+  invoiceNo        String        @unique
+  clientId         String
+  clientName       String
+  status           String        @default("DRAFT") // Enum: InvoiceStatus
+  date             DateTime      @default(now())
+  dueDate          DateTime
+  subtotal         Float
+  gstAmount        Float         @default(0)
+  total            Float
+  paidAmount       Float         @default(0)
+  balance          Float
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  client      Client      @relation(fields: [clientId], references: [id])
+  items       InvoiceItem[]
+  payments    Payment[]
+}
+
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  description String
+  qty         Float
+  unitPrice   Float
+  amount      Float
+  invoice Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+// ─── Products & Inventory ──────────────────────────────────
+model Product {
+  id              String        @id @default(cuid())
+  sku             String        @unique
+  name            String
+  description     String?
+  type            String        @default("PHYSICAL") // Enum: ProductType
+  status          String        @default("ACTIVE")   // Enum: ProductStatus
+  basePrice       Float
+  taxRate         Float         @default(18)
+  stockQuantity   Float         @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  stockMovements  StockMovement[]
+}
+
+model StockMovement {
+  id              String             @id @default(cuid())
+  productId       String
+  qty             Float
+  type            String             // Enum: StockMovementType
+  createdAt       DateTime           @default(now())
+  product         Product            @relation(fields: [productId], references: [id])
+}
+
+// ─── Sales & Marketing ─────────────────────────────────────
+model Quotation {
+  id                String          @id @default(cuid())
+  quotationNo       String          @unique
+  clientId          String
+  status            String          @default("DRAFT") // Enum: QuotationStatus
+  total             Float
+  validUntil        DateTime
+  createdAt         DateTime        @default(now())
+}
+
+// ─── Finance & Accounting ──────────────────────────────────
+model Payment {
+  id              String        @id @default(cuid())
+  paymentNo       String        @unique
+  invoiceId       String?
+  clientId        String
+  amount          Float
+  date            DateTime      @default(now())
+  mode            String        @default("UPI")       // Enum: PaymentMode
+  status          String        @default("COMPLETED") // Enum: PaymentStatus
+  transactionId   String?
+  referenceNo     String?       // Added for POST compatibility
+  notes           String?       // Added for POST compatibility
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  invoice         Invoice?      @relation(fields: [invoiceId], references: [id])
+  client          Client        @relation(fields: [clientId], references: [id])
+}
+
+model Expense {
+  id              String          @id @default(cuid())
+  expenseNo       String          @unique
+  category        String          // Enum: ExpenseCategory
+  amount          Float
+  date            DateTime        @default(now())
+  description     String?
+  status          String          @default("PENDING") // Enum: ExpenseStatus
+  createdById     String
+  approvedById    String?
+  createdBy       User            @relation("CreatedBy", fields: [createdById], references: [id])
+  approvedBy      User?           @relation("ApprovedBy", fields: [approvedById], references: [id])
+}
+
+model ChartOfAccount {
+  id              String          @id @default(cuid())
+  code            String          @unique
+  name            String
+  type            String          // Enum: AccountType
+  subType         String          // Enum: AccountSubType
+  balance         Float           @default(0)
+  journalEntries  JournalEntry[]
+}
+
+model JournalEntry {
+  id              String           @id @default(cuid())
+  date            DateTime         @default(now())
+  accountId       String
+  type            String           // Enum: JournalEntryType
+  amount          Float
+  description     String?
+  account         ChartOfAccount   @relation(fields: [accountId], references: [id])
+}
+
+// ─── HR & Payroll ──────────────────────────────────────────
+model Employee {
+  id              String         @id @default(cuid())
+  employeeId      String         @unique
+  userId          String?        @unique
+  firstName       String
+  lastName        String
+  designation     String
+  department      String
+  status          String         @default("ACTIVE") // Enum: EmployeeStatus
+  user            User?          @relation(fields: [userId], references: [id])
+  attendance      Attendance[]
+  leaveRequests   LeaveRequest[]
+  salary          Payroll[]
+}
+
+model Attendance {
+  id              String           @id @default(cuid())
+  employeeId      String
+  date            DateTime
+  status          String           @default("PRESENT") // Enum: AttendanceStatus
+  employee        Employee         @relation(fields: [employeeId], references: [id])
+}
+
+model LeaveRequest {
+  id              String      @id @default(cuid())
+  employeeId      String
+  type            String      // Enum: LeaveType
+  startDate       DateTime
+  endDate         DateTime
+  status          String      @default("PENDING") // Enum: LeaveStatus
+  employee        Employee    @relation(fields: [employeeId], references: [id])
+}
+
+model Payroll {
+  id              String        @id @default(cuid())
+  employeeId      String
+  month           Int
+  year            Int
+  basicSalary     Float
+  netSalary       Float
+  status          String        @default("DRAFT") // Enum: PayrollStatus
+  employee        Employee      @relation(fields: [employeeId], references: [id])
+}
+
+// ─── Projects & Tasks ──────────────────────────────────────
+model Project {
+  id              String        @id @default(cuid())
+  name            String
+  clientId        String
+  status          String        @default("PLANNING") // Enum: ProjectStatus
+  startDate       DateTime?
+  endDate         DateTime?
+  budget          Float         @default(0)
+  createdById     String
+  managerId       String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  client          Client        @relation("ClientProjects", fields: [clientId], references: [id])
+  createdBy       User          @relation("CreatedBy", fields: [createdById], references: [id])
+  manager         User?         @relation("Manager", fields: [managerId], references: [id])
+  tasks           Task[]
+}
+
+model Task {
+  id              String        @id @default(cuid())
+  projectId       String
+  title           String
+  description     String?
+  status          String        @default("TODO") // Enum: TaskStatus
+  priority        String        @default("MEDIUM") // Enum: TaskPriority
+  dueDate         DateTime?
+  assignedToId    String?
+  createdById     String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  project         Project       @relation(fields: [projectId], references: [id])
+  assignedTo      User?         @relation("AssignedTo", fields: [assignedToId], references: [id])
+  createdBy       User          @relation("CreatedBy", fields: [createdById], references: [id])
+}
+
+// ─── Education & Workshops ─────────────────────────────────
+model Application {
+  id              String            @id @default(cuid())
+  appNo           String            @unique
+  clientId        String
+  status          String            @default("NEW") // Enum: ApplicationStatus
+  course          String
+  createdAt       DateTime          @default(now())
+  client          Client            @relation(fields: [clientId], references: [id])
+}
+
+model Event {
+  id              String      @id @default(cuid())
+  name            String
+  status          String      @default("DRAFT") // Enum: EventStatus
+  date            DateTime
+}
+
+// ─── Support & Tickets ─────────────────────────────────────
+model SupportTicket {
+  id              String         @id @default(cuid())
+  ticketNo        String         @unique
+  subject         String
+  status          String         @default("OPEN") // Enum: TicketStatus
+  priority        String         @default("MEDIUM") // Enum: TicketPriority
+  assignedToId    String?
+  assignedTo      User?          @relation("AssignedTo", fields: [assignedToId], references: [id])
+}
+
+// ─── CRM & Follow-ups ──────────────────────────────────────
+model FollowUp {
+  id              String         @id @default(cuid())
+  clientId        String?
+  leadId          String?
+  date            DateTime
+  mode            String         @default("CALL")   // Enum: FollowUpMode
+  status          String         @default("PENDING") // Enum: FollowUpStatus
+  notes           String?
+  client          Client?        @relation(fields: [clientId], references: [id])
+  lead            Lead?          @relation(fields: [leadId], references: [id])
+}
+
+// ─── Audit & Activity ──────────────────────────────────────
+model ActivityLog {
+  id              String         @id @default(cuid())
+  userId          String
+  module          String         // Enum: ActivityModule
+  action          String         // Enum: ActivityAction
+  details         String?
+  createdAt       DateTime       @default(now())
+  user            User           @relation(fields: [userId], references: [id])
+}
+
+model Notification {
+  id              String         @id @default(cuid())
+  userId          String
+  type            String         // Enum: NotificationType
+  title           String
+  message         String
+  read            Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  user            User           @relation(fields: [userId], references: [id])
+}
+
+model AuditLog {
+  id              String    @id @default(cuid())
+  userId          String
+  action          String
+  module          String
+  oldData         String?
+  newData         String?
+  createdAt       DateTime  @default(now())
+  user            User      @relation(fields: [userId], references: [id])
+}
+
+model Comment {
+  id              String    @id @default(cuid())
+  userId          String
+  content         String
+  createdAt       DateTime  @default(now())
+  user            User      @relation(fields: [userId], references: [id])
+}

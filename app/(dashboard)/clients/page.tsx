@@ -1,162 +1,191 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { Plus, UserPlus, Search, Filter } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from '@/components/ui/dialog';
-import DataTable from '@/components/shared/DataTable';
-import StatusBadge from '@/components/shared/StatusBadge';
-import ClientForm from '@/components/clients/ClientForm';
-import ConfirmDialog from '@/components/shared/ConfirmDialog';
-import ExportButton from '@/components/shared/ExportButton';
-import { Client } from '@/types';
-import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from "react";
+import { useClients } from "@/hooks/useClients";
+import { ClientTable } from "@/components/clients/ClientTable";
+import { ClientForm } from "@/components/clients/ClientForm";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { ExportButton } from "@/components/shared/ExportButton";
+import { FilterDropdown } from "@/components/shared/FilterDropdown";
+import { Button } from "@/components/ui/button";
+import { Plus, Users } from "lucide-react";
+import { Client } from "@/types";
+import { useSearchParams, useRouter } from "next/navigation";
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const { clients, loading, error, fetchClients, createClient, updateClient, deleteClient } = useClients();
+  const searchParams = useSearchParams();
   const router = useRouter();
 
-  const fetchClients = async () => {
-    try {
-      const res = await fetch('/api/clients');
-      const result = await res.json();
-      if (result.success) {
-        setClients(result.data);
-      }
-    } catch (error) {
-      toast.error("Failed to fetch clients");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const [deleteData, setDeleteData] = useState<{ open: boolean; client: Client | null; loading: boolean }>({
+    open: false,
+    client: null,
+    loading: false
+  });
+
+  // Filters
+  const [statusFilter, setStatusFilter] = useState("");
+  const [serviceFilter, setServiceFilter] = useState("");
 
   useEffect(() => {
     fetchClients();
+    if (searchParams.get("new") === "true") {
+      setIsFormOpen(true);
+      // Clean up URL silently
+      router.replace("/clients", { scroll: false });
+    }
   }, []);
 
-  const handleCreate = async (data: any) => {
-    setSubmitting(true);
+  const handleFormSubmit = async (data: any) => {
+    setSaving(true);
     try {
-      const res = await fetch('/api/clients', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      const result = await res.json();
-      if (result.success) {
-        toast.success("Client registered successfully");
-        setIsAddOpen(false);
-        fetchClients();
+      if (editingClient) {
+        await updateClient(editingClient.id, data);
       } else {
-        toast.error(result.error || "Failed to create client");
+        await createClient(data);
       }
-    } catch (error) {
-      toast.error("An error occurred");
+      setIsFormOpen(false);
+      setEditingClient(null);
+    } catch (e) {
+      // Kept open on error
     } finally {
-      setSubmitting(false);
+      setSaving(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteConfirm) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteData.client) return;
+    setDeleteData(prev => ({ ...prev, loading: true }));
     try {
-      const res = await fetch(`/api/clients/${deleteConfirm}`, {
-        method: 'DELETE',
-      });
-      const result = await res.json();
-      if (result.success) {
-        toast.success("Client deleted successfully");
-        fetchClients();
-      } else {
-        toast.error(result.error || "Failed to delete client");
-      }
-    } catch (error) {
-      toast.error("An error occurred");
-    } finally {
-      setDeleteConfirm(null);
+      await deleteClient(deleteData.client.id);
+      setDeleteData({ open: false, client: null, loading: false });
+    } catch (e) {
+      setDeleteData(prev => ({ ...prev, loading: false }));
     }
   };
 
-  const columns = [
-    { 
-      header: 'Name', 
-      accessorKey: 'name',
-      cell: (item: Client) => (
-        <div className="flex items-center space-x-3">
-          <div className="h-8 w-8 rounded-full bg-brand/10 flex items-center justify-center text-brand font-bold text-xs">
-            {item.name.charAt(0)}
-          </div>
-          <span className="font-bold text-navy">{item.name}</span>
-        </div>
-      )
-    },
-    { header: 'Email', accessorKey: 'email' },
-    { header: 'Phone', accessorKey: 'phone' },
-    { header: 'Service', accessorKey: 'serviceType' },
-    { 
-      header: 'Status', 
-      accessorKey: 'status',
-      cell: (item: Client) => <StatusBadge status={item.status} type="client" />
-    },
+  // Apply filters
+  const filteredClients = clients.filter(c => {
+    if (statusFilter && c.status !== statusFilter) return false;
+    if (serviceFilter && c.serviceType !== serviceFilter) return false;
+    return true;
+  });
+
+  const exportColumns = [
+    { header: "Name", key: "name" },
+    { header: "Phone", key: "phone" },
+    { header: "Email", key: "email" },
+    { header: "City", key: "city" },
+    { header: "Service", key: "serviceType" },
+    { header: "Source", key: "source" },
+    { header: "Status", key: "status" },
+    { header: "Joined On", key: "createdAt" }
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-navy tracking-tight">Client Directory</h1>
-          <p className="text-gray-500 font-medium">Manage and track all TamizhTech clients.</p>
+    <div className="space-y-6 w-full max-w-7xl mx-auto">
+      
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-brand/10 text-brand rounded-xl">
+            <Users className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-navy tracking-tight">Clients</h1>
+            <p className="text-sm text-gray-500">Manage your students and business customers.</p>
+          </div>
         </div>
-        
-        <div className="flex items-center space-x-3">
-          <ExportButton data={clients} filename="TamizhTech_Clients" />
-          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-brand hover:bg-brand-dark text-white rounded-xl h-11 px-6 font-bold shadow-lg shadow-brand/20 transition-all">
-                <UserPlus className="mr-2 h-5 w-5" />
-                Add Client
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl rounded-2xl border-0 shadow-2xl">
-              <DialogHeader>
-                <DialogTitle className="text-2xl font-black text-navy tracking-tight">Register New Client</DialogTitle>
-              </DialogHeader>
-              <div className="py-4">
-                <ClientForm onSubmit={handleCreate} loading={submitting} />
-              </div>
-            </DialogContent>
-          </Dialog>
+
+        <div className="flex items-center gap-3">
+          <ExportButton data={filteredClients} filename="TamizhTech_Clients" columns={exportColumns} />
+          <Button 
+            onClick={() => setIsFormOpen(true)}
+            className="bg-brand hover:bg-brand-dark shadow-sm gap-2"
+          >
+            <Plus className="w-4 h-4" /> Add Client
+          </Button>
         </div>
       </div>
 
-      <DataTable 
-        columns={columns} 
-        data={clients} 
+      {/* Filters */}
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-wrap gap-4">
+         <FilterDropdown 
+           placeholder="All Statuses"
+           value={statusFilter}
+           onChange={setStatusFilter}
+           options={[
+             { label: 'Active', value: 'Active' },
+             { label: 'Lead', value: 'Lead' },
+             { label: 'Inactive', value: 'Inactive' },
+             { label: 'Blacklisted', value: 'Blacklisted' }
+           ]}
+         />
+         <FilterDropdown 
+           placeholder="All Services"
+           value={serviceFilter}
+           onChange={setServiceFilter}
+           options={[
+             { label: 'Robotics Workshop', value: 'Robotics Workshop' },
+             { label: 'Arduino Training', value: 'Arduino Training' },
+             { label: 'IoT Project', value: 'IoT Project' },
+             { label: 'Drone Training', value: 'Drone Training' },
+             { label: 'Custom Project', value: 'Custom Project' },
+             { label: 'Tamizh Robotics Club', value: 'Tamizh Robotics Club' }
+           ]}
+         />
+         
+         {(statusFilter || serviceFilter) && (
+           <Button variant="ghost" onClick={() => { setStatusFilter(""); setServiceFilter(""); }} className="text-gray-500 text-sm">
+             Clear Filters
+           </Button>
+         )}
+      </div>
+
+      {/* Error State */}
+      {error && (
+        <div className="p-4 bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm font-medium">
+          {error}
+        </div>
+      )}
+
+      {/* Main Table */}
+      <ClientTable 
+        data={filteredClients} 
         loading={loading}
-        onView={(item) => router.push(`/clients/${item.id}`)}
-        onEdit={(item) => router.push(`/clients/${item.id}`)}
-        onDelete={(item) => setDeleteConfirm(item.id)}
-        searchPlaceholder="Filter clients by name, email, phone..."
+        onEdit={(client) => {
+          setEditingClient(client);
+          setIsFormOpen(true);
+        }}
+        onDelete={(client) => setDeleteData({ open: true, client, loading: false })}
       />
 
+      {/* Forms & Dialogs */}
+      {isFormOpen && (
+        <ClientForm 
+          initialData={editingClient || undefined} 
+          onSubmit={handleFormSubmit}
+          onCancel={() => {
+            setIsFormOpen(false);
+            setEditingClient(null);
+          }}
+          isLoading={saving}
+        />
+      )}
+
       <ConfirmDialog 
-        isOpen={!!deleteConfirm} 
-        onClose={() => setDeleteConfirm(null)} 
-        onConfirm={handleDelete}
+        open={deleteData.open}
+        onOpenChange={(op) => setDeleteData(prev => ({ ...prev, open: op }))}
         title="Delete Client?"
-        description="Are you sure you want to delete this client? This will remove all their data from the system."
+        description={`Are you sure you want to delete ${deleteData.client?.name}? This action cannot be undone unless tied historical invoices block it.`}
+        onConfirm={handleConfirmDelete}
+        loading={deleteData.loading}
       />
+
     </div>
   );
 }

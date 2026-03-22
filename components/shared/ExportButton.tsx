@@ -1,76 +1,81 @@
-'use client';
+"use client";
 
-import { Download } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import * as xlsx from "xlsx";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
   DropdownMenuTrigger 
-} from '@/components/ui/dropdown-menu';
-import * as XLSX from 'xlsx';
-import { toast } from 'sonner';
+} from "@/components/ui/dropdown-menu";
 
 interface ExportButtonProps {
   data: any[];
   filename: string;
+  columns?: { header: string; key: string }[];
 }
 
-export default function ExportButton({ data, filename }: ExportButtonProps) {
-  const exportToCSV = () => {
-    if (data.length === 0) {
-      toast.error("No data to export");
-      return;
-    }
+export function ExportButton({ data, filename, columns }: ExportButtonProps) {
+  
+  const getFormattedData = () => {
+    if (!columns) return data;
+    return data.map(item => {
+      const formatted: any = {};
+      columns.forEach(col => {
+        formatted[col.header] = item[col.key];
+      });
+      return formatted;
+    });
+  };
 
-    const headers = Object.keys(data[0]);
-    const csvContent = [
-      headers.join(','),
-      ...data.map(row => headers.map(header => {
-        const val = row[header];
-        return typeof val === 'string' ? `"${val.replace(/"/g, '""')}"` : val;
-      }).join(','))
-    ].join('\n');
+  const handleExportExcel = () => {
+    const exportData = getFormattedData();
+    const worksheet = xlsx.utils.json_to_sheet(exportData);
+    const workbook = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(workbook, worksheet, "Data");
+    xlsx.writeFile(workbook, `${filename}.xlsx`);
+  };
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
+  const handleExportCSV = () => {
+    const exportData = getFormattedData();
+    const worksheet = xlsx.utils.json_to_sheet(exportData);
+    const csv = xlsx.utils.sheet_to_csv(worksheet);
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
     link.setAttribute("download", `${filename}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success("CSV exported successfully");
   };
 
-  const exportToExcel = () => {
-    if (data.length === 0) {
-      toast.error("No data to export");
-      return;
-    }
-
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
-    XLSX.writeFile(workbook, `${filename}.xlsx`);
-    toast.success("Excel exported successfully");
-  };
+  if (!data || data.length === 0) {
+    return (
+      <Button variant="outline" disabled className="gap-2">
+        <Download className="w-4 h-4" />
+        Export
+      </Button>
+    );
+  }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="rounded-xl border-gray-200 h-11 px-6 font-bold text-navy hover:bg-gray-50 bg-white shadow-sm">
-          <Download className="mr-2 h-5 w-5 text-brand" />
+        <Button variant="outline" className="gap-2 bg-white hover:bg-gray-50 border-gray-200">
+          <Download className="w-4 h-4 text-gray-500" />
           Export
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl border-0 p-1">
-        <DropdownMenuItem onClick={exportToCSV} className="rounded-lg py-3 cursor-pointer">
-          Export as CSV
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={exportToExcel} className="rounded-lg py-3 cursor-pointer">
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={handleExportExcel}>
           Export as Excel (.xlsx)
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleExportCSV}>
+          Export as CSV
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

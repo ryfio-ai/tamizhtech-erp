@@ -1,38 +1,33 @@
-import { FileQuestion, Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { LucideIcon, FileSearch } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface EmptyStateProps {
-  title?: string;
-  description?: string;
-  icon?: React.ElementType;
-  action?: {
-    label: string;
-    onClick: () => void;
-  };
+  icon?: LucideIcon;
+  title: string;
+  description: string;
+  actionLabel?: string;
+  onAction?: () => void;
 }
 
-export default function EmptyState({
-  title = "No data found",
-  description = "There is currently no data to display in this list.",
-  icon: Icon = FileQuestion,
-  action,
+export function EmptyState({
+  icon: Icon = FileSearch,
+  title,
+  description,
+  actionLabel,
+  onAction
 }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center p-12 text-center bg-white border border-dashed rounded-2xl shadow-sm">
-      <div className="h-16 w-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-        <Icon className="h-8 w-8 text-gray-300" />
+    <div className="flex flex-col items-center justify-center p-12 text-center bg-white border border-gray-100 border-dashed rounded-xl shadow-sm">
+      <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+        <Icon className="w-8 h-8 text-gray-400" />
       </div>
-      <h3 className="text-xl font-bold text-navy mb-2 tracking-tight">{title}</h3>
-      <p className="text-gray-500 max-w-xs mx-auto mb-8 text-sm leading-relaxed">
+      <h3 className="text-lg font-semibold text-navy mb-1">{title}</h3>
+      <p className="text-sm text-gray-500 mb-6 max-w-sm">
         {description}
       </p>
-      {action && (
-        <Button 
-          onClick={action.onClick}
-          className="bg-brand hover:bg-brand-dark text-white rounded-xl px-6 py-5 h-auto font-bold transition-all shadow-lg hover:shadow-brand/20"
-        >
-          <Plus className="mr-2 h-5 w-5" />
-          {action.label}
+      {actionLabel && onAction && (
+        <Button onClick={onAction} className="bg-brand hover:bg-brand-dark">
+          {actionLabel}
         </Button>
       )}
     </div>

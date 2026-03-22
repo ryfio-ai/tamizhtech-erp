@@ -1,159 +1,162 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { Plus, LayoutGrid, Search, Filter, Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from '@/components/ui/dialog';
-import KanbanBoard from '@/components/applications/KanbanBoard';
-import ApplicationForm from '@/components/applications/ApplicationForm';
-import ConfirmDialog from '@/components/shared/ConfirmDialog';
-import { Application } from '@/types';
-import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from "react";
+import { useApplications } from "@/hooks/useApplications";
+import { ApplicationKanban } from "@/components/applications/ApplicationKanban";
+import { ApplicationForm } from "@/components/applications/ApplicationForm";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { ExportButton } from "@/components/shared/ExportButton";
+import { Button } from "@/components/ui/button";
+import { Plus, Users, Send } from "lucide-react";
+import { Application } from "@/types";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export default function ApplicationsPage() {
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [defaultStatus, setDefaultStatus] = useState('Applied');
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
+  const { applications, loading, fetchApplications, createApplication, updateApplicationStatus, deleteApplication } = useApplications();
 
-  const fetchApplications = async () => {
-    try {
-      const res = await fetch('/api/applications');
-      const result = await res.json();
-      if (result.success) {
-        setApplications(result.data);
-      }
-    } catch (error) {
-      toast.error("Failed to fetch applications");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const [deleteData, setDeleteData] = useState<{ open: boolean; app: Application | null; loading: boolean }>({
+    open: false,
+    app: null,
+    loading: false
+  });
 
   useEffect(() => {
     fetchApplications();
-  }, []);
+  }, [fetchApplications]);
 
-  const handleCreate = async (data: any) => {
-    setSubmitting(true);
+  const handleFormSubmit = async (data: any) => {
+    setSaving(true);
     try {
-      const res = await fetch('/api/applications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      const result = await res.json();
-      if (result.success) {
-        toast.success("Lead created successfully");
-        setIsAddOpen(false);
-        fetchApplications();
-      } else {
-        toast.error(result.error);
-      }
-    } catch (error) {
-      toast.error("An error occurred");
+      await createApplication(data);
+      setIsFormOpen(false);
+    } catch (e) {
+      // Kept open on error
     } finally {
-      setSubmitting(false);
+      setSaving(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteId) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteData.app) return;
+    setDeleteData(prev => ({ ...prev, loading: true }));
     try {
-      const res = await fetch(`/api/applications/${deleteId}`, {
-        method: 'DELETE',
-      });
-      const result = await res.json();
-      if (result.success) {
-        toast.success("Lead removed");
-        fetchApplications();
-      }
-    } catch (error) {
-      toast.error("An error occurred");
-    } finally {
-      setDeleteId(null);
+      await deleteApplication(deleteData.app.id);
+      setDeleteData({ open: false, app: null, loading: false });
+    } catch (e) {
+      setDeleteData(prev => ({ ...prev, loading: false }));
     }
   };
 
-  const openAddWithStatus = (status: string) => {
-    setDefaultStatus(status);
-    setIsAddOpen(true);
+  // Convert to Client
+  const handleConvertToClient = (app: Application) => {
+    // Navigate to new client form with prefilled URL params
+    const params = new URLSearchParams({
+      name: app.name,
+      email: app.email,
+      phone: app.phone,
+      city: app.city,
+      service: app.appliedFor,
+      source: app.source || 'Website'
+    });
+    
+    // Auto mark as Contacted/Enrolled on conversion
+    if (app.status === 'New') updateApplicationStatus(app.id, 'Contacted');
+    
+    // Open clients page overlay or just navigate to clients where form takes params.
+    // For our current simplified setup, we'll route to clients list with auto-open trigger via params
+    toast.success("Redirecting to create client profile...");
+    router.push(`/clients?action=new&${params.toString()}`);
   };
+
+  const handleBroadcastEmail = () => {
+    toast.info("Email broadcasting will be featured in Step 15.");
+  };
+
+  const exportColumns = [
+    { header: "App No", key: "applicationNo" },
+    { header: "Name", key: "name" },
+    { header: "Email", key: "email" },
+    { header: "Phone", key: "phone" },
+    { header: "City", key: "city" },
+    { header: "Applied For", key: "appliedFor" },
+    { header: "Status", key: "status" },
+    { header: "Source", key: "source" },
+    { header: "Date", key: "appliedDate" }
+  ];
 
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col space-y-6 overflow-hidden">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-navy tracking-tight flex items-center">
-             Admissions Kanban <Sparkles className="ml-2 h-5 w-5 text-brand" />
-          </h1>
-          <p className="text-gray-500 font-medium">Track and manage student applications and robotic leads.</p>
+    <div className="space-y-6 w-full max-w-[1600px] mx-auto overflow-hidden">
+      
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+            <Users className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-navy tracking-tight">Applications & Leads</h1>
+            <p className="text-sm text-gray-500">Pipeline to track incoming inquiries and registrations.</p>
+          </div>
         </div>
-        
-        <div className="flex items-center space-x-3">
-          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => setDefaultStatus('Applied')} className="bg-brand hover:bg-brand-dark text-white rounded-xl h-11 px-6 font-bold shadow-lg shadow-brand/20 transition-all">
-                <Plus className="mr-2 h-5 w-5" />
-                Add Lead
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl rounded-3xl border-0 shadow-2xl p-8">
-              <DialogHeader>
-                <DialogTitle className="text-2xl font-black text-navy tracking-tight">New Admission Lead</DialogTitle>
-              </DialogHeader>
-              <div className="py-4">
-                <ApplicationForm 
-                  onSubmit={handleCreate} 
-                  loading={submitting} 
-                  defaultStatus={defaultStatus} 
-                />
-              </div>
-            </DialogContent>
-          </Dialog>
+
+        <div className="flex items-center gap-3">
+          <ExportButton data={applications} filename="TamizhTech_Leads" columns={exportColumns} />
+          <Button 
+            variant="outline"
+            className="text-gray-700 gap-2 border-gray-200 shadow-sm"
+            onClick={handleBroadcastEmail}
+          >
+            <Send className="w-4 h-4 text-brand" /> Blast Email
+          </Button>
+          <Button 
+            onClick={() => setIsFormOpen(true)}
+            className="bg-brand hover:bg-brand-dark shadow-sm gap-2"
+          >
+            <Plus className="w-4 h-4" /> Capture Lead
+          </Button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-x-auto">
-        {loading ? (
-           <div className="flex space-x-6 h-full">
-              {[1, 2, 3, 4].map((i) => (
-                 <div key={i} className="flex-1 min-w-[300px] bg-gray-50 rounded-3xl p-4 border border-dashed animate-pulse">
-                    <div className="h-4 w-24 bg-gray-200 rounded mb-4" />
-                    <div className="space-y-4">
-                       <div className="h-32 bg-white rounded-2xl shadow-sm" />
-                       <div className="h-32 bg-white rounded-2xl shadow-sm" />
-                    </div>
-                 </div>
-              ))}
-           </div>
+      {/* Main Kanban Board */}
+      <div className="w-full relative mt-8">
+        {loading && applications.length === 0 ? (
+          <div className="animate-pulse flex flex-col items-center justify-center h-[50vh] text-gray-400 py-20">
+            <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin mb-4"></div>
+            Loading Pipeline...
+          </div>
         ) : (
-          <KanbanBoard 
-            applications={applications} 
-            onView={(id) => router.push(`/applications/${id}`)}
-            onDelete={(id) => setDeleteId(id)}
-            onAdd={openAddWithStatus}
+          <ApplicationKanban 
+             data={applications} 
+             onStatusChange={updateApplicationStatus}
+             onDelete={(app) => setDeleteData({ open: true, app, loading: false })}
+             onConvertToClient={handleConvertToClient}
           />
         )}
       </div>
 
+      {/* Forms & Dialogs */}
+      {isFormOpen && (
+        <ApplicationForm 
+          onSubmit={handleFormSubmit}
+          onCancel={() => setIsFormOpen(false)}
+          isLoading={saving}
+        />
+      )}
+
       <ConfirmDialog 
-        isOpen={!!deleteId} 
-        onClose={() => setDeleteId(null)} 
-        onConfirm={handleDelete}
-        title="Remove Lead?"
-        description="Are you sure you want to remove this lead from the tracking board?"
+        open={deleteData.open}
+        onOpenChange={(op) => setDeleteData(prev => ({ ...prev, open: op }))}
+        title="Delete Lead?"
+        description={`Are you sure you want to delete lead for ${deleteData.app?.name}? This action cannot be undone.`}
+        onConfirm={handleConfirmDelete}
+        loading={deleteData.loading}
       />
+
     </div>
   );
 }

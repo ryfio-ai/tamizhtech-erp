@@ -1,48 +1,43 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { findById, updateRow, deleteRow } from '@/lib/sheets';
-import { followUpSchema } from '@/lib/validations';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-
   try {
-    const followup = await findById('FollowUps', params.id);
-    if (!followup) return NextResponse.json({ success: false, error: 'Follow-up not found' }, { status: 404 });
-    return NextResponse.json({ success: true, data: followup });
+    const followup = await prisma.followUp.findUnique({
+      where: { id: params.id },
+      include: { client: true }
+    });
+
+    if (!followup) throw new Error("Not found");
+
+    return NextResponse.json({ 
+      success: true, 
+      data: { ...followup, clientName: followup.client.name, clientPhone: followup.client.phone }
+    });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-
   try {
     const body = await req.json();
-    // Support partial updates for status
-    const followup = await findById('FollowUps', params.id);
-    if (!followup) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
-
-    const updateData = { ...followup, ...body };
-    await updateRow('FollowUps', params.id, updateData);
     
-    return NextResponse.json({ success: true, data: updateData });
+    const updated = await prisma.followUp.update({
+      where: { id: params.id },
+      data: body
+    });
+
+    return NextResponse.json({ success: true, data: updated });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-
   try {
-    await deleteRow('FollowUps', params.id);
-    return NextResponse.json({ success: true });
+    await prisma.followUp.delete({ where: { id: params.id } });
+    return NextResponse.json({ success: true, data: null });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

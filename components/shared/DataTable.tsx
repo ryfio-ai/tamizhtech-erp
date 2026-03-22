@@ -1,31 +1,12 @@
-'use client';
+"use client";
 
-import { useState, useMemo } from 'react';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  ChevronsLeft, 
-  ChevronsRight,
-  Search,
-  ArrowUpDown,
-  MoreHorizontal,
-  Edit,
-  Trash2,
-  Eye
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
-} from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
-import EmptyState from './EmptyState';
-import LoadingSkeleton from './LoadingSkeleton';
+import { useState, useMemo } from "react";
+import { Search, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, MoreVertical } from "lucide-react";
+import { EmptyState } from "./EmptyState";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-interface Column<T> {
+export interface ColumnDef<T> {
   header: string;
   accessorKey: keyof T | string;
   cell?: (item: T) => React.ReactNode;
@@ -33,60 +14,75 @@ interface Column<T> {
 }
 
 interface DataTableProps<T> {
-  columns: Column<T>[];
   data: T[];
+  columns: ColumnDef<T>[];
+  searchKey?: string;
+  searchPlaceholder?: string;
   loading?: boolean;
+  onView?: (item: T) => void;
   onEdit?: (item: T) => void;
   onDelete?: (item: T) => void;
-  onView?: (item: T) => void;
-  searchPlaceholder?: string;
-  pageSize?: number;
+  emptyTitle?: string;
+  emptyDesc?: string;
+  emptyAction?: () => void;
+  emptyActionLabel?: string;
 }
 
-export default function DataTable<T extends { id: string }>({
-  columns,
+export function DataTable<T>({
   data,
+  columns,
+  searchKey,
+  searchPlaceholder = "Search...",
   loading = false,
+  onView,
   onEdit,
   onDelete,
-  onView,
-  searchPlaceholder = "Search...",
-  pageSize = 10,
+  emptyTitle = "No data found",
+  emptyDesc = "There is no data to display here yet.",
+  emptyAction,
+  emptyActionLabel
 }: DataTableProps<T>) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [search, setSearch] = useState("");
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+  const [pageSize, setPageSize] = useState(20);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // Filter Data
+  // Filter
   const filteredData = useMemo(() => {
-    return data.filter((item) => {
-      const searchStr = searchQuery.toLowerCase();
-      return Object.values(item as any).some(
-        (val) => val && val.toString().toLowerCase().includes(searchStr)
-      );
+    if (!search || !searchKey) return data;
+    const lowerSearch = search.toLowerCase();
+    return data.filter((item: any) => {
+      // If passing a comma separated string for multiple fields search "name,email,phone"
+      const keys = String(searchKey).split(',');
+      return keys.some(k => {
+        const val = item[k.trim()];
+        return val && String(val).toLowerCase().includes(lowerSearch);
+      });
     });
-  }, [data, searchQuery]);
+  }, [data, search, searchKey]);
 
-  // Sort Data
+  // Sort
   const sortedData = useMemo(() => {
-    if (!sortConfig) return filteredData;
-
-    return [...filteredData].sort((a, b) => {
-      const aValue = (a as any)[sortConfig.key];
-      const bValue = (b as any)[sortConfig.key];
-
-      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-      return 0;
-    });
+    const sortableItems = [...filteredData];
+    if (sortConfig !== null) {
+      sortableItems.sort((a: any, b: any) => {
+        const aVal = a[sortConfig.key];
+        const bVal = b[sortConfig.key];
+        
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
   }, [filteredData, sortConfig]);
 
-  // Pagination
-  const totalPages = Math.ceil(sortedData.length / pageSize);
-  const paginatedData = sortedData.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
+  // Paginate
+  const totalPages = Math.ceil(sortedData.length / pageSize) || 1;
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedData.slice(start, start + pageSize);
+  }, [sortedData, currentPage, pageSize]);
 
   const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc';
@@ -96,152 +92,154 @@ export default function DataTable<T extends { id: string }>({
     setSortConfig({ key, direction });
   };
 
-  if (loading) return <LoadingSkeleton type="table" rows={pageSize} />;
-  if (data.length === 0) return <EmptyState />;
+  if (loading) {
+    return (
+      <div className="w-full space-y-4">
+        <div className="h-10 w-full md:w-1/3 bg-gray-200 animate-pulse rounded-md" />
+        <div className="w-full h-64 bg-gray-100 animate-pulse rounded-lg border border-gray-200" />
+      </div>
+    );
+  }
+
+  if (!loading && data.length === 0 && !search) {
+    return (
+      <EmptyState 
+        title={emptyTitle} 
+        description={emptyDesc} 
+        onAction={emptyAction} 
+        actionLabel={emptyActionLabel} 
+      />
+    );
+  }
 
   return (
-    <div className="space-y-4">
-      {/* Search & Actions */}
-      <div className="flex items-center justify-between">
-        <div className="relative w-full max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder={searchPlaceholder}
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="pl-9 h-11 border-gray-200 focus:ring-brand/20 bg-white"
-          />
-        </div>
+    <div className="w-full bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
+      {/* Toolbar */}
+      <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-50/50">
+        {searchKey && (
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder={searchPlaceholder}
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1); // Reset page on search
+              }}
+              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+            />
+          </div>
+        )}
       </div>
 
-      {/* Table */}
-      <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                {columns.map((col) => (
-                  <th
-                    key={col.header}
-                    className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider"
-                  >
-                    <div className="flex items-center space-x-1">
-                      <span>{col.header}</span>
-                      {col.sortable !== false && (
-                        <button 
-                          onClick={() => handleSort(col.accessorKey as string)}
-                          className="hover:text-brand transition-colors"
-                        >
-                          <ArrowUpDown className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                  </th>
-                ))}
-                {(onEdit || onDelete || onView) && (
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">
-                    Actions
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {paginatedData.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
-                  {columns.map((col) => (
-                    <td key={col.header} className="px-6 py-4 text-sm font-medium text-gray-700">
-                      {col.cell ? col.cell(item) : (item as any)[col.accessorKey]}
+      {/* Table Area */}
+      <div className="w-full overflow-x-auto">
+        <table className="w-full text-sm text-left whitespace-nowrap">
+          <thead className="text-xs text-gray-500 bg-gray-50 uppercase border-b border-gray-200">
+            <tr>
+              {columns.map((col, idx) => (
+                <th 
+                  key={idx} 
+                  className={cn(
+                    "px-4 py-3 font-semibold", 
+                    col.sortable !== false ? "cursor-pointer select-none hover:bg-gray-100" : ""
+                  )}
+                  onClick={() => col.sortable !== false && handleSort(col.accessorKey as string)}
+                >
+                  <div className="flex items-center gap-1">
+                    {col.header}
+                    {sortConfig?.key === col.accessorKey && (
+                      sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                    )}
+                  </div>
+                </th>
+              ))}
+              {(onView || onEdit || onDelete) && (
+                <th className="px-4 py-3 font-semibold text-right">Actions</th>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedData.length > 0 ? (
+              paginatedData.map((row, rIdx) => (
+                <tr key={rIdx} className="border-b border-gray-100 hover:bg-gray-50/80 transition-colors">
+                  {columns.map((col, cIdx) => (
+                    <td key={cIdx} className="px-4 py-3 text-gray-600">
+                      {col.cell ? col.cell(row) : (row as any)[col.accessorKey]}
                     </td>
                   ))}
-                  {(onEdit || onDelete || onView) && (
-                    <td className="px-6 py-4 text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-brand">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-32">
+                  {(onView || onEdit || onDelete) && (
+                    <td className="px-4 py-3 text-right">
+                       <div className="flex items-center justify-end gap-2">
                           {onView && (
-                            <DropdownMenuItem onClick={() => onView(item)}>
-                              <Eye className="mr-2 h-4 w-4" /> View
-                            </DropdownMenuItem>
+                            <button onClick={() => onView(row)} className="text-brand hover:text-brand-dark font-medium text-xs">View</button>
                           )}
                           {onEdit && (
-                            <DropdownMenuItem onClick={() => onEdit(item)}>
-                              <Edit className="mr-2 h-4 w-4" /> Edit
-                            </DropdownMenuItem>
+                            <button onClick={() => onEdit(row)} className="text-blue-600 hover:text-blue-800 font-medium text-xs">Edit</button>
                           )}
                           {onDelete && (
-                            <DropdownMenuItem 
-                              onClick={() => onDelete(item)}
-                              className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" /> Delete
-                            </DropdownMenuItem>
+                            <button onClick={() => onDelete(row)} className="text-red-500 hover:text-red-700 font-medium text-xs">Delete</button>
                           )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                       </div>
                     </td>
                   )}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={columns.length + 1} className="px-4 py-8 text-center text-gray-500">
+                  No results found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="px-6 py-4 border-t flex items-center justify-between bg-gray-50/30">
-            <p className="text-sm text-gray-500 font-medium">
-              Showing <span className="text-navy font-bold">{Math.min(filteredData.length, (currentPage - 1) * pageSize + 1)}</span> to <span className="text-navy font-bold">{Math.min(filteredData.length, currentPage * pageSize)}</span> of <span className="text-navy font-bold">{filteredData.length}</span> results
-            </p>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
-              >
-                <ChevronsLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <div className="flex items-center px-4 py-1.5 bg-white border rounded-lg shadow-sm text-sm font-bold text-navy">
-                {currentPage} / {totalPages}
-              </div>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
-              >
-                <ChevronsRight className="h-4 w-4" />
-              </Button>
-            </div>
+      {/* Pagination */}
+      <div className="p-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-500">
+        <div>
+          Showing {sortedData.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, sortedData.length)} of {sortedData.length} entries
+        </div>
+        <div className="flex items-center gap-4">
+          <select 
+            className="border border-gray-200 rounded-md px-2 py-1 bg-white outline-none"
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+          >
+            <option value={10}>10 per page</option>
+            <option value={20}>20 per page</option>
+            <option value={50}>50 per page</option>
+          </select>
+
+          <div className="flex items-center gap-1">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-8 w-8"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <span className="px-2 font-medium">
+              {currentPage} / {totalPages}
+            </span>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-8 w-8"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

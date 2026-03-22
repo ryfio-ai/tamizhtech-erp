@@ -1,39 +1,37 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { findById, updateRow, deleteRow, getSheetData } from '@/lib/sheets';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-
   try {
-    const payment = await findById('Payments', params.id);
-    if (!payment) return NextResponse.json({ success: false, error: 'Payment not found' }, { status: 404 });
+    const payment = await prisma.payment.findUnique({ where: { id: params.id } });
+    if (!payment) throw new Error("Payment not found");
 
-    const invoiceId = payment.invoiceId;
+    const invoice = await prisma.invoice.findUnique({ where: { id: payment.invoiceId } });
+    if (!invoice) throw new Error("Associated invoice not found");
 
-    // 1. Delete the payment
-    await deleteRow('Payments', params.id);
+    // Transaction to reverse the invoice status & delete payment
+    await prisma.$transaction(async (tx) => {
+      // Revert invoice
+      const newPaidAmount = Math.max(0, invoice.paidAmount - payment.amount);
+      const newBalance = invoice.total - newPaidAmount;
+      let newStatus = "Partial";
+      if (newBalance <= 0) newStatus = "Paid";
+      if (newPaidAmount <= 0) newStatus = "Unpaid";
 
-    // 2. Re-calculate Invoice Status
-    const invoice = await findById('Invoices', invoiceId);
-    if (invoice) {
-        const allPayments = await getSheetData('Payments');
-        const invoicePayments = allPayments.filter((p: any) => p.invoiceId === invoiceId);
-        const totalPaid = invoicePayments.reduce((acc: number, p: any) => acc + parseFloat(p.amount), 0);
-        
-        let newStatus = 'Unpaid';
-        if (totalPaid >= parseFloat(invoice.total)) {
-            newStatus = 'Paid';
-        } else if (totalPaid > 0) {
-            newStatus = 'Partial';
+      await tx.invoice.update({
+        where: { id: invoice.id },
+        data: {
+          paidAmount: newPaidAmount,
+          balance: newBalance,
+          paymentStatus: newStatus
         }
+      });
 
-        await updateRow('Invoices', invoiceId, { paymentStatus: newStatus });
-    }
+      // Delete payment
+      await tx.payment.delete({ where: { id: params.id } });
+    });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, data: null });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

@@ -1,169 +1,138 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { Plus, FileText, Search, Filter, Printer, Download } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from '@/components/ui/dialog';
-import DataTable from '@/components/shared/DataTable';
-import StatusBadge from '@/components/shared/StatusBadge';
-import InvoiceForm from '@/components/invoices/InvoiceForm';
-import ConfirmDialog from '@/components/shared/ConfirmDialog';
-import ExportButton from '@/components/shared/ExportButton';
-import { Invoice } from '@/types';
-import { formatCurrency, formatDate } from '@/lib/utils';
-import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from "react";
+import { useInvoices } from "@/hooks/useInvoices";
+import { InvoiceTable } from "@/components/invoices/InvoiceTable";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { ExportButton } from "@/components/shared/ExportButton";
+import { FilterDropdown } from "@/components/shared/FilterDropdown";
+import { Button } from "@/components/ui/button";
+import { Plus, FileText } from "lucide-react";
+import { Invoice } from "@/types";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 export default function InvoicesPage() {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const router = useRouter();
+  const { invoices, loading, error, fetchInvoices, deleteInvoice } = useInvoices();
+  const searchParams = useSearchParams();
+  const urlClient = searchParams.get('client');
 
-  const fetchInvoices = async () => {
-    try {
-      const res = await fetch('/api/invoices');
-      const result = await res.json();
-      if (result.success) {
-        setInvoices(result.data);
-      }
-    } catch (error) {
-      toast.error("Failed to fetch invoices");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [deleteData, setDeleteData] = useState<{ open: boolean; invoice: Invoice | null; loading: boolean }>({
+    open: false,
+    invoice: null,
+    loading: false
+  });
+
+  // Filters
+  const [statusFilter, setStatusFilter] = useState("");
 
   useEffect(() => {
     fetchInvoices();
-  }, []);
+  }, [fetchInvoices]);
 
-  const handleCreate = async (data: any) => {
-    setSubmitting(true);
+  const handleConfirmDelete = async () => {
+    if (!deleteData.invoice) return;
+    setDeleteData(prev => ({ ...prev, loading: true }));
     try {
-      const res = await fetch('/api/invoices', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      const result = await res.json();
-      if (result.success) {
-        toast.success("Invoice created successfully");
-        setIsAddOpen(false);
-        fetchInvoices();
-      } else {
-        toast.error(result.error || "Failed to create invoice");
-      }
-    } catch (error) {
-      toast.error("An error occurred");
-    } finally {
-      setSubmitting(false);
+      await deleteInvoice(deleteData.invoice.id);
+      setDeleteData({ open: false, invoice: null, loading: false });
+    } catch (e) {
+      setDeleteData(prev => ({ ...prev, loading: false }));
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteConfirm) return;
-    try {
-      const res = await fetch(`/api/invoices/${deleteConfirm}`, {
-        method: 'DELETE',
-      });
-      const result = await res.json();
-      if (result.success) {
-        toast.success("Invoice deleted successfully");
-        fetchInvoices();
-      } else {
-        toast.error(result.error || "Failed to delete invoice");
-      }
-    } catch (error) {
-      toast.error("An error occurred");
-    } finally {
-      setDeleteConfirm(null);
-    }
-  };
+  // Apply filters
+  let filteredInvoices = invoices.filter(inv => {
+    if (statusFilter && inv.paymentStatus !== statusFilter) return false;
+    return true;
+  });
 
-  const columns = [
-    { 
-      header: 'Inv No', 
-      accessorKey: 'invoiceNo',
-      cell: (item: Invoice) => <span className="font-black text-navy">{item.invoiceNo}</span>
-    },
-    { 
-      header: 'Client', 
-      accessorKey: 'clientName',
-      cell: (item: Invoice) => (
-        <div className="flex flex-col">
-          <span className="font-bold text-navy truncate max-w-[150px]">{item.clientName}</span>
-          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">{item.clientId}</span>
-        </div>
-      )
-    },
-    { header: 'Date', accessorKey: 'date', cell: (item: Invoice) => formatDate(item.date) },
-    { 
-      header: 'Total Amount', 
-      accessorKey: 'total',
-      cell: (item: Invoice) => <span className="font-black text-brand">{formatCurrency(item.total)}</span>
-    },
-    { 
-      header: 'Status', 
-      accessorKey: 'paymentStatus',
-      cell: (item: Invoice) => <StatusBadge status={item.paymentStatus} type="payment" />
-    },
+  // If viewing from client profile link via param
+  if (urlClient) {
+    filteredInvoices = filteredInvoices.filter(inv => inv.clientId === urlClient);
+  }
+
+  const exportColumns = [
+    { header: "Invoice No", key: "invoiceNo" },
+    { header: "Client Name", key: "clientName" },
+    { header: "Date", key: "date" },
+    { header: "Due Date", key: "dueDate" },
+    { header: "Subtotal", key: "subtotal" },
+    { header: "GST", key: "gstAmount" },
+    { header: "Discount", key: "discountAmount" },
+    { header: "Total Amount", key: "total" },
+    { header: "Balance", key: "balance" },
+    { header: "Status", key: "paymentStatus" }
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-navy tracking-tight">Invoice Management</h1>
-          <p className="text-gray-500 font-medium">Create and track billing for TamizhTech clients.</p>
+    <div className="space-y-6 w-full max-w-7xl mx-auto">
+      
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-brand/10 text-brand rounded-xl">
+            <FileText className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-navy tracking-tight">Invoices</h1>
+            <p className="text-sm text-gray-500">Manage billing and collect payments.</p>
+          </div>
         </div>
-        
-        <div className="flex items-center space-x-3">
-          <ExportButton data={invoices} filename="TamizhTech_Invoices" />
-          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-brand hover:bg-brand-dark text-white rounded-xl h-11 px-6 font-bold shadow-lg shadow-brand/20 transition-all">
-                <Plus className="mr-2 h-5 w-5" />
-                Create Invoice
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl border-0 shadow-2xl p-8">
-              <DialogHeader>
-                <DialogTitle className="text-2xl font-black text-navy tracking-tight">Generate New Invoice</DialogTitle>
-              </DialogHeader>
-              <div className="py-4">
-                <InvoiceForm onSubmit={handleCreate} loading={submitting} />
-              </div>
-            </DialogContent>
-          </Dialog>
+
+        <div className="flex items-center gap-3">
+          <ExportButton data={filteredInvoices} filename="TamizhTech_Invoices" columns={exportColumns} />
+          <Link href={`/invoices/new${urlClient ? `?client=${urlClient}` : ''}`}>
+            <Button className="bg-brand hover:bg-brand-dark shadow-sm gap-2">
+              <Plus className="w-4 h-4" /> Create Invoice
+            </Button>
+          </Link>
         </div>
       </div>
 
-      <DataTable 
-        columns={columns} 
-        data={invoices} 
+      {/* Filters */}
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-wrap gap-4">
+         <FilterDropdown 
+           placeholder="Payment Status"
+           value={statusFilter}
+           onChange={setStatusFilter}
+           options={[
+             { label: 'Paid', value: 'Paid' },
+             { label: 'Partial', value: 'Partial' },
+             { label: 'Unpaid', value: 'Unpaid' }
+           ]}
+         />
+         
+         {(statusFilter || urlClient) && (
+           <Button variant="ghost" onClick={() => { setStatusFilter(""); if(urlClient) window.history.replaceState({}, '', '/invoices'); }} className="text-gray-500 text-sm">
+             Clear Filters
+           </Button>
+         )}
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="p-4 bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm font-medium">
+          {error}
+        </div>
+      )}
+
+      {/* Main Table */}
+      <InvoiceTable 
+        data={filteredInvoices} 
         loading={loading}
-        onView={(item) => router.push(`/invoices/${item.id}`)}
-        onEdit={(item) => router.push(`/invoices/${item.id}`)}
-        onDelete={(item) => setDeleteConfirm(item.id)}
-        searchPlaceholder="Filter by Invoice No, Client, Date..."
+        onDelete={(invoice) => setDeleteData({ open: true, invoice, loading: false })}
       />
 
       <ConfirmDialog 
-        isOpen={!!deleteConfirm} 
-        onClose={() => setDeleteConfirm(null)} 
-        onConfirm={handleDelete}
+        open={deleteData.open}
+        onOpenChange={(op) => setDeleteData(prev => ({ ...prev, open: op }))}
         title="Delete Invoice?"
-        description="Are you sure you want to delete this invoice? This action cannot be undone."
+        description={`Are you sure you want to delete ${deleteData.invoice?.invoiceNo}? This action cannot be undone and will mess up accounting if payments exist.`}
+        onConfirm={handleConfirmDelete}
+        loading={deleteData.loading}
       />
+
     </div>
   );
 }

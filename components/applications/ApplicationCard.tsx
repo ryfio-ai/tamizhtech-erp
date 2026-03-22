@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { User, Phone, MapPin, Calendar, MoreVertical, ExternalLink } from 'lucide-react';
 import { Application } from '@/types';
@@ -22,16 +21,8 @@ interface ApplicationCardProps {
 
 export default function ApplicationCard({ application, onView, onDelete }: ApplicationCardProps) {
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      whileHover={{ y: -5 }}
-      transition={{ duration: 0.2 }}
-      className="mb-4"
-    >
-      <Card className="border-0 shadow-md hover:shadow-xl transition-all rounded-2xl bg-white overflow-hidden group cursor-grab active:cursor-grabbing border-l-4 border-l-brand">
+    <div className="mb-4 animate-in fade-in zoom-in duration-200">
+      <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 rounded-2xl bg-white overflow-hidden group cursor-grab active:cursor-grabbing border-l-4 border-l-brand hover:-translate-y-1">
         <CardContent className="p-4 space-y-3">
           <div className="flex justify-between items-start">
              <div>
@@ -71,6 +62,6 @@ export default function ApplicationCard({ application, onView, onDelete }: Appli
           </div>
         </CardContent>
       </Card>
-    </motion.div>
+    </div>
   );
 }

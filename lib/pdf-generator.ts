@@ -1,141 +1,236 @@
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { pdf } from '@react-pdf/renderer';
+import React from 'react';
+import { 
+  Document, 
+  Page, 
+  Text, 
+  View, 
+  StyleSheet, 
+  Font 
+} from '@react-pdf/renderer';
 import { Invoice } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
-export const generateInvoicePDF = (invoice: Invoice) => {
-  const doc = new jsPDF();
-  const brandColor = [192, 57, 43]; // #C0392B
-  const navyColor = [26, 26, 46]; // #1A1A2E
+// Styles for PDF
+const styles = StyleSheet.create({
+  page: {
+    padding: 30,
+    fontFamily: 'Helvetica',
+    fontSize: 10,
+    color: '#1A1A2E',
+  },
+  header: {
+    backgroundColor: '#C0392B',
+    padding: 20,
+    margin: -30,
+    marginBottom: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    height: 100,
+  },
+  brandName: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  brandSub: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    marginTop: 5,
+  },
+  invoiceLabel: {
+    color: '#FFFFFF',
+    fontSize: 30,
+    fontWeight: 'bold',
+  },
+  section: {
+    marginTop: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  box: {
+    width: '45%',
+  },
+  label: {
+    fontWeight: 'bold',
+    marginBottom: 5,
+    color: '#C0392B',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  value: {
+    marginBottom: 2,
+  },
+  table: {
+    marginTop: 30,
+    borderWidth: 1,
+    borderColor: '#EEEEEE',
+  },
+  tableHeader: {
+    backgroundColor: '#C0392B',
+    flexDirection: 'row',
+    padding: 8,
+  },
+  tableHeaderCell: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
+    padding: 8,
+  },
+  tableCell: {
+    flex: 1,
+  },
+  amountCell: {
+    textAlign: 'right',
+  },
+  totalsSection: {
+    marginTop: 20,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  totalBox: {
+    width: '40%',
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 3,
+  },
+  grandTotal: {
+    marginTop: 10,
+    backgroundColor: '#C0392B',
+    padding: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 30,
+    left: 30,
+    right: 30,
+    textAlign: 'center',
+    color: '#999999',
+    fontSize: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#EEEEEE',
+    paddingTop: 10,
+  }
+});
 
-  // Header - Brand
-  doc.setFillColor(brandColor[0], brandColor[1], brandColor[2]);
-  doc.rect(0, 0, 210, 40, 'F');
-  
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(24);
-  doc.setFont('helvetica', 'bold');
-  doc.text('TamizhTech', 20, 25);
-  
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Robotics & Tech Solutions', 20, 32);
-
-  // Invoice Label
-  doc.setFontSize(30);
-  doc.setTextColor(255, 255, 255);
-  doc.text('INVOICE', 140, 28);
-
-  // Company Details (Right side)
-  doc.setTextColor(navyColor[0], navyColor[1], navyColor[2]);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text('TamizhTech Pvt Ltd', 140, 50);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Coimbatore, Tamil Nadu, India', 140, 55);
-  doc.text('+91 8148045030', 140, 60);
-  doc.text('tamizhtechpvtltd@gmail.com', 140, 65);
-
-  // Bill To
-  doc.setFont('helvetica', 'bold');
-  doc.text('BILL TO:', 20, 50);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.text(invoice.clientName, 20, 58);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Client ID: ${invoice.clientId}`, 20, 63);
-
-  // Invoice Meta
-  doc.setDrawColor(200, 200, 200);
-  doc.line(20, 75, 190, 75);
-  
-  doc.setFont('helvetica', 'bold');
-  doc.text('Invoice No:', 20, 85);
-  doc.text('Date:', 80, 85);
-  doc.text('Due Date:', 140, 85);
-  
-  doc.setFont('helvetica', 'normal');
-  doc.text(invoice.invoiceNo, 20, 92);
-  doc.text(formatDate(invoice.date), 80, 92);
-  doc.text(formatDate(invoice.dueDate), 140, 92);
-
-  // Line Items Table
-  const tableColumn = ["Description", "Qty", "Unit Price", "Amount"];
-  const tableRows: any[] = [];
-
+const InvoiceDocument = ({ invoice }: { invoice: Invoice }) => {
   const items = typeof invoice.items === 'string' ? JSON.parse(invoice.items) : invoice.items;
-
-  items.forEach((item: any) => {
-    const rowData = [
-      item.description,
-      item.qty.toString(),
-      formatCurrency(item.unitPrice),
-      formatCurrency(item.amount)
-    ];
-    tableRows.push(rowData);
-  });
-
-  (doc as any).autoTable({
-    startY: 105,
-    head: [tableColumn],
-    body: tableRows,
-    theme: 'grid',
-    headStyles: { 
-        fillColor: brandColor, 
-        textColor: [255, 255, 255],
-        fontStyle: 'bold'
-    },
-    styles: { 
-        fontSize: 9,
-        cellPadding: 6 
-    },
-    columnStyles: {
-      3: { halign: 'right' }
-    }
-  });
-
-  const finalY = (doc as any).lastAutoTable.finalY + 10;
-
-  // Totals
-  doc.setFont('helvetica', 'normal');
-  doc.text('Subtotal:', 140, finalY);
-  doc.text(formatCurrency(invoice.subtotal), 170, finalY, { align: 'right' });
   
-  doc.text(`GST (${invoice.gstPercent}%):`, 140, finalY + 7);
-  doc.text(formatCurrency(invoice.gstAmount), 170, finalY + 7, { align: 'right' });
-  
-  if (invoice.discountAmount > 0) {
-    doc.text(`Discount (${invoice.discountPercent}%):`, 140, finalY + 14);
-    doc.text(`-${formatCurrency(invoice.discountAmount)}`, 170, finalY + 14, { align: 'right' });
-  }
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.brandName}>TamizhTech</Text>
+            <Text style={styles.brandSub}>Robotics & Tech Solutions</Text>
+          </View>
+          <Text style={styles.invoiceLabel}>INVOICE</Text>
+        </View>
 
-  const grandTotalY = finalY + (invoice.discountAmount > 0 ? 25 : 18);
-  doc.setFillColor(brandColor[0], brandColor[1], brandColor[2]);
-  doc.rect(135, grandTotalY - 7, 60, 12, 'F');
-  
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text('TOTAL:', 140, grandTotalY);
-  doc.text(formatCurrency(invoice.total), 190, grandTotalY, { align: 'right' });
+        <View style={styles.section}>
+          <View style={styles.box}>
+            <Text style={styles.label}>Bill To:</Text>
+            <Text style={{ fontWeight: 'bold', fontSize: 12 }}>{invoice.clientName}</Text>
+            <Text style={styles.value}>Client ID: {invoice.clientId}</Text>
+          </View>
+          <View style={[styles.box, { textAlign: 'right' }]}>
+            <Text style={styles.label}>Company Details:</Text>
+            <Text style={styles.value}>TamizhTech Pvt Ltd</Text>
+            <Text style={styles.value}>Coimbatore, Tamil Nadu, India</Text>
+            <Text style={styles.value}>+91 8148045030</Text>
+          </View>
+        </View>
 
-  // Notes
-  if (invoice.notes) {
-    doc.setTextColor(navyColor[0], navyColor[1], navyColor[2]);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Notes:', 20, grandTotalY + 20);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.text(invoice.notes, 20, grandTotalY + 27, { maxWidth: 100 });
-  }
+        <View style={[styles.section, { borderTop: 1, borderColor: '#EEE', paddingTop: 10 }]}>
+          <View>
+            <Text style={styles.label}>Invoice No</Text>
+            <Text>{invoice.invoiceNo}</Text>
+          </View>
+          <View>
+            <Text style={styles.label}>Date</Text>
+            <Text>{formatDate(invoice.date)}</Text>
+          </View>
+          <View>
+            <Text style={styles.label}>Due Date</Text>
+            <Text>{formatDate(invoice.dueDate)}</Text>
+          </View>
+        </View>
 
-  // Footer
-  doc.setFontSize(8);
-  doc.setTextColor(150, 150, 150);
-  doc.text('This is a computer generated invoice and does not require a signature.', 105, 285, { align: 'center' });
-  doc.text('www.tamizhtech.in | tamizhtechpvtltd@gmail.com', 105, 290, { align: 'center' });
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={styles.tableHeaderCell}>Description</Text>
+            <Text style={[styles.tableHeaderCell, { flex: 0.3 }]}>Qty</Text>
+            <Text style={[styles.tableHeaderCell, { flex: 0.5 }]}>Unit Price</Text>
+            <Text style={[styles.tableHeaderCell, styles.amountCell]}>Amount</Text>
+          </View>
+          {items.map((item: any, i: number) => (
+            <View key={i} style={styles.tableRow}>
+              <Text style={styles.tableCell}>{item.description}</Text>
+              <Text style={[styles.tableCell, { flex: 0.3 }]}>{item.qty}</Text>
+              <Text style={[styles.tableCell, { flex: 0.5 }]}>{formatCurrency(item.unitPrice)}</Text>
+              <Text style={[styles.tableCell, styles.amountCell]}>{formatCurrency(item.amount)}</Text>
+            </View>
+          ))}
+        </View>
 
-  doc.save(`Invoice_${invoice.invoiceNo}_${invoice.clientName}.pdf`);
+        <View style={styles.totalsSection}>
+          <View style={styles.totalBox}>
+            <View style={styles.totalRow}>
+              <Text>Subtotal:</Text>
+              <Text>{formatCurrency(invoice.subtotal)}</Text>
+            </View>
+            <View style={styles.totalRow}>
+              <Text>GST ({invoice.gstPercent}%):</Text>
+              <Text>{formatCurrency(invoice.gstAmount)}</Text>
+            </View>
+            {invoice.discountAmount > 0 && (
+              <View style={styles.totalRow}>
+                <Text>Discount ({invoice.discountPercent}%):</Text>
+                <Text>-{formatCurrency(invoice.discountAmount)}</Text>
+              </View>
+            )}
+            <View style={styles.grandTotal}>
+              <Text>TOTAL:</Text>
+              <Text>{formatCurrency(invoice.total)}</Text>
+            </View>
+          </View>
+        </View>
+
+        {invoice.notes && (
+          <View style={{ marginTop: 40 }}>
+            <Text style={styles.label}>Notes:</Text>
+            <Text style={{ fontSize: 8 }}>{invoice.notes}</Text>
+          </View>
+        )}
+
+        <View style={styles.footer}>
+          <Text>This is a computer generated invoice and does not require a signature.</Text>
+          <Text>www.tamizhtech.in | tamizhtechpvtltd@gmail.com</Text>
+        </View>
+      </Page>
+    </Document>
+  );
+};
+
+export const generateInvoicePDF = async (invoice: Invoice) => {
+  const blob = await pdf(<InvoiceDocument invoice={invoice} />).toBlob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `Invoice_${invoice.invoiceNo}_${invoice.clientName}.pdf`;
+  link.click();
+  URL.revokeObjectURL(url);
 };

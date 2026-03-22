@@ -1,275 +1,250 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { 
-  User, 
-  Phone, 
-  Mail, 
-  MapPin, 
-  Briefcase, 
-  Target, 
-  FileText, 
-  CreditCard,
-  Edit,
-  ArrowLeft,
-  Calendar
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from '@/components/ui/dialog';
-import LoadingSkeleton from '@/components/shared/LoadingSkeleton';
-import StatusBadge from '@/components/shared/StatusBadge';
-import ClientForm from '@/components/clients/ClientForm';
-import DataTable from '@/components/shared/DataTable';
-import { Client, Invoice, Payment } from '@/types';
-import { formatCurrency, formatDate } from '@/lib/utils';
-import { toast } from 'sonner';
-import { useRouter, useParams } from 'next/navigation';
-import Link from 'next/link';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useClients } from "@/hooks/useClients";
+import { Client, Invoice, Payment, FollowUp } from "@/types";
+import { formatCurrency, formatDate } from "@/lib/utils";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { Button } from "@/components/ui/button";
+import { MapPin, Mail, Phone, ExternalLink, Calendar, CheckSquare, Clock, ArrowLeft, Edit, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { ClientForm } from "@/components/clients/ClientForm";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
-export default function ClientProfilePage() {
-  const { id } = useParams();
+export default function ClientProfilePage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const { getClientProfile, updateClient, deleteClient } = useClients();
+  
   const [client, setClient] = useState<Client | null>(null);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
+  const [relations, setRelations] = useState<{ invoices: Invoice[], payments: Payment[], followUps: FollowUp[] } | null>(null);
+  
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"invoices" | "payments" | "followups" | "notes">("invoices");
+  
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  const fetchClientData = async () => {
-    try {
-      const [clientRes, invRes, payRes] = await Promise.all([
-        fetch(`/api/clients/${id}`),
-        fetch(`/api/invoices?clientId=${id}`),
-        fetch(`/api/payments?clientId=${id}`)
-      ]);
-
-      const clientResult = await clientRes.json();
-      const invResult = await invRes.json();
-      const payResult = await payRes.json();
-
-      if (clientResult.success) setClient(clientResult.data);
-      if (invResult.success) setInvoices(invResult.data);
-      if (payResult.success) setPayments(payResult.data);
-    } catch (error) {
-      toast.error("Failed to load client profile");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   useEffect(() => {
-    fetchClientData();
-  }, [id]);
-
-  const handleUpdate = async (data: any) => {
-    setSubmitting(true);
-    try {
-      const res = await fetch(`/api/clients/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      const result = await res.json();
-      if (result.success) {
-        toast.success("Client profile updated");
-        setIsEditOpen(false);
-        fetchClientData();
-      } else {
-        toast.error(result.error);
+    async function loadData() {
+      try {
+        setLoading(true);
+        const [cProfile, rData] = await Promise.all([
+          getClientProfile(params.id),
+          fetch(`/api/clients/${params.id}/relations`).then(r => r.json())
+        ]);
+        setClient(cProfile);
+        if(rData.success) {
+          setRelations(rData.data);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      toast.error("An error occurred");
-    } finally {
-      setSubmitting(false);
     }
-  };
+    loadData();
+  }, [params.id]);
 
   if (loading) return <LoadingSkeleton type="page" />;
-  if (!client) return <div className="p-8 text-center bg-white rounded-2xl border shadow-sm">Client not found.</div>;
+  if (!client) return <EmptyState title="Client Not Found" description="The requested client does not exist or was deleted." />;
 
-  const totalBilled = invoices.reduce((acc, inv) => acc + inv.total, 0);
-  const totalPaid = payments.reduce((acc, pay) => acc + pay.amount, 0);
-  const outstanding = totalBilled - totalPaid;
+  const handleEditSubmit = async (data: any) => {
+    await updateClient(client.id, data);
+    setClient({ ...client, ...data });
+    setIsEditOpen(false);
+  };
+
+  const handleDelete = async () => {
+    await deleteClient(client.id);
+    router.push("/clients");
+  };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center space-x-4">
-          <Link href="/clients">
-            <Button variant="ghost" size="icon" className="h-10 w-10 text-gray-400 hover:text-brand bg-white shadow-sm border rounded-xl">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-black text-navy tracking-tight">{client.name}</h1>
-            <div className="flex items-center space-x-3 mt-1 font-medium">
-               <StatusBadge status={client.status} type="client" />
-               <span className="text-gray-400 text-xs uppercase tracking-widest bg-gray-50 px-2 py-0.5 rounded border border-gray-100 italic">Created {formatDate(client.createdAt)}</span>
+    <div className="space-y-6 max-w-7xl mx-auto w-full">
+      {/* Top Breadcrumb / Back Navigation */}
+      <div className="flex items-center gap-2 text-sm text-gray-500 hover:text-navy cursor-pointer w-max" onClick={() => router.back()}>
+        <ArrowLeft className="w-4 h-4" />
+        Back to Clients
+      </div>
+
+      {/* Profile Header Card */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-brand/5 rounded-bl-full -z-10" />
+        
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div className="flex items-start gap-6">
+            <div className="w-20 h-20 bg-navy text-white rounded-2xl flex items-center justify-center text-3xl font-bold shadow-md">
+              {client.name.charAt(0)}
+            </div>
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-2xl font-bold text-navy tracking-tight">{client.name}</h1>
+                <StatusBadge status={client.status} type="client" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 mt-4 text-sm text-gray-600">
+                <div className="flex items-center gap-2"><Phone className="w-4 h-4 text-gray-400" /> +91 {client.phone}</div>
+                <div className="flex items-center gap-2"><Mail className="w-4 h-4 text-gray-400" /> {client.email}</div>
+                <div className="flex items-center gap-2"><MapPin className="w-4 h-4 text-gray-400" /> {client.city}</div>
+                <div className="flex items-center gap-2"><CheckSquare className="w-4 h-4 text-gray-400" /> {client.serviceType}</div>
+              </div>
             </div>
           </div>
+          
+          <div className="flex items-center gap-3 shrink-0">
+             <Button variant="outline" className="border-gray-200 text-gray-700 hover:bg-gray-50 bg-white" onClick={() => setIsEditOpen(true)}>
+               <Edit className="w-4 h-4 mr-2" /> Edit Profile
+             </Button>
+             <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 bg-white" onClick={() => setIsDeleteOpen(true)}>
+               <Trash2 className="w-4 h-4" />
+             </Button>
+          </div>
         </div>
+      </div>
+
+      {/* Navigation Tabs */}
+      <div className="flex border-b border-gray-200 overflow-x-auto no-scrollbar">
+        {["invoices", "payments", "followups", "notes"].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab as any)}
+            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap capitalize ${
+              activeTab === tab 
+                ? "border-brand text-brand bg-brand/5" 
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            {tab.replace("followups", "Follow-ups")}
+            {tab === "invoices" && relations?.invoices && <span className="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">{relations.invoices.length}</span>}
+            {tab === "payments" && relations?.payments && <span className="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">{relations.payments.length}</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content Areas */}
+      <div className="bg-white rounded-b-xl border border-t-0 border-gray-100 shadow-sm min-h-[400px]">
         
-        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-brand hover:bg-brand-dark text-white rounded-xl h-11 px-6 font-bold shadow-lg shadow-brand/20 transition-all">
-              <Edit className="mr-2 h-5 w-5" />
-              Edit Profile
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl rounded-2xl border-0 shadow-2xl">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-black text-navy tracking-tight">Edit Client Profile</DialogTitle>
-            </DialogHeader>
-            <div className="py-4">
-              <ClientForm 
-                initialData={client} 
-                onSubmit={handleUpdate} 
-                loading={submitting} 
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
+        {/* INVOICES */}
+        {activeTab === "invoices" && (
+          <div className="p-0">
+            {(!relations?.invoices || relations.invoices.length === 0) ? (
+              <EmptyState title="No Invoices" description="This client doesn't have any invoices yet." actionLabel="Create Invoice" onAction={() => router.push(`/invoices/new?client=${client.id}`)} />
+            ) : (
+              <table className="w-full text-sm text-left whitespace-nowrap">
+                <thead className="bg-gray-50 text-gray-500 font-medium">
+                  <tr><th className="p-4">Invoice No</th><th className="p-4">Date</th><th className="p-4">Total</th><th className="p-4">Balance</th><th className="p-4">Status</th></tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {relations.invoices.map(inv => (
+                    <tr key={inv.id} className="hover:bg-gray-50/50">
+                      <td className="p-4"><Link href={`/invoices/${inv.id}`} className="text-brand font-medium hover:underline">{inv.invoiceNo}</Link></td>
+                      <td className="p-4 text-gray-500">{formatDate(inv.date)}</td>
+                      <td className="p-4 font-medium">{formatCurrency(inv.total)}</td>
+                      <td className="p-4 text-red-600 font-medium">{inv.balance > 0 ? formatCurrency(inv.balance) : '-'}</td>
+                      <td className="p-4"><StatusBadge status={inv.paymentStatus} type="payment" /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+
+        {/* PAYMENTS */}
+        {activeTab === "payments" && (
+          <div className="p-0">
+            {(!relations?.payments || relations.payments.length === 0) ? (
+              <EmptyState title="No Payments" description="No payments recorded for this client." />
+            ) : (
+              <table className="w-full text-sm text-left whitespace-nowrap">
+                <thead className="bg-gray-50 text-gray-500 font-medium">
+                  <tr><th className="p-4">Receipt No</th><th className="p-4">Date</th><th className="p-4">Invoice</th><th className="p-4">Mode</th><th className="p-4">Amount</th></tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {relations.payments.map(pay => (
+                    <tr key={pay.id} className="hover:bg-gray-50/50">
+                      <td className="p-4 font-medium text-navy">{pay.paymentId}</td>
+                      <td className="p-4 text-gray-500">{formatDate(pay.date)}</td>
+                      <td className="p-4 text-gray-500">{pay.invoiceNo}</td>
+                      <td className="p-4"><StatusBadge status={pay.mode} /></td>
+                      <td className="p-4 font-medium text-green-700">+{formatCurrency(pay.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+
+        {/* FOLLOW UPS (TIMELINE VIEW) */}
+        {activeTab === "followups" && (
+          <div className="p-6">
+            {(!relations?.followUps || relations.followUps.length === 0) ? (
+              <EmptyState title="No Follow-ups" description="No timeline history found." />
+            ) : (
+              <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-200 before:to-transparent">
+                {relations.followUps.map((fu, idx) => (
+                  <div key={fu.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-blue-50 text-blue-500 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 mx-auto">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-white p-4 rounded border border-gray-100 shadow-sm">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-semibold text-brand uppercase">{fu.mode}</span>
+                        <time className="text-xs font-medium text-gray-400">{formatDate(fu.date)} at {fu.time}</time>
+                      </div>
+                      <p className="text-sm text-gray-700 mt-2">{fu.summary}</p>
+                      {fu.nextAction && (
+                        <div className="mt-3 p-2 bg-amber-50 rounded text-xs text-amber-800 border border-amber-100">
+                          <strong>Next Action:</strong> {fu.nextAction}
+                        </div>
+                      )}
+                      <div className="mt-3">
+                         <StatusBadge status={fu.status} type="followup" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* NOTES */}
+        {activeTab === "notes" && (
+          <div className="p-6 max-w-2xl">
+            <h3 className="text-lg font-semibold text-navy mb-4">Internal Notes</h3>
+            {client.notes ? (
+              <div className="bg-gray-50 border border-gray-100 p-4 rounded-xl text-gray-700 whitespace-pre-wrap leading-relaxed shadow-inner">
+                 {client.notes}
+              </div>
+            ) : (
+              <p className="text-gray-400 italic">No notes have been added for this client.</p>
+            )}
+          </div>
+        )}
+
       </div>
 
-      {/* Stats Quick View */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <Card className="border-0 shadow-sm bg-white rounded-2xl transition-all hover:shadow-md border-l-4 border-l-brand">
-          <CardContent className="p-6">
-             <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Total Billed</p>
-             <h3 className="text-2xl font-black text-navy mt-1">{formatCurrency(totalBilled)}</h3>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm bg-white rounded-2xl transition-all hover:shadow-md border-l-4 border-l-green-500">
-          <CardContent className="p-6">
-             <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Total Paid</p>
-             <h3 className="text-2xl font-black text-green-600 mt-1">{formatCurrency(totalPaid)}</h3>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm bg-white rounded-2xl transition-all hover:shadow-md border-l-4 border-l-red-500">
-          <CardContent className="p-6">
-             <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Outstanding</p>
-             <h3 className="text-2xl font-black text-red-600 mt-1">{formatCurrency(outstanding)}</h3>
-          </CardContent>
-        </Card>
-      </div>
+      {isEditOpen && (
+        <ClientForm 
+          initialData={client as any}
+          onSubmit={handleEditSubmit}
+          onCancel={() => setIsEditOpen(false)}
+          isLoading={loading}
+        />
+      )}
 
-      {/* Main Content Tabs */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        {/* Left Sidebar Info */}
-        <div className="lg:col-span-1 space-y-6">
-           <Card className="border-0 shadow-sm bg-navy text-white rounded-3xl overflow-hidden">
-             <div className="bg-brand p-6 flex flex-col items-center">
-                <div className="h-20 w-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-3xl font-black mb-4 border border-white/30">
-                   {client.name.charAt(0)}
-                </div>
-                <h4 className="text-lg font-bold text-center">{client.name}</h4>
-                <p className="text-white/60 text-xs font-medium mt-1">{client.serviceType}</p>
-             </div>
-             <CardContent className="p-6 space-y-5">
-                <div className="flex items-start space-x-3">
-                   <Phone className="h-4 w-4 text-brand mt-1 flex-shrink-0" />
-                   <div>
-                      <p className="text-[10px] uppercase tracking-widest font-black text-white/40">Phone</p>
-                      <p className="text-sm font-bold text-white/90">{client.phone}</p>
-                   </div>
-                </div>
-                <div className="flex items-start space-x-3 text-white">
-                   <Mail className="h-4 w-4 text-brand mt-1 flex-shrink-0" />
-                   <div>
-                      <p className="text-[10px] uppercase tracking-widest font-black text-white/40">Email</p>
-                      <p className="text-sm font-bold text-white/90 truncate max-w-[150px]">{client.email}</p>
-                   </div>
-                </div>
-                <div className="flex items-start space-x-3 text-white">
-                   <MapPin className="h-4 w-4 text-brand mt-1 flex-shrink-0" />
-                   <div>
-                      <p className="text-[10px] uppercase tracking-widest font-black text-white/40">City</p>
-                      <p className="text-sm font-bold text-white/90">{client.city}</p>
-                   </div>
-                </div>
-                <div className="flex items-start space-x-3 text-white">
-                   <Target className="h-4 w-4 text-brand mt-1 flex-shrink-0" />
-                   <div>
-                      <p className="text-[10px] uppercase tracking-widest font-black text-white/40">Lead Source</p>
-                      <p className="text-sm font-bold text-white/90">{client.source}</p>
-                   </div>
-                </div>
-             </CardContent>
-           </Card>
-
-           {client.notes && (
-             <Card className="border-0 shadow-sm bg-white rounded-2xl overflow-hidden border-t-8 border-t-brand/5">
-                <CardHeader className="pb-2">
-                   <CardTitle className="text-sm font-black text-navy uppercase tracking-widest flex items-center">
-                      <FileText className="h-4 w-4 mr-2 text-brand" /> Notes
-                   </CardTitle>
-                </CardHeader>
-                <CardContent>
-                   <p className="text-xs text-gray-500 font-medium leading-relaxed italic border-l-2 border-brand/20 pl-4 py-2 bg-gray-50/50 rounded-r-xl">
-                      {client.notes}
-                   </p>
-                </CardContent>
-             </Card>
-           )}
-        </div>
-
-        {/* Right Content Tabs */}
-        <div className="lg:col-span-3">
-          <Tabs defaultValue="invoices" className="w-full">
-            <TabsList className="bg-gray-100 p-1.5 rounded-2xl h-14 w-full md:w-auto md:inline-flex shadow-inner mb-6">
-              <TabsTrigger 
-                value="invoices" 
-                className="rounded-xl px-8 font-black text-xs uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-brand data-[state=active]:shadow-xl h-full transition-all"
-              >
-                Invoices
-              </TabsTrigger>
-              <TabsTrigger 
-                value="payments" 
-                className="rounded-xl px-8 font-black text-xs uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-brand data-[state=active]:shadow-xl h-full transition-all"
-              >
-                Payments
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="invoices" className="animate-in fade-in slide-in-from-right-4 duration-500">
-               <DataTable 
-                  columns={[
-                    { header: 'Inv No', accessorKey: 'invoiceNo', cell: (item) => <span className="font-black text-navy">{item.invoiceNo}</span> },
-                    { header: 'Date', accessorKey: 'date', cell: (item) => formatDate(item.date) },
-                    { header: 'Total', accessorKey: 'total', cell: (item) => <span className="font-black text-brand">{formatCurrency(item.total)}</span> },
-                    { header: 'Status', accessorKey: 'paymentStatus', cell: (item) => <StatusBadge status={item.paymentStatus} type="payment" /> },
-                  ]}
-                  data={invoices}
-                  searchPlaceholder="Filter invoices..."
-                  onView={(item) => router.push(`/invoices/${item.id}`)}
-               />
-            </TabsContent>
-            
-            <TabsContent value="payments" className="animate-in fade-in slide-in-from-right-4 duration-500">
-               <DataTable 
-                  columns={[
-                    { header: 'Receipt Id', accessorKey: 'paymentId', cell: (item) => <span className="font-black text-navy">#{item.paymentId}</span> },
-                    { header: 'Date', accessorKey: 'date', cell: (item) => formatDate(item.date) },
-                    { header: 'Amount', accessorKey: 'amount', cell: (item) => <span className="font-black text-green-600">{formatCurrency(item.amount)}</span> },
-                    { header: 'Method', accessorKey: 'mode', cell: (item) => <span className="uppercase text-[10px] font-black text-gray-500">{item.mode}</span> },
-                  ]}
-                  data={payments}
-                  searchPlaceholder="Filter payments..."
-               />
-            </TabsContent>
-          </Tabs>
-        </div>
-      </div>
+      <ConfirmDialog 
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+        title="Delete Client?"
+        description="Are you sure you want to completely delete this profile? This action is irreversible."
+        onConfirm={handleDelete}
+        loading={loading}
+      />
     </div>
   );
 }

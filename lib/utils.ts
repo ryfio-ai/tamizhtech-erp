@@ -1,42 +1,68 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 
+/**
+ * Combines tailwind classes smoothly for shadcn/ui
+ */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(amount: number | string) {
+/**
+ * Formats a number to Indian currency format (e.g. ₹1,23,456.00)
+ */
+export function formatCurrency(amount: number | string): string {
   const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  if (isNaN(num)) return '₹0.00';
+  
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: 'INR',
     minimumFractionDigits: 2,
-  }).format(num || 0);
+    maximumFractionDigits: 2,
+  }).format(num);
 }
 
-export function formatDate(date: string | Date) {
-  if (!date) return 'N/A';
-  const d = typeof date === 'string' ? parseISO(date) : date;
-  return format(d, 'dd-MMM-yyyy');
+/**
+ * Formats a date to DD-MMM-YYYY (e.g. 20-Mar-2026)
+ */
+export function formatDate(date: string | Date, fallback: string = 'N/A'): string {
+  if (!date) return fallback;
+  try {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return fallback;
+    return format(d, 'dd-MMM-yyyy');
+  } catch (error) {
+    return fallback;
+  }
 }
 
-export function generateId() {
+/**
+ * Formats a date to include time DD-MMM-YYYY hh:mm a
+ */
+export function formatDateTime(date: string | Date, fallback: string = 'N/A'): string {
+  if (!date) return fallback;
+  try {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return fallback;
+    return format(d, 'dd-MMM-yyyy hh:mm a');
+  } catch (error) {
+    return fallback;
+  }
+}
+
+/**
+ * Generates a standard UUID
+ */
+export function generateId(): string {
   return uuidv4();
 }
 
-export function calculateInvoiceTotals(items: { qty: number; unitPrice: number }[], gstPercent = 18, discountPercent = 0) {
-  const subtotal = items.reduce((acc, item) => acc + (item.qty * item.unitPrice), 0);
-  const discountAmount = (subtotal * discountPercent) / 100;
-  const taxableAmount = subtotal - discountAmount;
-  const gstAmount = (taxableAmount * gstPercent) / 100;
-  const total = taxableAmount + gstAmount;
-
-  return {
-    subtotal,
-    discountAmount,
-    gstAmount,
-    total,
-  };
+/**
+ * Delay utility for mocking/testing or rate-limiting
+ */
+export function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }

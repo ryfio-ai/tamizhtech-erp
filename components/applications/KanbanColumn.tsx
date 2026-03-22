@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { Application } from '@/types';
 import ApplicationCard from './ApplicationCard';
 import { ScrollArea } from '@/components/ui/scroll-area';

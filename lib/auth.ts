@@ -1,49 +1,66 @@
-import NextAuth, { NextAuthOptions } from 'next-auth';
-import CredentialsProvider from 'next-auth/providers/credentials';
+import { NextAuthOptions } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+import prisma from "@/lib/prisma";
+import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
-      name: 'TamizhTech Admin',
+      name: "Credentials",
       credentials: {
-        username: { label: "Username", type: "text", placeholder: "admin" },
+        email: { label: "Email", type: "email", placeholder: "admin@tamizhtech.in" },
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        if (
-          credentials?.username === "adminTT" &&
-          credentials?.password === "adminTT"
-        ) {
-          return {
-            id: '1',
-            name: 'TamizhTech Admin',
-            email: 'admin@tamizhtech.in',
-          };
+        if (!credentials?.email || !credentials?.password) {
+          throw new Error("Invalid credentials");
         }
-        return null;
+
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email }
+        });
+
+        if (!user || !user.passwordHash) {
+          throw new Error("User not found");
+        }
+
+        const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
+
+        if (!isValid) {
+          throw new Error("Invalid password");
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        };
       }
     }),
   ],
+  pages: {
+    signIn: "/login",
+    error: "/login",
+  },
   callbacks: {
-    async signIn() {
-       return true;
+    async jwt({ token, user }) {
+      if (user) {
+        token.role = (user as any).role;
+        token.id = user.id;
+      }
+      return token;
     },
     async session({ session, token }) {
-      if (session.user) {
-        (session.user as any).id = token.sub;
+      if (session?.user) {
+        (session.user as any).role = token.role;
+        (session.user as any).id = token.id;
       }
       return session;
     },
-    async jwt({ token, user }) {
-        if (user) {
-            token.id = user.id;
-        }
-        return token;
-    }
   },
-  pages: {
-    signIn: '/login',
-    error: '/login',
+  session: {
+    strategy: "jwt",
   },
-  secret: process.env.NEXTAUTH_SECRET || 'tamizhtech-secret-key-123456',
+  secret: process.env.NEXTAUTH_SECRET,
 };

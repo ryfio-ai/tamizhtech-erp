@@ -1,182 +1,128 @@
-'use client';
+"use client";
 
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { applicationSchema, ApplicationStatusEnum } from '@/lib/validations';
-import { z } from 'zod';
-import { 
-  Form, 
-  FormControl, 
-  FormField, 
-  FormItem, 
-  FormLabel, 
-  FormMessage 
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Loader2 } from 'lucide-react';
-
-type ApplicationFormValues = z.infer<typeof applicationSchema>;
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { applicationSchema, ApplicationFormValues } from "@/lib/validations";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Loader2, X } from "lucide-react";
 
 interface ApplicationFormProps {
-  initialData?: any;
-  defaultStatus?: string;
+  initialData?: ApplicationFormValues;
   onSubmit: (data: ApplicationFormValues) => Promise<void>;
-  loading?: boolean;
+  onCancel: () => void;
+  isLoading: boolean;
 }
 
-export default function ApplicationForm({ 
-  initialData, 
-  defaultStatus, 
-  onSubmit, 
-  loading 
-}: ApplicationFormProps) {
-  const form = useForm<ApplicationFormValues>({
+export function ApplicationForm({ initialData, onSubmit, onCancel, isLoading }: ApplicationFormProps) {
+  const { register, handleSubmit, formState: { errors } } = useForm<ApplicationFormValues>({
     resolver: zodResolver(applicationSchema),
     defaultValues: initialData || {
-      name: '',
-      email: '',
-      phone: '',
-      course: '',
-      city: '',
-      status: (defaultStatus as any) || 'Applied',
-      notes: '',
-    },
+      name: "",
+      email: "",
+      phone: "",
+      city: "",
+      appliedFor: "",
+      source: "Manual Entry",
+      notes: ""
+    }
   });
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="font-bold text-navy">Applicant Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="John Doe" {...field} className="rounded-xl h-11" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="font-bold text-navy">Email</FormLabel>
-                <FormControl>
-                  <Input placeholder="john@example.com" {...field} className="rounded-xl h-11" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="phone"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="font-bold text-navy">Phone</FormLabel>
-                <FormControl>
-                  <Input placeholder="9876543210" {...field} className="rounded-xl h-11" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="course"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="font-bold text-navy">Interested Course</FormLabel>
-                <FormControl>
-                  <Input placeholder="Robotics Advanced" {...field} className="rounded-xl h-11" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="city"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="font-bold text-navy">City</FormLabel>
-                <FormControl>
-                  <Input placeholder="Coimbatore" {...field} className="rounded-xl h-11" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="status"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="font-bold text-navy">Status</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger className="rounded-xl h-11">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent className="rounded-xl">
-                    {ApplicationStatusEnum.options.map((opt) => (
-                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <FormField
-          control={form.control}
-          name="notes"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="font-bold text-navy">Additional Remarks</FormLabel>
-              <FormControl>
-                <Textarea 
-                  placeholder="Notes from initial call, etc." 
-                  className="rounded-xl min-h-[100px]" 
-                  {...field} 
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="flex justify-end pt-4">
-          <Button 
-            type="submit" 
-            disabled={loading}
-            className="bg-brand hover:bg-brand-dark text-white rounded-xl h-12 px-8 font-bold shadow-lg shadow-brand/20 transition-all min-w-[200px]"
-          >
-            {loading ? (
-               <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-               initialData ? 'Update Lead' : 'Create Lead'
-            )}
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-xl overflow-hidden flex flex-col max-h-full">
+        
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-gray-50/50">
+          <h2 className="text-xl font-bold text-navy">
+            {initialData ? "Edit Lead Details" : "Capture New Lead"}
+          </h2>
+          <Button variant="ghost" size="icon" onClick={onCancel} className="text-gray-400 hover:text-gray-600 rounded-full h-8 w-8">
+            <X className="w-5 h-5" />
           </Button>
         </div>
-      </form>
-    </Form>
+
+        {/* Form Body */}
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col overflow-hidden">
+          <div className="p-6 overflow-y-auto space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Full Name *</label>
+                <Input {...register("name")} placeholder="Enter name" />
+                {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Phone Number *</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm opacity-50">+91</span>
+                  <Input {...register("phone")} placeholder="1234567890" className="pl-10" maxLength={10} />
+                </div>
+                {errors.phone && <p className="text-xs text-red-500">{errors.phone.message}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Email Address *</label>
+                <Input type="email" {...register("email")} placeholder="client@example.com" />
+                {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">City / Location *</label>
+                <Input {...register("city")} placeholder="e.g. Coimbatore" />
+                {errors.city && <p className="text-xs text-red-500">{errors.city.message}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Interested In (Program/Service) *</label>
+                <select 
+                  {...register("appliedFor")}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  <option value="">Select interest...</option>
+                  <option value="Robotics Workshop">Robotics Workshop</option>
+                  <option value="Arduino Training">Arduino Training</option>
+                  <option value="IoT Project">IoT Project</option>
+                  <option value="Drone Training">Drone Training</option>
+                  <option value="Internship">Internship</option>
+                  <option value="Custom Project">Custom Project</option>
+                  <option value="Tamizh Robotics Club">Tamizh Robotics Club</option>
+                </select>
+                {errors.appliedFor && <p className="text-xs text-red-500">{errors.appliedFor.message}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Source *</label>
+                <Input {...register("source")} placeholder="e.g. Website, Referral, Walk-in" />
+                {errors.source && <p className="text-xs text-red-500">{errors.source.message}</p>}
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-medium text-gray-700">Notes / Requirements</label>
+                <textarea 
+                  {...register("notes")}
+                  rows={3}
+                  placeholder="Any specific project details or requirements..."
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand resize-none"
+                />
+              </div>
+
+            </div>
+          </div>
+
+          <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center justify-end gap-3 shrink-0">
+            <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading} className="bg-brand hover:bg-brand-dark min-w-[150px]">
+              {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              {isLoading ? "Saving..." : "Save Lead"}
+            </Button>
+          </div>
+        </form>
+
+      </div>
+    </div>
   );
 }

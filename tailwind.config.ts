@@ -1,6 +1,6 @@
-import type { Config } from "tailwindcss";
+import type { Config } from "tailwindcss"
 
-const config: Config = {
+const config = {
   darkMode: ["class"],
   content: [
     './pages/**/*.{ts,tsx}',
@@ -25,13 +25,13 @@ const config: Config = {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         brand: {
-          DEFAULT: "#C0392B",
-          dark: "#922B21",
-          light: "#E74C3C",
+          DEFAULT: '#C0392B',
+          dark: '#922B21',
+          light: '#E74C3C'
         },
         navy: {
-          DEFAULT: "#1A1A2E",
-          light: "#2C2C4E",
+          DEFAULT: '#1A1A2E',
+          light: '#2C2C4E'
         },
         primary: {
           DEFAULT: "hsl(var(--primary))",
@@ -84,6 +84,6 @@ const config: Config = {
     },
   },
   plugins: [require("tailwindcss-animate")],
-} satisfies Config;
+} satisfies Config
 
-export default config;
+export default config

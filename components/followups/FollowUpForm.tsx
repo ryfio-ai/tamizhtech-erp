@@ -1,210 +1,142 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { followUpSchema, FollowUpTypeEnum, FollowUpStatusEnum } from '@/lib/validations';
-import { z } from 'zod';
-import { 
-  Form, 
-  FormControl, 
-  FormField, 
-  FormItem, 
-  FormLabel, 
-  FormMessage 
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Calendar, User, MessageSquare } from 'lucide-react';
-import { Client } from '@/types';
-
-type FollowUpFormValues = z.infer<typeof followUpSchema>;
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { followUpSchema, FollowUpFormValues } from "@/lib/validations";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Loader2, X } from "lucide-react";
+import { Client } from "@/types";
 
 interface FollowUpFormProps {
-  initialData?: any;
+  initialData?: FollowUpFormValues;
+  clients: Client[];
   onSubmit: (data: FollowUpFormValues) => Promise<void>;
-  loading?: boolean;
+  onCancel: () => void;
+  isLoading: boolean;
 }
 
-export default function FollowUpForm({ initialData, onSubmit, loading }: FollowUpFormProps) {
-  const [clients, setClients] = useState<Client[]>([]);
-  const [clientsLoading, setClientsLoading] = useState(true);
-
-  useEffect(() => {
-    fetch('/api/clients')
-      .then(res => res.json())
-      .then(result => {
-        if (result.success) setClients(result.data);
-      })
-      .finally(() => setClientsLoading(false));
-  }, []);
-
-  const form = useForm<FollowUpFormValues>({
+export function FollowUpForm({ initialData, clients, onSubmit, onCancel, isLoading }: FollowUpFormProps) {
+  const { register, handleSubmit, formState: { errors } } = useForm<FollowUpFormValues>({
     resolver: zodResolver(followUpSchema),
     defaultValues: initialData || {
-      clientId: '',
-      clientName: '',
+      clientId: "",
       date: new Date().toISOString().split('T')[0],
-      time: '10:00',
-      type: 'Call',
-      notes: '',
-      status: 'Pending',
-    },
+      time: "10:00",
+      mode: "Call",
+      summary: "",
+      nextAction: "",
+      status: "Pending"
+    }
   });
 
-  const handleClientChange = (clientId: string) => {
-    const selectedClient = clients.find(c => c.id === clientId);
-    if (selectedClient) {
-      form.setValue('clientName', selectedClient.name);
-    }
-  };
+  const activeClients = clients.filter(c => c.status !== 'Blacklisted' && c.status !== 'Inactive');
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <FormField
-          control={form.control}
-          name="clientId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="font-bold text-navy">Select Client</FormLabel>
-              <Select 
-                onValueChange={(val) => {
-                  field.onChange(val);
-                  handleClientChange(val);
-                }} 
-                defaultValue={field.value}
-                disabled={clientsLoading}
-              >
-                <FormControl>
-                  <SelectTrigger className="rounded-xl h-11">
-                    <SelectValue placeholder={clientsLoading ? "Loading..." : "Choose client"} />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent className="rounded-xl">
-                  {clients.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField
-            control={form.control}
-            name="date"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="font-bold text-navy">Date</FormLabel>
-                <FormControl>
-                  <Input type="date" {...field} className="rounded-xl h-11" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="time"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="font-bold text-navy">Time</FormLabel>
-                <FormControl>
-                  <Input type="time" {...field} className="rounded-xl h-11" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="type"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="font-bold text-navy">Type</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger className="rounded-xl h-11">
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent className="rounded-xl">
-                    {FollowUpTypeEnum.options.map((opt) => (
-                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="status"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="font-bold text-navy">Status</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger className="rounded-xl h-11">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent className="rounded-xl">
-                    {FollowUpStatusEnum.options.map((opt) => (
-                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <FormField
-          control={form.control}
-          name="notes"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="font-bold text-navy">Agenda / Notes</FormLabel>
-              <FormControl>
-                <Textarea 
-                  placeholder="What is this follow-up about?" 
-                  className="rounded-xl min-h-[100px]" 
-                  {...field} 
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="flex justify-end pt-4">
-          <Button 
-            type="submit" 
-            disabled={loading}
-            className="bg-brand hover:bg-brand-dark text-white rounded-xl h-12 px-8 font-bold shadow-lg shadow-brand/20 transition-all min-w-[200px]"
-          >
-            {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              initialData ? 'Update Schedule' : 'Schedule Follow-up'
-            )}
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-xl overflow-hidden flex flex-col max-h-full">
+        
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-gray-50/50">
+          <h2 className="text-xl font-bold text-navy">
+            {initialData ? "Edit Task" : "Schedule Follow-up"}
+          </h2>
+          <Button variant="ghost" size="icon" onClick={onCancel} className="text-gray-400 hover:text-gray-600 rounded-full h-8 w-8">
+            <X className="w-5 h-5" />
           </Button>
         </div>
-      </form>
-    </Form>
+
+        {/* Form Body */}
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col overflow-hidden">
+          <div className="p-6 overflow-y-auto space-y-5">
+            <div className="grid grid-cols-1 gap-5">
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Client *</label>
+                <select 
+                  {...register("clientId")}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  disabled={!!initialData} // Lock client if editing
+                >
+                  <option value="">Select a client...</option>
+                  {activeClients.map(c => (
+                    <option key={c.id} value={c.id}>{c.name} ({c.status})</option>
+                  ))}
+                </select>
+                {errors.clientId && <p className="text-xs text-red-500">{errors.clientId.message}</p>}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Date *</label>
+                  <Input type="date" {...register("date")} />
+                  {errors.date && <p className="text-xs text-red-500">{errors.date.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Time *</label>
+                  <Input type="time" {...register("time")} />
+                  {errors.time && <p className="text-xs text-red-500">{errors.time.message}</p>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Contact Mode *</label>
+                    <select 
+                    {...register("mode")}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    >
+                    <option value="Call">Call</option>
+                    <option value="Email">Email</option>
+                    <option value="WhatsApp">WhatsApp</option>
+                    <option value="In-person">In-person</option>
+                    </select>
+                </div>
+
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Status</label>
+                    <select 
+                    {...register("status")}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    >
+                    <option value="Pending">Pending</option>
+                    <option value="Done">Done</option>
+                    <option value="Overdue">Overdue</option>
+                    </select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Task Summary *</label>
+                <textarea 
+                  {...register("summary")}
+                  rows={2}
+                  placeholder="e.g. Call to discuss the submitted quotation..."
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand resize-none"
+                />
+                {errors.summary && <p className="text-xs text-red-500">{errors.summary.message}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Next Action Goal (Optional)</label>
+                <Input {...register("nextAction")} placeholder="e.g. Schedule meeting for Friday" />
+              </div>
+
+            </div>
+          </div>
+
+          <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center justify-end gap-3 shrink-0">
+            <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading} className="bg-brand hover:bg-brand-dark min-w-[120px]">
+              {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              {isLoading ? "Saving..." : "Save Task"}
+            </Button>
+          </div>
+        </form>
+
+      </div>
+    </div>
   );
 }

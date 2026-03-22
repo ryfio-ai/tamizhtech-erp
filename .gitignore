@@ -1,1 +1,11 @@
 node_modules
+.next
+.env
+.env.local
+*.db
+*.db-journal
+test_delete_fix.ts
+out
+build
+dist
+.DS_Store

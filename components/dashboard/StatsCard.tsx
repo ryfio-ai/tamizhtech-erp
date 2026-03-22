@@ -1,56 +1,56 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+"use client";
+
 import { LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface StatsCardProps {
   title: string;
   value: string | number;
   icon: LucideIcon;
   description?: string;
-  trend?: {
-    value: number;
-    isPositive: boolean;
-  };
+  trend?: "up" | "down" | "neutral";
+  trendValue?: string;
   className?: string;
   iconClassName?: string;
 }
 
-export default function StatsCard({
-  title,
-  value,
-  icon: Icon,
-  description,
-  trend,
+export function StatsCard({ 
+  title, 
+  value, 
+  icon: Icon, 
+  description, 
+  trend, 
+  trendValue,
   className,
-  iconClassName,
+  iconClassName 
 }: StatsCardProps) {
   return (
-    <Card className={cn("overflow-hidden border-0 shadow-sm bg-white rounded-2xl transition-all hover:shadow-md", className)}>
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between space-y-0 pb-2">
-          <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">{title}</p>
-          <div className={cn("p-2 rounded-lg bg-gray-50", iconClassName)}>
-            <Icon className="h-5 w-5 text-gray-400" />
-          </div>
+    <div className={cn("p-6 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col", className)}>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-medium text-gray-500 tracking-tight">{title}</h3>
+        <div className={cn("p-2 rounded-lg bg-gray-50", iconClassName)}>
+          <Icon className="w-5 h-5" />
         </div>
-        <div className="mt-3">
-          <div className="text-3xl font-black text-navy tracking-tight">{value}</div>
-          {description && (
-            <p className="text-xs text-gray-400 mt-1 font-medium italic">
-              {description}
-            </p>
-          )}
-          {trend && (
-            <div className={cn(
-              "mt-2 text-xs font-bold inline-flex items-center",
-              trend.isPositive ? "text-green-600" : "text-red-600"
-            )}>
-              {trend.isPositive ? '↑' : '↓'} {trend.value}%
-              <span className="text-gray-400 ml-1 font-normal uppercase tracking-tighter">vs last month</span>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+      
+      <div className="flex items-baseline gap-2 mt-auto">
+        <h2 className="text-3xl font-bold text-navy truncate">{value}</h2>
+        
+        {trendValue && (
+          <span className={cn(
+            "text-xs font-semibold px-2 py-0.5 rounded-full flex items-center",
+            trend === "up" ? "bg-green-100 text-green-700" :
+            trend === "down" ? "bg-red-100 text-red-700" :
+            "bg-gray-100 text-gray-700"
+          )}>
+            {trend === "up" ? "+" : trend === "down" ? "-" : ""}{trendValue}
+          </span>
+        )}
+      </div>
+      
+      {description && (
+        <p className="text-xs text-gray-400 mt-2 truncate">{description}</p>
+      )}
+    </div>
   );
 }

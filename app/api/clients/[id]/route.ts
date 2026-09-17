@@ -35,7 +35,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const body: Partial<UpdateClientInput> & { type?: string, status?: string, assignedToId?: string } = await req.json();
+    const body: Partial<UpdateClientInput> & { type?: string, status?: string, assignedToId?: string, company?: string, notes?: string } = await req.json();
     
     // Check duplicates if updating email or phone
     if (body.email || body.phone) {
@@ -60,12 +60,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         email: body.email,
         phone: body.phone,
         city: body.city,
+        company: body.company,
+        notes: body.notes,
         serviceType: body.serviceType,
         source: body.source,
         type: body.type,
         status: body.status,
         assignedToId: body.assignedToId
-      }
+      } as any
     });
 
     return NextResponse.json({ success: true, data: { ...updated, createdAt: updated.createdAt.toISOString() } });

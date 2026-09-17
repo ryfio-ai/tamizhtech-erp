@@ -13,6 +13,7 @@ import { MapPin, Mail, Phone, ExternalLink, Calendar, CheckSquare, Clock, ArrowL
 import Link from "next/link";
 import { ClientForm } from "@/components/clients/ClientForm";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { ResponsiveDrawer } from "@/components/shared/ResponsiveDrawer";
 
 export default function ClientProfilePage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -265,14 +266,19 @@ export default function ClientProfilePage({ params }: { params: { id: string } }
 
       </div>
 
-      {isEditOpen && (
+      <ResponsiveDrawer
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        title="Edit Customer"
+        description="Update contact and commercial details for this customer."
+      >
         <ClientForm 
           initialData={client as any}
           onSubmit={handleEditSubmit}
           onCancel={() => setIsEditOpen(false)}
           isLoading={loading}
         />
-      )}
+      </ResponsiveDrawer>
 
       <ConfirmDialog 
         open={isDeleteOpen}

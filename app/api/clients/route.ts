@@ -65,12 +65,14 @@ export async function POST(req: NextRequest) {
         phone: validated.phone,
         email: validated.email,
         city: validated.city || "",
+        company: validated.company || "",
+        notes: validated.notes || "",
         serviceType: validated.serviceType || "",
         source: validated.source || "OTHER",
         status: validated.status || "LEAD",
         type: validated.type || "INDIVIDUAL",
         assignedToId: validated.assignedToId
-      }
+      } as any
     });
     
     return NextResponse.json<ApiResponse<any>>({ success: true, data: { ...newClient, createdAt: newClient.createdAt.toISOString() } }, { status: 201 });

@@ -1,14 +1,14 @@
 import * as z from 'zod';
 
-export const phoneRegex = /^[0-9]{10}$/;
+export const phoneRegex = /^\+?[0-9\s-]{7,15}$/;
 
 // ─── CRM Validations ───────────────────────────────────────
 export const clientSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   company: z.string().optional(),
   email: z.string().email("Please enter a valid email address."),
-  phone: z.string().regex(phoneRegex, "Phone must be exactly 10 digits."),
-  city: z.string().min(2, "City is required.").optional(),
+  phone: z.string().regex(phoneRegex, "Please enter a valid phone number (7-15 digits)."),
+  city: z.string().optional().or(z.literal('')),
   type: z.string().default("INDIVIDUAL"),
   status: z.string().default("LEAD"),
   serviceType: z.string().optional(),

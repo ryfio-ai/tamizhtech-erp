@@ -2,15 +2,16 @@ import React from "react";
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 import { DEFAULT_COMPANY_SETTINGS, CompanySettings } from "@/lib/companyProfile";
 import { CanonicalInvoiceFinancials } from "@/types";
+import { formatIssueDateTime } from "@/lib/utils";
 
-// Professional A4 Tax Invoice Stylesheet
+// Professional Single A4 Tax Invoice Stylesheet
 const styles = StyleSheet.create({
   page: {
-    padding: 36, // ~13mm margin
+    padding: 28, // ~10mm margin for strict single A4 fit
     fontFamily: "Helvetica",
-    fontSize: 9,
+    fontSize: 8.5,
     color: "#111111",
-    lineHeight: 1.4,
+    lineHeight: 1.35,
     backgroundColor: "#FFFFFF",
   },
   header: {
@@ -19,41 +20,41 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     borderBottomWidth: 2,
     borderBottomColor: "#FF6B00", // Tamizh Tech Orange accent
-    paddingBottom: 16,
-    marginBottom: 16,
+    paddingBottom: 10,
+    marginBottom: 10,
   },
   logoContainer: {
     width: 140,
   },
   logo: {
     width: 130,
-    height: 48,
+    height: 44,
     objectFit: "contain",
   },
   companyDetails: {
-    width: 320,
+    width: 330,
     textAlign: "right",
   },
   companyName: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: "Helvetica-Bold",
     color: "#1B2A4A", // Tamizh Tech Navy
-    marginBottom: 3,
+    marginBottom: 2,
   },
   companyText: {
-    fontSize: 8,
+    fontSize: 7.5,
     color: "#444444",
-    marginBottom: 1.5,
+    marginBottom: 1,
   },
   docTitleBanner: {
     textAlign: "center",
     backgroundColor: "#1B2A4A",
-    paddingVertical: 5,
-    marginBottom: 14,
+    paddingVertical: 4,
+    marginBottom: 10,
     borderRadius: 2,
   },
   docTitleText: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: "Helvetica-Bold",
     color: "#FFFFFF",
     letterSpacing: 1.5,
@@ -63,26 +64,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E5E5E5",
     backgroundColor: "#FAFAFA",
-    marginBottom: 14,
+    marginBottom: 10,
   },
   metaCol: {
     flex: 1,
-    padding: 6,
+    padding: 5,
     borderRightWidth: 1,
     borderRightColor: "#E5E5E5",
   },
   metaColLast: {
     flex: 1,
-    padding: 6,
+    padding: 5,
   },
   metaLabel: {
-    fontSize: 7.5,
+    fontSize: 7,
     color: "#666666",
     textTransform: "uppercase",
-    marginBottom: 2,
+    marginBottom: 1.5,
   },
   metaValue: {
-    fontSize: 8.5,
+    fontSize: 8,
     fontFamily: "Helvetica-Bold",
     color: "#111111",
   },
@@ -90,182 +91,168 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderWidth: 1,
     borderColor: "#E5E5E5",
-    marginBottom: 16,
+    marginBottom: 10,
   },
   partyCol: {
     width: "50%",
-    padding: 10,
+    padding: 8,
   },
   partyColBorder: {
     borderRightWidth: 1,
     borderRightColor: "#E5E5E5",
   },
   partySectionHeader: {
-    fontSize: 8,
+    fontSize: 7.5,
     fontFamily: "Helvetica-Bold",
     color: "#FF6B00",
     textTransform: "uppercase",
-    marginBottom: 4,
+    marginBottom: 3,
   },
   partyName: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: "Helvetica-Bold",
     color: "#1B2A4A",
     marginBottom: 2,
   },
   partyText: {
-    fontSize: 8.5,
+    fontSize: 7.5,
     color: "#444444",
-    marginBottom: 1.5,
+    marginBottom: 1,
   },
-  // Table styles
   table: {
     borderWidth: 1,
     borderColor: "#E5E5E5",
-    marginBottom: 14,
+    marginBottom: 10,
   },
   tableHeader: {
     flexDirection: "row",
     backgroundColor: "#1B2A4A",
     color: "#FFFFFF",
-    paddingVertical: 6,
-    paddingHorizontal: 6,
     fontFamily: "Helvetica-Bold",
-    fontSize: 8,
+    fontSize: 7.5,
+    paddingVertical: 5,
+    paddingHorizontal: 4,
   },
   tableRow: {
     flexDirection: "row",
-    borderTopWidth: 1,
-    borderTopColor: "#E5E5E5",
-    paddingVertical: 6,
-    paddingHorizontal: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EFEFEF",
+    paddingVertical: 4,
+    paddingHorizontal: 4,
     fontSize: 8,
   },
-  colSNo: { width: "6%", textAlign: "center" },
-  colDesc: { width: "44%", paddingRight: 6 },
+  colSNo: { width: "7%", textAlign: "center" },
+  colDesc: { width: "45%", paddingLeft: 4 },
   colHsn: { width: "12%", textAlign: "center" },
-  colGst: { width: "8%", textAlign: "center" },
+  colGst: { width: "10%", textAlign: "right" },
   colQty: { width: "8%", textAlign: "center" },
-  colRate: { width: "11%", textAlign: "right" },
-  colAmount: { width: "11%", textAlign: "right", fontFamily: "Helvetica-Bold" },
-
-  // Summary and Totals
+  colRate: { width: "18%", textAlign: "right" },
+  colAmount: { width: "20%", textAlign: "right", paddingRight: 4 },
   summarySection: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 14,
+    marginBottom: 10,
   },
   amountInWordsBox: {
-    width: "52%",
+    width: "55%",
     padding: 8,
     borderWidth: 1,
     borderColor: "#E5E5E5",
     backgroundColor: "#FAFAFA",
-    justifyContent: "flex-start",
+    marginRight: 8,
   },
   wordsLabel: {
-    fontSize: 7.5,
-    fontFamily: "Helvetica-Bold",
+    fontSize: 7,
     color: "#666666",
     textTransform: "uppercase",
     marginBottom: 3,
   },
   wordsText: {
-    fontSize: 8.5,
+    fontSize: 8,
     fontFamily: "Helvetica-Bold",
     color: "#1B2A4A",
     lineHeight: 1.3,
   },
   totalsTable: {
-    width: "44%",
+    width: "45%",
     borderWidth: 1,
     borderColor: "#E5E5E5",
   },
   totalsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 3.5,
-    paddingHorizontal: 8,
+    paddingVertical: 3,
+    paddingHorizontal: 6,
     borderBottomWidth: 1,
     borderBottomColor: "#E5E5E5",
+    fontSize: 7.5,
+  },
+  totalsLabel: {
+    color: "#555555",
+  },
+  totalsValue: {
+    fontFamily: "Helvetica-Bold",
+    color: "#111111",
   },
   totalsRowGrand: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingVertical: 5,
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     backgroundColor: "#1B2A4A",
     color: "#FFFFFF",
   },
-  totalsLabel: {
-    fontSize: 8,
-    color: "#555555",
-  },
-  totalsValue: {
-    fontSize: 8.5,
-    fontFamily: "Helvetica-Bold",
-    textAlign: "right",
-  },
   grandTotalText: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: "Helvetica-Bold",
     color: "#FFFFFF",
   },
-
-  // Payment Status & Signature
   bottomSection: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-end",
-    marginTop: 10,
-    marginBottom: 16,
-    paddingTop: 8,
-  },
-  paymentStatusBox: {
-    width: "45%",
-    padding: 8,
     borderWidth: 1,
     borderColor: "#E5E5E5",
-    backgroundColor: "#FAFAFA",
+    padding: 8,
+    marginBottom: 8,
+  },
+  paymentStatusBox: {
+    width: "55%",
   },
   statusText: {
-    fontSize: 8.5,
+    fontSize: 8,
     fontFamily: "Helvetica-Bold",
     marginTop: 2,
   },
   signatureBox: {
-    width: "45%",
-    textAlign: "right",
+    width: "40%",
     alignItems: "flex-end",
+    justifyContent: "flex-end",
+    paddingRight: 4,
   },
   signatureCompany: {
-    fontSize: 8.5,
+    fontSize: 7.5,
     fontFamily: "Helvetica-Bold",
     color: "#1B2A4A",
-    marginBottom: 40, // Space for physical stamp / signature
+    marginBottom: 24,
   },
   signatureLine: {
-    fontSize: 8.5,
-    color: "#333333",
+    fontSize: 7,
+    color: "#555555",
     borderTopWidth: 1,
     borderTopColor: "#999999",
     paddingTop: 3,
-    width: 140,
+    width: 110,
     textAlign: "center",
   },
-
-  // Footer
   footer: {
     borderTopWidth: 1,
     borderTopColor: "#E5E5E5",
-    paddingTop: 8,
-    marginTop: "auto",
+    paddingTop: 5,
     textAlign: "center",
   },
   footerText: {
-    fontSize: 7.5,
+    fontSize: 6.5,
     color: "#777777",
-    marginBottom: 1.5,
+    marginBottom: 1,
   },
 });
 
@@ -274,6 +261,7 @@ interface InvoicePDFTemplateProps {
   client?: any;
   financials?: CanonicalInvoiceFinancials;
   company?: CompanySettings;
+  logoSrc?: string;
 }
 
 export function InvoicePDFTemplate({
@@ -281,6 +269,7 @@ export function InvoicePDFTemplate({
   client,
   financials,
   company = DEFAULT_COMPANY_SETTINGS,
+  logoSrc,
 }: InvoicePDFTemplateProps) {
   // Use canonical financials if passed, otherwise use authoritative invoice record
   const subtotal = financials?.subtotal ?? invoice.subtotal ?? 0;
@@ -294,24 +283,21 @@ export function InvoicePDFTemplate({
   const totalInWords = financials?.totalInWords ?? "ZERO RUPEES ONLY";
   const status = financials?.paymentStatus ?? invoice.status ?? "UNPAID";
 
-  const invoiceDateStr = invoice.date
-    ? new Date(invoice.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-    : new Date().toLocaleDateString("en-IN");
-
-  const dueDateStr = invoice.dueDate
-    ? new Date(invoice.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-    : "-";
+  // Issue Date & Time strictly from persisted database timestamp
+  const issueDateTimeStr = formatIssueDateTime(
+    (invoice as any).issuedAt || invoice.date || invoice.createdAt
+  );
 
   const items = invoice.items || [];
+  const resolvedLogo = logoSrc || company.logoUrl || "public/assets/ttrc-logo.png";
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* 1. Header */}
+        {/* 1. Header with Official Logo & Centralized Company Info */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            {/* Absolute relative path to public asset */}
-            <Image src="public/assets/ttrc-logo.png" style={styles.logo} />
+            <Image src={resolvedLogo} style={styles.logo} />
           </View>
           <View style={styles.companyDetails}>
             <Text style={styles.companyName}>{company.companyName}</Text>
@@ -324,28 +310,24 @@ export function InvoicePDFTemplate({
           </View>
         </View>
 
-        {/* 2. Document Title */}
+        {/* 2. Document Title Banner */}
         <View style={styles.docTitleBanner}>
           <Text style={styles.docTitleText}>TAX INVOICE</Text>
         </View>
 
-        {/* 3. Invoice Meta Information */}
+        {/* 3. Invoice Meta Information (NO DUE DATE - Only INVOICE NUMBER, ISSUE DATE & TIME, STATUS) */}
         <View style={styles.metaGrid}>
           <View style={styles.metaCol}>
-            <Text style={styles.metaLabel}>Invoice Number</Text>
+            <Text style={styles.metaLabel}>INVOICE NUMBER</Text>
             <Text style={styles.metaValue}>{invoice.invoiceNo}</Text>
           </View>
           <View style={styles.metaCol}>
-            <Text style={styles.metaLabel}>Invoice Date</Text>
-            <Text style={styles.metaValue}>{invoiceDateStr}</Text>
-          </View>
-          <View style={styles.metaCol}>
-            <Text style={styles.metaLabel}>Due Date</Text>
-            <Text style={styles.metaValue}>{dueDateStr}</Text>
+            <Text style={styles.metaLabel}>ISSUE DATE & TIME</Text>
+            <Text style={styles.metaValue}>{issueDateTimeStr}</Text>
           </View>
           <View style={styles.metaColLast}>
-            <Text style={styles.metaLabel}>Status</Text>
-            <Text style={[styles.metaValue, { color: status === "PAID" ? "#16A34A" : "#D97706" }]}>
+            <Text style={styles.metaLabel}>STATUS</Text>
+            <Text style={[styles.metaValue, { color: status === "PAID" ? "#16A34A" : status === "CANCELLED" ? "#DC2626" : "#D97706" }]}>
               {status}
             </Text>
           </View>
@@ -355,7 +337,7 @@ export function InvoicePDFTemplate({
         <View style={styles.partiesGrid}>
           {/* Billed By */}
           <View style={[styles.partyCol, styles.partyColBorder]}>
-            <Text style={styles.partySectionHeader}>Billed By</Text>
+            <Text style={styles.partySectionHeader}>BILLED BY</Text>
             <Text style={styles.partyName}>{company.companyName}</Text>
             <Text style={styles.partyText}>{company.addressLine1}</Text>
             <Text style={styles.partyText}>
@@ -363,23 +345,23 @@ export function InvoicePDFTemplate({
             </Text>
             <Text style={styles.partyText}>Phone: {company.phone}</Text>
             <Text style={styles.partyText}>Email: {company.email}</Text>
-            {company.gstin && <Text style={styles.partyText}>GSTIN: {company.gstin}</Text>}
+            {company.gstin ? <Text style={styles.partyText}>GSTIN: {company.gstin}</Text> : null}
           </View>
 
           {/* Billed To */}
           <View style={styles.partyCol}>
-            <Text style={styles.partySectionHeader}>Billed To</Text>
+            <Text style={styles.partySectionHeader}>BILLED TO</Text>
             <Text style={styles.partyName}>{client?.name || invoice.clientName || "Valued Customer"}</Text>
-            {client?.company && <Text style={styles.partyText}>{client.company}</Text>}
-            {client?.address && <Text style={styles.partyText}>{client.address}</Text>}
-            {(client?.city || client?.state) && (
+            {client?.company ? <Text style={styles.partyText}>{client.company}</Text> : null}
+            {client?.address ? <Text style={styles.partyText}>{client.address}</Text> : null}
+            {(client?.city || client?.state) ? (
               <Text style={styles.partyText}>
                 {[client.city, client.state, client.pincode].filter(Boolean).join(", ")}
               </Text>
-            )}
-            {client?.phone && <Text style={styles.partyText}>Phone: {client.phone}</Text>}
-            {client?.email && <Text style={styles.partyText}>Email: {client.email}</Text>}
-            {client?.gstin && <Text style={styles.partyText}>GSTIN: {client.gstin}</Text>}
+            ) : null}
+            {client?.phone ? <Text style={styles.partyText}>Phone: {client.phone}</Text> : null}
+            {client?.email ? <Text style={styles.partyText}>Email: {client.email}</Text> : null}
+            {client?.gstin ? <Text style={styles.partyText}>GSTIN: {client.gstin}</Text> : null}
           </View>
         </View>
 
@@ -400,7 +382,10 @@ export function InvoicePDFTemplate({
             return (
               <View key={index} style={styles.tableRow} wrap={false}>
                 <Text style={styles.colSNo}>{index + 1}</Text>
-                <Text style={styles.colDesc}>{item.description}</Text>
+                <Text style={styles.colDesc}>
+                  {item.description}
+                  {item.configurationNotes ? `\n• ${item.configurationNotes}` : ""}
+                </Text>
                 <Text style={styles.colHsn}>{item.hsnCode || item.sacCode || "-"}</Text>
                 <Text style={styles.colGst}>{invoice.gstPercent || 18}%</Text>
                 <Text style={styles.colQty}>{item.qty}</Text>
@@ -417,12 +402,12 @@ export function InvoicePDFTemplate({
           <View style={styles.amountInWordsBox}>
             <Text style={styles.wordsLabel}>Total Amount in Words</Text>
             <Text style={styles.wordsText}>{totalInWords}</Text>
-            {invoice.notes && (
-              <View style={{ marginTop: 8 }}>
+            {invoice.notes ? (
+              <View style={{ marginTop: 6 }}>
                 <Text style={styles.wordsLabel}>Notes</Text>
-                <Text style={{ fontSize: 7.5, color: "#555" }}>{invoice.notes}</Text>
+                <Text style={{ fontSize: 7, color: "#555" }}>{invoice.notes}</Text>
               </View>
-            )}
+            ) : null}
           </View>
 
           {/* Totals Table */}
@@ -432,14 +417,14 @@ export function InvoicePDFTemplate({
               <Text style={styles.totalsValue}>₹{Number(subtotal).toFixed(2)}</Text>
             </View>
 
-            {discountAmount > 0 && (
+            {discountAmount > 0 ? (
               <View style={styles.totalsRow}>
                 <Text style={styles.totalsLabel}>Discount</Text>
                 <Text style={[styles.totalsValue, { color: "#16A34A" }]}>
                   -₹{Number(discountAmount).toFixed(2)}
                 </Text>
               </View>
-            )}
+            ) : null}
 
             <View style={styles.totalsRow}>
               <Text style={styles.totalsLabel}>CGST ({((invoice.gstPercent || 18) / 2).toFixed(1)}%)</Text>
@@ -466,7 +451,7 @@ export function InvoicePDFTemplate({
             <Text style={styles.partyText}>
               Outstanding Balance: ₹{Number(balance).toFixed(2)}
             </Text>
-            <Text style={[styles.statusText, { color: balance <= 0 ? "#16A34A" : "#D97706" }]}>
+            <Text style={[styles.statusText, { color: balance <= 0 ? "#16A34A" : status === "CANCELLED" ? "#DC2626" : "#D97706" }]}>
               {balance <= 0 ? "Payment Settled (Full)" : `Status: ${status}`}
             </Text>
           </View>
@@ -480,10 +465,10 @@ export function InvoicePDFTemplate({
         {/* 8. Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            {company.companyName} • {company.addressLine1}, {company.city} • {company.phone}
+            {company.companyName} • {company.addressLine1}, {company.city} – {company.pincode} • Phone: {company.phone}
           </Text>
           <Text style={styles.footerText}>
-            This is a computer-generated tax invoice issued by TamizhTech ERP.
+            This is an official computer-generated tax invoice issued by TamizhTech ERP.
           </Text>
         </View>
       </Page>

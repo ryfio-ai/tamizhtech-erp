@@ -54,6 +54,23 @@ export function formatDateTime(date: string | Date, fallback: string = 'N/A'): s
 }
 
 /**
+ * Formats invoice issue timestamp to exact required standard: 'd MMM yyyy • hh:mm a'
+ * e.g. '17 Sept 2026 • 10:46 AM'
+ */
+export function formatIssueDateTime(date: string | Date, fallback: string = 'N/A'): string {
+  if (!date) return fallback;
+  try {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return fallback;
+    const datePart = format(d, 'd MMM yyyy');
+    const timePart = format(d, 'hh:mm a');
+    return `${datePart} • ${timePart}`;
+  } catch (error) {
+    return fallback;
+  }
+}
+
+/**
  * Generates a standard UUID
  */
 export function generateId(): string {

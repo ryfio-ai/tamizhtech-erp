@@ -76,13 +76,23 @@
   padding-bottom: env(safe-area-inset-bottom, 1rem);
 }
 
-/* Printable A4 invoice styling: hides all ERP chrome and outputs pristine bill */
+/* Dedicated A4 Print Stylesheet */
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
 @media print {
-  body {
-    background: #ffffff !important;
-    color: #000000 !important;
+  html, body {
     margin: 0 !important;
     padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    width: 210mm !important;
+    height: auto !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   .no-print,
@@ -90,7 +100,9 @@
   header,
   nav,
   button,
-  .print-hide {
+  .print-hide,
+  [role="banner"],
+  [role="navigation"] {
     display: none !important;
   }
 
@@ -102,13 +114,19 @@
     max-width: none !important;
   }
 
-  .printable-invoice {
+  .printable-invoice,
+  .invoice-print {
+    box-sizing: border-box !important;
     border: none !important;
     box-shadow: none !important;
-    margin: 0 !important;
-    padding: 12mm !important;
+    margin: 0 auto !important;
+    padding: 10mm 12mm !important;
     width: 210mm !important;
-    min-height: 297mm !important;
-    page-break-after: auto;
+    max-width: 210mm !important;
+    min-height: 0 !important;
+    page-break-inside: avoid !important;
+    page-break-after: avoid !important;
+    overflow: hidden !important;
+    background: #ffffff !important;
   }
 }

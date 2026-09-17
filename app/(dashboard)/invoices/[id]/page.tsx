@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { toast } from "sonner";
 import Link from "next/link";
 import { DEFAULT_COMPANY_SETTINGS } from "@/lib/companyProfile";
+import { formatIssueDateTime } from "@/lib/utils";
 
 export default function InvoiceDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -111,13 +112,9 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
   const items = invoice.items || [];
   const company = DEFAULT_COMPANY_SETTINGS;
 
-  const invoiceDateStr = invoice.date
-    ? new Date(invoice.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-    : "-";
-
-  const dueDateStr = invoice.dueDate
-    ? new Date(invoice.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-    : "-";
+  const issueDateTimeStr = formatIssueDateTime(
+    invoice.issuedAt || invoice.date || invoice.createdAt
+  );
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto w-full pb-12">
@@ -140,7 +137,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
             <StatusBadge status={invoice.status || "DRAFT"} />
           </div>
           <p className="text-xs text-ink-secondary mt-0.5">
-            Issued to {client?.name || invoice.clientName} • Due on {dueDateStr}
+            Issued to {client?.name || invoice.clientName} • Issued on {issueDateTimeStr}
           </p>
         </div>
 
@@ -227,7 +224,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
 
       {/* Authoritative Standard Tax Invoice Container */}
       <div className="w-full overflow-x-auto pb-4">
-        <div className="printable-invoice bg-white rounded-xl border border-border shadow-sm p-6 sm:p-10 min-w-[700px] text-ink-primary">
+        <div className="printable-invoice invoice-print bg-white rounded-xl border border-border shadow-sm p-6 sm:p-10 min-w-[700px] text-ink-primary">
           {/* 1. Header */}
           <div className="flex justify-between items-start border-b-2 border-brand pb-6 mb-6">
             <div className="w-48">
@@ -255,19 +252,15 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
             TAX INVOICE
           </div>
 
-          {/* 3. Invoice Meta Grid */}
-          <div className="grid grid-cols-4 border border-border bg-surface rounded-md text-xs mb-5 divide-x divide-border">
+          {/* 3. Invoice Meta Grid (Strictly: Invoice Number, Issue Date & Time, Payment Status - No Due Date) */}
+          <div className="grid grid-cols-3 border border-border bg-surface rounded-md text-xs mb-5 divide-x divide-border">
             <div className="p-2.5">
               <span className="text-[10px] uppercase font-bold text-ink-secondary block">Invoice Number</span>
               <span className="font-bold text-ink-primary mt-0.5 block">{invoice.invoiceNo}</span>
             </div>
             <div className="p-2.5">
-              <span className="text-[10px] uppercase font-bold text-ink-secondary block">Invoice Date</span>
-              <span className="font-bold text-ink-primary mt-0.5 block">{invoiceDateStr}</span>
-            </div>
-            <div className="p-2.5">
-              <span className="text-[10px] uppercase font-bold text-ink-secondary block">Due Date</span>
-              <span className="font-bold text-ink-primary mt-0.5 block">{dueDateStr}</span>
+              <span className="text-[10px] uppercase font-bold text-ink-secondary block">Issue Date &amp; Time</span>
+              <span className="font-bold text-ink-primary mt-0.5 block">{issueDateTimeStr}</span>
             </div>
             <div className="p-2.5">
               <span className="text-[10px] uppercase font-bold text-ink-secondary block">Payment Status</span>

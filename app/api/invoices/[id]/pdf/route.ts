@@ -3,6 +3,7 @@ import { renderToStream } from "@react-pdf/renderer";
 import { InvoicePDFTemplate } from "@/components/invoices/InvoicePDFTemplate";
 import { getCanonicalInvoiceFinancials } from "@/lib/invoiceService";
 import { getCompanySettings } from "@/lib/company";
+import { getServerLogoDataUri } from "@/lib/serverLogo";
 import prisma from "@/lib/prisma";
 import React from "react";
 
@@ -27,12 +28,15 @@ export async function GET(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
+    const logoSrc = getServerLogoDataUri();
+
     const stream = await renderToStream(
       React.createElement(InvoicePDFTemplate, {
         invoice,
         client: invoice.client,
         financials: financials || undefined,
         company,
+        logoSrc,
       }) as any
     );
 

@@ -50,15 +50,6 @@ export function InvoiceTable({ data = [], loading }: InvoiceTableProps) {
       ),
     },
     {
-      header: "Due Date",
-      accessorKey: "dueDate",
-      cell: (row) => (
-        <span className="text-ink-secondary text-xs">
-          {row.dueDate ? new Date(row.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "-"}
-        </span>
-      ),
-    },
-    {
       header: "Total",
       accessorKey: "total",
       sortable: true,
@@ -123,7 +114,7 @@ export function InvoiceTable({ data = [], loading }: InvoiceTableProps) {
             <span className="font-bold text-brand text-sm tracking-tight">{inv.invoiceNo}</span>
             <h4 className="font-bold text-ink-primary text-base leading-snug mt-0.5">{inv.clientName}</h4>
             <p className="text-xs text-ink-secondary mt-0.5">
-              Due: {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "-"}
+              {inv.date ? new Date(inv.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "-"}
             </p>
           </div>
           <StatusBadge status={inv.status || (inv as any).paymentStatus} />

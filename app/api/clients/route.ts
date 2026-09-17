@@ -29,7 +29,16 @@ export async function GET(req: NextRequest) {
       createdAt: c.createdAt.toISOString()
     }));
 
-    return NextResponse.json<ApiResponse<any[]>>({ success: true, data: formattedClients });
+    return NextResponse.json<ApiResponse<any[]>>(
+      { success: true, data: formattedClients },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      }
+    );
   } catch (error: any) {
     console.error("GET Clients Error:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

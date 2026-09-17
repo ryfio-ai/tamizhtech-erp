@@ -7,14 +7,17 @@ import { ClientFormValues } from "@/lib/validations";
 
 export function useClients() {
   const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchClients = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/clients');
+      const res = await fetch(`/api/clients?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
       const json = await res.json();
       if (json.success && json.data) {
         setClients(json.data);

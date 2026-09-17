@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { Search, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { EmptyState } from "./EmptyState";
+import { LoadingSkeleton } from "./LoadingSkeleton";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -95,7 +96,11 @@ export function DataTable<T extends Record<string, any>>({
     setSortConfig({ key, direction });
   };
 
-  if (!loading && data.length === 0) {
+  if (loading) {
+    return <LoadingSkeleton type="table" />;
+  }
+
+  if (data.length === 0) {
     return (
       <EmptyState
         title={emptyTitle}

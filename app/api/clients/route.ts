@@ -12,11 +12,12 @@ export async function GET(req: NextRequest) {
     const clients = await prisma.client.findMany({
       orderBy: { createdAt: 'desc' },
       include: { 
-        invoices: true, 
-        payments: true, 
-        followUps: true,
-        applications: true,
-        projects: true
+        invoices: {
+          select: { total: true, balance: true }
+        }, 
+        payments: {
+          select: { amount: true }
+        }
       }
     });
     

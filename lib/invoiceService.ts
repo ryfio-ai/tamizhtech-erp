@@ -2,13 +2,14 @@ import prisma from "@/lib/prisma";
 import { numberToWords } from "@/lib/numToWords";
 import { PaymentStatus, PaymentEntryType, InvoiceStatus } from "@prisma/client";
 import { CanonicalInvoiceFinancials } from "@/types";
+import { roundToPaise, fromPaise } from "@/lib/money";
 
 export type { CanonicalInvoiceFinancials };
 
 /**
  * Authoritative Server-Side Invoice Financial Calculation Service.
- * Reconciles line items and payment transactions directly against the ledger.
- * The UI and PDF components MUST ONLY render values returned by this service!
+ * Reconciles line items and payment transactions directly against the ledger in exact paise.
+ * The UI and PDF components render clean rupee values returned by this service.
  */
 export async function getCanonicalInvoiceFinancials(
   invoiceId: string
@@ -23,76 +24,77 @@ export async function getCanonicalInvoiceFinancials(
 
   if (!invoice) return null;
 
-  // 1. Calculate Line Item Subtotal
-  let subtotal = 0;
+  // 1. Calculate Line Item Subtotal in exact paise
+  let subtotalPaise = 0;
   if (invoice.items && invoice.items.length > 0) {
-    subtotal = invoice.items.reduce((acc, item) => {
+    subtotalPaise = invoice.items.reduce((acc, item) => {
       const lineAmt = item.qty * item.unitPrice;
       return acc + lineAmt;
     }, 0);
   } else {
-    subtotal = invoice.subtotal || 0;
+    subtotalPaise = invoice.subtotal || 0;
   }
 
-  // 2. Exact Discounts
-  const discountAmount = Math.max(0, invoice.discountAmount || 0);
-  const taxableAmount = Math.max(0, subtotal - discountAmount);
+  // 2. Exact Discounts in paise
+  const discountAmountPaise = Math.max(0, invoice.discountAmount || 0);
+  const taxableAmountPaise = Math.max(0, subtotalPaise - discountAmountPaise);
 
-  // 3. GST Calculation (Split equally between CGST and SGST for intra-state)
+  // 3. GST Calculation in paise (Split equally between CGST and SGST for intra-state)
   const gstPercent = invoice.gstPercent || 18;
-  const totalGst = Math.round((taxableAmount * (gstPercent / 100)) * 100) / 100;
-  const cgstAmount = Math.round((totalGst / 2) * 100) / 100;
-  const sgstAmount = Math.round((totalGst - cgstAmount) * 100) / 100;
+  const totalGstPaise = roundToPaise(taxableAmountPaise * (gstPercent / 100));
+  const cgstAmountPaise = roundToPaise(totalGstPaise / 2);
+  const sgstAmountPaise = totalGstPaise - cgstAmountPaise;
 
   // 4. Shipping / Other Charges
-  const shippingAmount = 0; // Configurable per order
+  const shippingAmountPaise = 0;
 
-  // 5. Total Amount
-  const totalAmount = Math.round((taxableAmount + totalGst + shippingAmount) * 100) / 100;
+  // 5. Total Amount in paise
+  const totalAmountPaise = taxableAmountPaise + totalGstPaise + shippingAmountPaise;
 
-  // 6. Payment Ledger Reconciliation (Authoritative source of truth)
-  let netPaidAmount = 0;
+  // 6. Payment Ledger Reconciliation in paise (Authoritative source of truth)
+  let netPaidAmountPaise = 0;
   if (invoice.payments && invoice.payments.length > 0) {
     for (const p of invoice.payments) {
       if (p.status === PaymentStatus.COMPLETED) {
         if (p.type === PaymentEntryType.PAYMENT || p.type === PaymentEntryType.ADJUSTMENT) {
-          netPaidAmount += p.amount;
+          netPaidAmountPaise += p.amount;
         } else if (p.type === PaymentEntryType.REVERSAL) {
-          netPaidAmount -= p.amount;
+          netPaidAmountPaise -= p.amount;
         }
       }
     }
   }
-  netPaidAmount = Math.max(0, Math.round(netPaidAmount * 100) / 100);
+  netPaidAmountPaise = Math.max(0, netPaidAmountPaise);
 
-  // 7. Outstanding Balance
-  const outstandingBalance = Math.max(0, Math.round((totalAmount - netPaidAmount) * 100) / 100);
+  // 7. Outstanding Balance in paise
+  const outstandingBalancePaise = Math.max(0, totalAmountPaise - netPaidAmountPaise);
 
   // 8. Payment Status
   const isOverdue = invoice.dueDate && new Date(invoice.dueDate) < new Date();
   let paymentStatus: "PAID" | "PARTIALLY_PAID" | "UNPAID" | "OVERDUE" = "UNPAID";
 
-  if (outstandingBalance <= 0 && totalAmount > 0) {
+  if (outstandingBalancePaise <= 0 && totalAmountPaise > 0) {
     paymentStatus = "PAID";
-  } else if (netPaidAmount > 0 && outstandingBalance > 0) {
+  } else if (netPaidAmountPaise > 0 && outstandingBalancePaise > 0) {
     paymentStatus = isOverdue ? "OVERDUE" : "PARTIALLY_PAID";
   } else if (isOverdue) {
     paymentStatus = "OVERDUE";
   }
 
-  // 9. Total in Words (Indian numbering convention)
-  const totalInWords = numberToWords(totalAmount).toUpperCase();
+  // 9. Total in Words (Indian numbering convention, from clean rupee amount)
+  const totalRupees = fromPaise(totalAmountPaise);
+  const totalInWords = numberToWords(totalRupees).toUpperCase();
 
-  // 10. Synchronize derived values to MongoDB cached fields
+  // 10. Synchronize derived exact paise values to MongoDB cached fields
   try {
     await prisma.invoice.update({
       where: { id: invoiceId },
       data: {
-        subtotal,
-        gstAmount: totalGst,
-        total: totalAmount,
-        paidAmount: netPaidAmount,
-        balance: outstandingBalance,
+        subtotal: subtotalPaise,
+        gstAmount: totalGstPaise,
+        total: totalAmountPaise,
+        paidAmount: netPaidAmountPaise,
+        balance: outstandingBalancePaise,
         status:
           paymentStatus === "PAID"
             ? InvoiceStatus.PAID
@@ -106,18 +108,18 @@ export async function getCanonicalInvoiceFinancials(
   }
 
   return {
-    subtotal,
-    discountAmount,
-    taxableAmount,
+    subtotal: fromPaise(subtotalPaise),
+    discountAmount: fromPaise(discountAmountPaise),
+    taxableAmount: fromPaise(taxableAmountPaise),
     gstPercent,
-    cgstAmount,
-    sgstAmount,
-    totalGst,
-    shippingAmount,
-    totalAmount,
+    cgstAmount: fromPaise(cgstAmountPaise),
+    sgstAmount: fromPaise(sgstAmountPaise),
+    totalGst: fromPaise(totalGstPaise),
+    shippingAmount: fromPaise(shippingAmountPaise),
+    totalAmount: totalRupees,
     totalInWords,
-    netPaidAmount,
-    outstandingBalance,
+    netPaidAmount: fromPaise(netPaidAmountPaise),
+    outstandingBalance: fromPaise(outstandingBalancePaise),
     paymentStatus,
   };
 }

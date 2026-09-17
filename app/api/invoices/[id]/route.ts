@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { toPaise, fromPaise, roundToPaise } from "@/lib/money";
+import { getAuthoritativeInvoiceFinancials } from "@/lib/invoiceService";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -14,13 +16,26 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
     if (!invoice) return NextResponse.json({ success: false, error: "Not found" }, { status: 404 });
 
+    const financials = await getAuthoritativeInvoiceFinancials(params.id);
+
     const formatted = {
       ...invoice,
+      subtotal: fromPaise(invoice.subtotal),
+      gstAmount: fromPaise(invoice.gstAmount),
+      discountAmount: fromPaise(invoice.discountAmount),
+      total: fromPaise(invoice.total),
+      paidAmount: fromPaise(invoice.paidAmount),
+      balance: fromPaise(invoice.balance),
       clientName: invoice.client.name,
       clientPhone: invoice.client.phone,
       clientEmail: invoice.client.email,
       clientCity: invoice.client.city,
-      items: invoice.items,
+      items: invoice.items.map(it => ({
+        ...it,
+        unitPrice: fromPaise(it.unitPrice),
+        amount: fromPaise(it.amount),
+      })),
+      financials,
       createdAt: invoice.createdAt.toISOString()
     };
 
@@ -52,17 +67,32 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (body.items) {
       await prisma.invoiceItem.deleteMany({ where: { invoiceId: params.id } });
       updates.items = {
-        create: body.items.map((item: any) => ({
-          productId: item.productId || null,
-          description: item.description,
-          qty: item.qty,
-          unitPrice: item.unitPrice,
-          amount: (item.qty || 0) * (item.unitPrice || 0),
-          configurationNotes: item.configurationNotes || null,
-        })),
+        create: body.items.map((item: any) => {
+          const qty = Math.max(1, Math.round(Number(item.qty) || 1));
+          const unitPricePaise = toPaise(Number(item.unitPrice) || 0);
+          const amountPaise = roundToPaise(qty * unitPricePaise);
+          return {
+            productId: item.productId || null,
+            description: item.description,
+            qty,
+            unitPrice: unitPricePaise,
+            amount: amountPaise,
+            configurationNotes: item.configurationNotes || null,
+          };
+        }),
       };
     } else {
       delete updates.items;
+    }
+
+    if (updates.status === "CANCELLED" && current.status !== "CANCELLED") {
+      updates.cancelledAt = new Date();
+      const { reverseStockForCancelledInvoice } = await import("@/lib/stockService");
+      await reverseStockForCancelledInvoice(params.id);
+    } else if (updates.status === "ISSUED" && current.status === "DRAFT") {
+      updates.issuedAt = new Date();
+      const { deductStockForIssuedInvoice } = await import("@/lib/stockService");
+      await deductStockForIssuedInvoice(params.id);
     }
 
     const updated = await prisma.invoice.update({
@@ -70,7 +100,21 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       data: updates,
     });
 
-    return NextResponse.json({ success: true, data: updated });
+    const financials = await getAuthoritativeInvoiceFinancials(params.id);
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        ...updated,
+        subtotal: fromPaise(updated.subtotal),
+        gstAmount: fromPaise(updated.gstAmount),
+        discountAmount: fromPaise(updated.discountAmount),
+        total: fromPaise(updated.total),
+        paidAmount: fromPaise(updated.paidAmount),
+        balance: fromPaise(updated.balance),
+        financials,
+      },
+    });
   } catch (error: any) {
     console.error("PUT Invoice Error:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

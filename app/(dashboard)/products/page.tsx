@@ -14,6 +14,7 @@ import {
   ArrowDownLeft,
   Edit3,
   Archive,
+  PackagePlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -103,6 +104,20 @@ export default function ProductsPage() {
   const [historyProduct, setHistoryProduct] = useState<Product | null>(null);
   const [historyEntries, setHistoryEntries] = useState<StockEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+
+  // Inbound Sourcing Drawer
+  const [sourcingProduct, setSourcingProduct] = useState<Product | null>(null);
+  const [sourcingData, setSourcingData] = useState({
+    quantity: "1",
+    sourceType: "ONLINE" as "ONLINE" | "OFFLINE" | "IN_HOUSE",
+    unitCost: "",
+    vendorName: "",
+    purchaseDate: new Date().toISOString().split("T")[0],
+    initialPaidAmount: "",
+    paymentMethod: "UPI",
+    notes: "",
+  });
+  const [sourcingSaving, setSourcingSaving] = useState(false);
 
   const fetchProducts = async () => {
     try {
@@ -208,6 +223,55 @@ export default function ProductsPage() {
       toast.error("Network error adjusting stock");
     } finally {
       setAdjusting(false);
+    }
+  };
+
+  const handleSourceSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sourcingProduct) return;
+
+    const qty = parseInt(sourcingData.quantity);
+    if (isNaN(qty) || qty <= 0) {
+      toast.error("Please enter a valid quantity greater than 0");
+      return;
+    }
+
+    const unitCost = parseFloat(sourcingData.unitCost);
+    if (isNaN(unitCost) || unitCost < 0) {
+      toast.error("Please enter a valid unit cost (₹)");
+      return;
+    }
+
+    setSourcingSaving(true);
+    try {
+      const res = await fetch("/api/inventory/sourcing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: sourcingProduct.id,
+          quantity: qty,
+          sourceType: sourcingData.sourceType,
+          unitCost: unitCost,
+          vendorName: sourcingData.vendorName.trim() || null,
+          purchaseDate: sourcingData.purchaseDate,
+          initialPaidAmount: parseFloat(sourcingData.initialPaidAmount) || 0,
+          paymentMethod: sourcingData.paymentMethod,
+          notes: sourcingData.notes.trim() || null,
+        }),
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        toast.success(`Inbound sourcing recorded (+${qty} units at ₹${unitCost}/unit)`);
+        setSourcingProduct(null);
+        fetchProducts();
+      } else {
+        toast.error(json.error || "Failed to record sourcing");
+      }
+    } catch {
+      toast.error("Network error recording sourcing");
+    } finally {
+      setSourcingSaving(false);
     }
   };
 
@@ -409,6 +473,30 @@ export default function ProductsPage() {
       className: "text-right",
       cell: (row) => (
         <div className="flex items-center justify-end gap-1.5">
+          {row.type === "PHYSICAL_PRODUCT" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSourcingProduct(row);
+                setSourcingData({
+                  quantity: "1",
+                  sourceType: "ONLINE",
+                  unitCost: row.basePrice ? String(row.basePrice) : "",
+                  vendorName: "",
+                  purchaseDate: new Date().toISOString().split("T")[0],
+                  initialPaidAmount: "",
+                  paymentMethod: "UPI",
+                  notes: "",
+                });
+              }}
+              className="h-8 px-2 text-xs text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+              title="Inbound Sourcing & Rolling WAC"
+            >
+              <PackagePlus className="w-3.5 h-3.5 mr-1" />
+              Source
+            </Button>
+          )}
           {row.type === "PHYSICAL_PRODUCT" && (
             <Button
               variant="outline"
@@ -1084,7 +1172,162 @@ export default function ProductsPage() {
         </form>
       </ResponsiveDrawer>
 
-      {/* 9. Archive Product Confirmation Dialog */}
+      {/* 9. Inbound Sourcing Drawer */}
+      <ResponsiveDrawer
+        open={!!sourcingProduct}
+        onOpenChange={(open) => {
+          if (!open) setSourcingProduct(null);
+        }}
+        title={`Inbound Sourcing: ${sourcingProduct?.name || ""}`}
+        description={`Procure new stock for ${sourcingProduct?.sku || ""}. Updates physical stock and dynamically computes rolling WAC.`}
+      >
+        <form onSubmit={handleSourceSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-ink-primary uppercase tracking-wider mb-1">
+                Source Type *
+              </label>
+              <select
+                value={sourcingData.sourceType}
+                onChange={(e) => setSourcingData({ ...sourcingData, sourceType: e.target.value as any })}
+                className="w-full h-11 px-3 text-sm bg-white border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+              >
+                <option value="ONLINE">Online Procurement (E-Commerce / Portal)</option>
+                <option value="OFFLINE">Offline Procurement (Local Supplier)</option>
+                <option value="IN_HOUSE">In-House Production / 3D Print / Assembly</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-ink-primary uppercase tracking-wider mb-1">
+                {sourcingData.sourceType === "IN_HOUSE" ? "Production Unit / Lab" : "Vendor / Supplier Name"}
+              </label>
+              <input
+                type="text"
+                placeholder={sourcingData.sourceType === "IN_HOUSE" ? "TamizhTech Lab / In-House" : "e.g. Robu.in, Quartz Components"}
+                value={sourcingData.vendorName}
+                onChange={(e) => setSourcingData({ ...sourcingData, vendorName: e.target.value })}
+                className="w-full h-11 px-3.5 text-sm bg-white border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-ink-primary uppercase tracking-wider mb-1">
+                Quantity (Units) *
+              </label>
+              <input
+                type="number"
+                min="1"
+                required
+                value={sourcingData.quantity}
+                onChange={(e) => setSourcingData({ ...sourcingData, quantity: e.target.value })}
+                className="w-full h-11 px-3.5 text-sm bg-white border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-ink-primary uppercase tracking-wider mb-1">
+                Inbound Unit Cost (₹) *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                required
+                placeholder="0.00"
+                value={sourcingData.unitCost}
+                onChange={(e) => setSourcingData({ ...sourcingData, unitCost: e.target.value })}
+                className="w-full h-11 px-3.5 text-sm bg-white border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-ink-primary uppercase tracking-wider mb-1">
+                Purchase / Incurred Date *
+              </label>
+              <input
+                type="date"
+                required
+                value={sourcingData.purchaseDate}
+                onChange={(e) => setSourcingData({ ...sourcingData, purchaseDate: e.target.value })}
+                className="w-full h-11 px-3.5 text-sm bg-white border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+              />
+            </div>
+
+            {sourcingData.sourceType !== "IN_HOUSE" && (
+              <div>
+                <label className="block text-xs font-semibold text-ink-primary uppercase tracking-wider mb-1">
+                  Initial Payment Made (₹)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00 (leave 0 if unpaid/credit)"
+                  value={sourcingData.initialPaidAmount}
+                  onChange={(e) => setSourcingData({ ...sourcingData, initialPaidAmount: e.target.value })}
+                  className="w-full h-11 px-3.5 text-sm bg-white border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                />
+              </div>
+            )}
+          </div>
+
+          {sourcingData.sourceType !== "IN_HOUSE" && parseFloat(sourcingData.initialPaidAmount) > 0 && (
+            <div>
+              <label className="block text-xs font-semibold text-ink-primary uppercase tracking-wider mb-1">
+                Payment Method
+              </label>
+              <select
+                value={sourcingData.paymentMethod}
+                onChange={(e) => setSourcingData({ ...sourcingData, paymentMethod: e.target.value })}
+                className="w-full h-11 px-3 text-sm bg-white border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+              >
+                <option value="UPI">UPI</option>
+                <option value="BANK_TRANSFER">Bank Transfer / NEFT / IMPS</option>
+                <option value="CREDIT_CARD">Credit Card / Debit Card</option>
+                <option value="CASH">Cash</option>
+              </select>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-semibold text-ink-primary uppercase tracking-wider mb-1">
+              Procurement Notes
+            </label>
+            <textarea
+              rows={2}
+              placeholder="e.g. Order ID, invoice reference, batch details..."
+              value={sourcingData.notes}
+              onChange={(e) => setSourcingData({ ...sourcingData, notes: e.target.value })}
+              className="w-full p-3 text-sm bg-white border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+            />
+          </div>
+
+          <div className="pt-3 flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setSourcingProduct(null)}
+              className="h-11 px-4 text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={sourcingSaving}
+              className="h-11 px-6 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+            >
+              {sourcingSaving ? "Recording..." : "Record Inbound Sourcing"}
+            </Button>
+          </div>
+        </form>
+      </ResponsiveDrawer>
+
+      {/* 10. Archive Product Confirmation Dialog */}
       <ConfirmDialog
         open={archiveData.open}
         onOpenChange={(open) => setArchiveData((prev) => ({ ...prev, open }))}

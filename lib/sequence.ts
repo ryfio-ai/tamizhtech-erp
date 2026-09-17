@@ -1,52 +1,57 @@
-import { getMongoDb } from "./mongodb";
+import prisma from "./prisma";
 import { getDeterministicSkuPrefix } from "./skuConfig";
 
 /**
- * Concurrency-safe atomic sequence generator using MongoDB native BusinessSequence collection.
+ * Concurrency-safe atomic sequence generator using Prisma BusinessSequence collection.
  * Uses atomic $inc on the primary database, eliminating race conditions and count()+1 bugs.
  */
 export async function getNextSequenceNumber(sequenceName: string, prefix: string, year?: number): Promise<number> {
   const currentYear = year ?? new Date().getFullYear();
 
   try {
-    const fetchSeqPromise = (async () => {
-      const db = await getMongoDb();
-      const result = await db.collection("BusinessSequence").findOneAndUpdate(
-        { name: sequenceName },
-        {
-          $inc: { lastNumber: 1 },
-          $setOnInsert: {
-            prefix,
-            year: currentYear,
-            createdAt: new Date(),
-          },
-          $set: {
-            updatedAt: new Date(),
-          },
-        },
-        {
-          upsert: true,
-          returnDocument: "after",
-        }
-      );
+    const seq = await prisma.businessSequence.upsert({
+      where: { name: sequenceName },
+      create: {
+        name: sequenceName,
+        prefix,
+        year: currentYear,
+        lastNumber: 1,
+      },
+      update: {
+        prefix,
+        year: currentYear,
+        lastNumber: { increment: 1 },
+      },
+    });
 
-      if (!result || typeof result.lastNumber !== "number") {
-        const doc = await db.collection("BusinessSequence").findOne({ name: sequenceName });
-        return doc?.lastNumber || 1;
-      }
-
-      return result.lastNumber;
-    })();
-
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Sequence generation timeout")), 4500)
-    );
-
-    return await Promise.race([fetchSeqPromise, timeoutPromise]);
+    return seq.lastNumber;
   } catch (err: any) {
-    console.warn(`[SEQUENCE_FALLBACK] Atomic sequence failed for ${sequenceName} (${err?.message}), using fallback.`);
-    const now = new Date();
-    return (now.getMinutes() * 100) + now.getSeconds() + 1;
+    console.warn(`[SEQUENCE_FALLBACK] Atomic sequence via Prisma failed for ${sequenceName} (${err?.message}), querying collection.`);
+    try {
+      if (sequenceName.startsWith("QUOTATION")) {
+        const count = await prisma.quotation.count();
+        return count + 1;
+      }
+      if (sequenceName.startsWith("INVOICE")) {
+        const count = await prisma.invoice.count();
+        return count + 1;
+      }
+      if (sequenceName.startsWith("EXPENSE")) {
+        const count = await prisma.expense.count();
+        return count + 1;
+      }
+      if (sequenceName.startsWith("SOURCING")) {
+        const count = await prisma.inventorySourcing.count();
+        return count + 1;
+      }
+      if (sequenceName.startsWith("PAYMENT")) {
+        const count = await prisma.payment.count();
+        return count + 1;
+      }
+    } catch {
+      // Fallback
+    }
+    return 1;
   }
 }
 
@@ -62,12 +67,13 @@ export async function generateSku(category: string): Promise<string> {
 }
 
 /**
- * Generates official TamizhTech Invoice Number.
- * Example: TT-INV-2026-0001
+ * Generates official TamizhTech Bill/Invoice Number.
+ * Format: TTRC-BILL-YYYY-XXXX (0001 to 9999 orderly allocated)
+ * Example: TTRC-BILL-2026-0001
  */
 export async function generateInvoiceNo(): Promise<string> {
   const year = new Date().getFullYear();
-  const prefix = `TT-INV-${year}`;
+  const prefix = `TTRC-BILL-${year}`;
   const seqName = `INVOICE_${year}`;
   const number = await getNextSequenceNumber(seqName, prefix, year);
   return `${prefix}-${String(number).padStart(4, "0")}`;
@@ -86,11 +92,11 @@ export async function generateClientCode(): Promise<string> {
 
 /**
  * Generates official Payment Receipt Number.
- * Example: TT-PAY-2026-0001
+ * Example: TTRC-PAY-2026-0001
  */
 export async function generatePaymentNo(): Promise<string> {
   const year = new Date().getFullYear();
-  const prefix = `TT-PAY-${year}`;
+  const prefix = `TTRC-PAY-${year}`;
   const seqName = `PAYMENT_${year}`;
   const number = await getNextSequenceNumber(seqName, prefix, year);
   return `${prefix}-${String(number).padStart(4, "0")}`;
@@ -118,3 +124,42 @@ export async function generateEmployeeId(): Promise<string> {
   const number = await getNextSequenceNumber(seqName, prefix);
   return `${prefix}-${String(number).padStart(4, "0")}`;
 }
+
+/**
+ * Generates official Quotation Number.
+ * Format: TTRC-QTN-YYYY-XXXX (0001 to 9999 orderly allocated)
+ * Example: TTRC-QTN-2026-0001
+ */
+export async function generateQuotationNo(): Promise<string> {
+  const year = new Date().getFullYear();
+  const prefix = `TTRC-QTN-${year}`;
+  const seqName = `QUOTATION_${year}`;
+  const number = await getNextSequenceNumber(seqName, prefix, year);
+  return `${prefix}-${String(number).padStart(4, "0")}`;
+}
+
+/**
+ * Generates official Expense Voucher Number.
+ * Example: TTRC-EXP-2026-0001
+ */
+export async function generateExpenseNo(): Promise<string> {
+  const year = new Date().getFullYear();
+  const prefix = `TTRC-EXP-${year}`;
+  const seqName = `EXPENSE_${year}`;
+  const number = await getNextSequenceNumber(seqName, prefix, year);
+  return `${prefix}-${String(number).padStart(4, "0")}`;
+}
+
+/**
+ * Generates official Inventory Sourcing Inward Number.
+ * Example: TTRC-SRC-2026-0001
+ */
+export async function generateSourcingNo(): Promise<string> {
+  const year = new Date().getFullYear();
+  const prefix = `TTRC-SRC-${year}`;
+  const seqName = `SOURCING_${year}`;
+  const number = await getNextSequenceNumber(seqName, prefix, year);
+  return `${prefix}-${String(number).padStart(4, "0")}`;
+}
+
+

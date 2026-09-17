@@ -128,6 +128,9 @@ model User {
   stockLedgerEntries StockLedgerEntry[] @relation("CreatedByStockEntry")
   purchaseOrders    PurchaseOrder[]   @relation("CreatedByPO")
   recordedPayments  Payment[]         @relation("RecordedByPayment")
+  createdSourcings  InventorySourcing[] @relation("CreatedBySourcing")
+  createdSourcingPayments InventorySourcingPayment[] @relation("CreatedBySourcingPayment")
+  createdExpensePayments  ExpensePayment[]  @relation("CreatedByExpensePayment")
 
   @@index([role])
 }
@@ -232,43 +235,51 @@ model Lead {
 // ─── Sales: Quotations & Sales Orders ─────────────────────
 
 model Quotation {
-  id                String          @id @default(auto()) @map("_id") @db.ObjectId
-  quotationNo       String          @unique
-  clientId          String          @db.ObjectId
-  status            QuotationStatus @default(DRAFT)
-  validUntil        DateTime
-  subtotal          Float           @default(0)
-  discountAmount    Float           @default(0)
-  taxAmount         Float           @default(0)
-  total             Float
-  notes             String?
-  terms             String?
-  createdById       String          @db.ObjectId
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  id                   String          @id @default(auto()) @map("_id") @db.ObjectId
+  quotationNo          String          @unique
+  clientId             String          @db.ObjectId
+  status               QuotationStatus @default(DRAFT)
+  validUntil           DateTime
+  subtotal             Int             @default(0)
+  discountAmount       Int             @default(0)
+  taxAmount            Int             @default(0)
+  total                Int             @default(0)
+  convertedToInvoiceId String?         @db.ObjectId
+  notes                String?
+  terms                String?
+  createdById          String?         @db.ObjectId
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
 
-  client            Client          @relation(fields: [clientId], references: [id])
-  createdBy         User            @relation("CreatedByQuotation", fields: [createdById], references: [id])
-  items             QuotationItem[]
-  orders            SalesOrder[]
+  client               Client          @relation(fields: [clientId], references: [id])
+  createdBy            User?           @relation("CreatedByQuotation", fields: [createdById], references: [id])
+  items                QuotationItem[]
+  orders               SalesOrder[]
 
   @@index([clientId])
   @@index([status])
 }
 
 model QuotationItem {
-  id              String      @id @default(auto()) @map("_id") @db.ObjectId
-  quotationId     String      @db.ObjectId
-  description     String
-  qty             Float
-  unitPrice       Float
-  discountPercent Float       @default(0)
-  taxRate         Float       @default(18)
-  amount          Float
+  id                 String      @id @default(auto()) @map("_id") @db.ObjectId
+  quotationId        String      @db.ObjectId
+  productId          String?     @db.ObjectId
+  itemType           String      @default("PHYSICAL_PRODUCT") // PHYSICAL_PRODUCT | SERVICE
+  sku                String?
+  name               String?
+  description        String
+  qty                Int
+  unitPrice          Int
+  discountPercent    Float       @default(0)
+  taxRate            Float
+  amount             Int
+  configurationNotes String?
 
-  quotation       Quotation   @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  quotation          Quotation   @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  product            Product?    @relation(fields: [productId], references: [id])
 
   @@index([quotationId])
+  @@index([productId])
 }
 
 model SalesOrder {
@@ -324,13 +335,15 @@ model Invoice {
   status           InvoiceStatus   @default(DRAFT)
   date             DateTime        @default(now())
   dueDate          DateTime
-  subtotal         Float
-  gstPercent       Float           @default(18)
-  gstAmount        Float           @default(0)
-  discountAmount   Float           @default(0)
-  total            Float
-  paidAmount       Float           @default(0)
-  balance          Float
+  subtotal         Int             @default(0)
+  gstPercent       Float
+  gstAmount        Int             @default(0)
+  discountAmount   Int             @default(0)
+  total            Int             @default(0)
+  paidAmount       Int             @default(0)
+  balance          Int             @default(0)
+  issuedAt         DateTime?
+  cancelledAt      DateTime?
   notes            String?
   terms            String?
   createdAt        DateTime        @default(now())
@@ -351,9 +364,9 @@ model InvoiceItem {
   invoiceId   String   @db.ObjectId
   productId   String?  @db.ObjectId
   description String
-  qty                Float
-  unitPrice          Float
-  amount             Float
+  qty                Int
+  unitPrice          Int
+  amount             Int
   configurationNotes String?
 
   invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
@@ -368,7 +381,7 @@ model Payment {
   paymentNo       String            @unique
   invoiceId       String?           @db.ObjectId
   clientId        String            @db.ObjectId
-  amount          Float
+  amount          Int
   date            DateTime          @default(now())
   mode            String            @default("UPI")
   status          PaymentStatus     @default(COMPLETED)
@@ -388,27 +401,60 @@ model Payment {
   @@index([invoiceId])
   @@index([clientId])
   @@index([status])
+  @@index([type])
   @@index([date])
 }
 
 model Expense {
-  id              String          @id @default(auto()) @map("_id") @db.ObjectId
-  expenseNo       String          @unique
-  category        String
-  amount          Float
-  date            DateTime        @default(now())
-  description     String?
-  status          String          @default("PENDING")
-  paymentMethod   String          @default("BANK_TRANSFER")
-  referenceNo     String?
-  createdById     String          @db.ObjectId
-  approvedById    String?         @db.ObjectId
+  id               String           @id @default(auto()) @map("_id") @db.ObjectId
+  expenseNo        String           @unique
+  category         String
+  amount           Int
+  paidAmount       Int              @default(0)
+  date             DateTime         @default(now()) // Incurred date
+  paidAt           DateTime?                        // Latest/full payment date
+  description      String?
+  status           String           @default("APPROVED") // PENDING | APPROVED | VOIDED
+  paymentStatus    String           @default("UNPAID")   // UNPAID | PARTIAL | PAID
+  paidTo           String?
+  paymentMethod    String?          @default("BANK_TRANSFER")
+  referenceNo      String?
+  paymentReference String?
+  notes            String?
+  createdById      String?          @db.ObjectId
+  approvedById     String?          @db.ObjectId
+  voidedAt         DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
-  createdBy       User            @relation("CreatedByExpense", fields: [createdById], references: [id])
-  approvedBy      User?           @relation("ApprovedByExpense", fields: [approvedById], references: [id])
+  createdBy        User?            @relation("CreatedByExpense", fields: [createdById], references: [id])
+  approvedBy       User?            @relation("ApprovedByExpense", fields: [approvedById], references: [id])
+  payments         ExpensePayment[]
 
   @@index([category])
   @@index([date])
+  @@index([paidAt])
+  @@index([status])
+  @@index([paymentStatus])
+}
+
+model ExpensePayment {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  expenseId        String   @db.ObjectId
+  amount           Int
+  paymentDate      DateTime @default(now())
+  paymentMethod    String   @default("BANK_TRANSFER")
+  paymentReference String?
+  notes            String?
+  createdById      String?  @db.ObjectId
+  createdAt        DateTime @default(now())
+
+  expense          Expense  @relation(fields: [expenseId], references: [id])
+  createdBy        User?    @relation("CreatedByExpensePayment", fields: [createdById], references: [id])
+
+  @@index([expenseId])
+  @@index([paymentDate])
+
 }
 
 model ChartOfAccount {
@@ -448,8 +494,8 @@ model Product {
   status             String              @default("ACTIVE")
   basePrice          Float?
   taxRate            Float               @default(18)
-  stockQuantity      Float               @default(0)
-  minStock           Float               @default(5)
+  stockQuantity      Int                 @default(0)
+  minStock           Int                 @default(5)
   normalizedName     String?
   sourceType         String?             @default("MANUAL") // WEBSITE or MANUAL
   sourceUrl          String?
@@ -464,6 +510,8 @@ model Product {
   orderItems         SalesOrderItem[]
   poItems            PurchaseOrderItem[]
   invoiceItems       InvoiceItem[]
+  quotationItems     QuotationItem[]
+  sourcings          InventorySourcing[]
 
   @@index([status])
   @@index([category])
@@ -471,14 +519,64 @@ model Product {
   @@index([sourceSlug])
 }
 
+model InventorySourcing {
+  id            String                     @id @default(auto()) @map("_id") @db.ObjectId
+  sourcingNo    String                     @unique
+  productId     String                     @db.ObjectId
+  quantity      Int
+  sourceType    String                     // ONLINE, OFFLINE, IN_HOUSE
+  vendorName    String?
+  unitCost      Int
+  totalCost     Int
+  purchaseDate  DateTime                   @default(now())
+  paymentStatus String                     @default("UNPAID") // UNPAID, PARTIAL, PAID
+  paidAmount    Int                        @default(0)
+  paidAt        DateTime?
+  paymentMethod String?                    // UPI, BANK_TRANSFER, CASH, CREDIT_CARD, etc.
+  referenceNo   String?
+  notes         String?
+  createdById   String?                    @db.ObjectId
+  createdAt     DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
+
+  product       Product                    @relation(fields: [productId], references: [id])
+  createdBy     User?                      @relation("CreatedBySourcing", fields: [createdById], references: [id])
+  payments      InventorySourcingPayment[]
+
+  @@index([productId])
+  @@index([sourceType])
+  @@index([purchaseDate])
+  @@index([paidAt])
+  @@index([createdAt])
+}
+
+model InventorySourcingPayment {
+  id               String            @id @default(auto()) @map("_id") @db.ObjectId
+  sourcingId       String            @db.ObjectId
+  amount           Int
+  paymentDate      DateTime          @default(now())
+  paymentMethod    String            @default("BANK_TRANSFER")
+  paymentReference String?
+  notes            String?
+  createdById      String?           @db.ObjectId
+  createdAt        DateTime          @default(now())
+
+  sourcing         InventorySourcing @relation(fields: [sourcingId], references: [id])
+  createdBy        User?             @relation("CreatedBySourcingPayment", fields: [createdById], references: [id])
+
+  @@index([sourcingId])
+  @@index([paymentDate])
+}
+
 model StockLedgerEntry {
   id             String    @id @default(auto()) @map("_id") @db.ObjectId
   productId      String    @db.ObjectId
-  quantitySigned Float     // Positive (+) inbound, Negative (-) outbound
-  unitCost       Float?
+  quantitySigned Int       // Positive (+) inbound, Negative (-) outbound
+  unitCost       Int?      // Effective cost/WAC in paise at movement time
+  costAmount     Int?      // abs(quantitySigned) * unitCost snapshot in paise
   location       String?   @default("MAIN_WAREHOUSE")
-  type           String    // OPENING, PURCHASE, SALE, RESERVATION, RELEASE, ADJUSTMENT, DAMAGE, RETURN
-  referenceType  String?   // INVOICE, PURCHASE_ORDER, MANUAL_ADJUSTMENT, OPENING_BALANCE
+  type           String    // OPENING, PURCHASE, PRODUCTION, SALE, CUSTOMER_RETURN, SUPPLIER_RETURN, RESERVATION, RELEASE, ADJUSTMENT, DAMAGE
+  referenceType  String?   // INVOICE, PURCHASE_ORDER, MANUAL_ADJUSTMENT, OPENING_BALANCE, INVENTORY_SOURCING
   referenceId    String?
   notes          String?
   createdById    String?   @db.ObjectId
@@ -491,6 +589,7 @@ model StockLedgerEntry {
   @@index([type])
   @@index([createdAt])
 }
+
 
 // ─── Purchasing & Vendors ─────────────────────────────────
 

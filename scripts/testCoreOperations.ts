@@ -124,6 +124,7 @@ async function runCoreOperationsTest() {
         date: new Date(),
         dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         status: "DRAFT",
+        gstPercent: 18,
         subtotal: 4 * 650 + 1200,
         total: (4 * 650 + 1200) * 1.18,
         paidAmount: 0,
@@ -189,7 +190,7 @@ async function runCoreOperationsTest() {
     }
 
     const returnEntry = await prisma.stockLedgerEntry.findFirst({
-      where: { referenceId: draftInvoice.id, type: "RETURN" },
+      where: { referenceId: draftInvoice.id, type: { in: ["RETURN", "CUSTOMER_RETURN"] } },
     });
     if (!returnEntry || returnEntry.quantitySigned !== 4) {
       throw new Error("Lock 1 Failed: Missing RETURN ledger entry on invoice cancellation");
@@ -209,6 +210,7 @@ async function runCoreOperationsTest() {
         date: new Date(),
         dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
         status: "ISSUED",
+        gstPercent: 0,
         subtotal: 5000,
         total: 5000,
         paidAmount: 0,

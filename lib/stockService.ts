@@ -1,5 +1,8 @@
 import prisma from "./prisma";
 import { generateSku } from "./sequence";
+import { getProductRollingWACPaise } from "./costService";
+import { roundMoney, safeMultiplyQuantityByPaise } from "./money";
+
 
 export type StockMovementType =
   | "OPENING"
@@ -192,40 +195,47 @@ export async function deductStockForIssuedInvoice(invoiceId: string, userId?: st
     return;
   }
 
-  for (const item of invoice.items) {
-    // Only deduct if line item is linked to a PHYSICAL_PRODUCT
-    if (item.productId && item.product && item.product.type === "PHYSICAL_PRODUCT") {
-      const qtyToDeduct = Math.abs(item.qty);
+  const physicalItems = invoice.items.filter(
+    (item) => item.productId && item.product && item.product.type === "PHYSICAL_PRODUCT"
+  );
 
-      // Create SALE stock ledger entry
-      await prisma.stockLedgerEntry.create({
-        data: {
-          productId: item.productId,
-          quantitySigned: -qtyToDeduct,
-          type: "SALE",
-          referenceType: "INVOICE",
-          referenceId: invoiceId,
-          notes: `Sale via Invoice ${invoice.invoiceNo} (${item.description})`,
-          createdById: userId || null,
-        },
-      });
+  for (const item of physicalItems) {
+    if (!item.productId) continue;
 
-      // Update product stockQuantity
-      await prisma.product.update({
-        where: { id: item.productId },
-        data: {
-          stockQuantity: {
-            decrement: qtyToDeduct,
-          },
+    const qtyToDeduct = Math.round(item.qty ?? 1);
+    const currentWACPaise = await getProductRollingWACPaise(item.productId);
+    const costAmountPaise = safeMultiplyQuantityByPaise(qtyToDeduct, currentWACPaise);
+
+    await prisma.stockLedgerEntry.create({
+      data: {
+        productId: item.productId,
+        quantitySigned: -qtyToDeduct,
+        unitCost: currentWACPaise,
+        costAmount: costAmountPaise,
+        type: "SALE",
+        referenceType: "INVOICE",
+        referenceId: invoiceId,
+        notes: `Sale via Invoice ${invoice.invoiceNo} (${item.description})`,
+        createdById: userId || null,
+        createdAt: invoice.issuedAt || invoice.date || new Date(),
+      },
+    });
+
+    // Update product stockQuantity
+    await prisma.product.update({
+      where: { id: item.productId },
+      data: {
+        stockQuantity: {
+          decrement: qtyToDeduct,
         },
-      });
-    }
+      },
+    });
   }
 }
 
 /**
  * Reverses stock deductions when an ISSUED invoice is CANCELLED.
- * Restores stock with RETURN entries.
+ * Restores stock with CUSTOMER_RETURN entries preserving original sale cost.
  */
 export async function reverseStockForCancelledInvoice(invoiceId: string, userId?: string) {
   const saleEntries = await prisma.stockLedgerEntry.findMany({
@@ -246,7 +256,7 @@ export async function reverseStockForCancelledInvoice(invoiceId: string, userId?
     where: {
       referenceType: "INVOICE",
       referenceId: invoiceId,
-      type: "RETURN",
+      type: { in: ["RETURN", "CUSTOMER_RETURN"] },
     },
   });
 
@@ -261,10 +271,12 @@ export async function reverseStockForCancelledInvoice(invoiceId: string, userId?
       data: {
         productId: entry.productId,
         quantitySigned: qtyToRestore,
-        type: "RETURN",
+        unitCost: entry.unitCost,
+        costAmount: entry.costAmount,
+        type: "CUSTOMER_RETURN",
         referenceType: "INVOICE",
         referenceId: invoiceId,
-        notes: `Restored stock from cancelled invoice`,
+        notes: `Restored stock from cancelled invoice ${invoiceId}`,
         createdById: userId || null,
       },
     });

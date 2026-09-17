@@ -25,50 +25,53 @@ export function formatCurrency(amount: number | string): string {
   }).format(num);
 }
 
+import { formatISTDate, formatISTDateTime, formatISTTime } from './time';
+
 /**
- * Formats a date to DD-MMM-YYYY (e.g. 20-Mar-2026)
+ * Formats a date to DD-MMM-YYYY in Indian Standard Time (e.g. 20-Mar-2026)
  */
 export function formatDate(date: string | Date, fallback: string = 'N/A'): string {
   if (!date) return fallback;
   try {
-    const d = new Date(date);
+    const d = typeof date === 'string' ? new Date(date) : date;
     if (isNaN(d.getTime())) return fallback;
-    return format(d, 'dd-MMM-yyyy');
+    return formatISTDate(d);
   } catch (error) {
     return fallback;
   }
 }
 
 /**
- * Formats a date to include time DD-MMM-YYYY hh:mm a
+ * Formats a date to include time in Indian Standard Time (e.g. 20-Mar-2026, 10:46 AM IST)
  */
 export function formatDateTime(date: string | Date, fallback: string = 'N/A'): string {
   if (!date) return fallback;
   try {
-    const d = new Date(date);
+    const d = typeof date === 'string' ? new Date(date) : date;
     if (isNaN(d.getTime())) return fallback;
-    return format(d, 'dd-MMM-yyyy hh:mm a');
+    return formatISTDateTime(d);
   } catch (error) {
     return fallback;
   }
 }
 
 /**
- * Formats invoice issue timestamp to exact required standard: 'd MMM yyyy • hh:mm a'
- * e.g. '17 Sept 2026 • 10:46 AM'
+ * Formats invoice/bill issue timestamp in Indian Standard Time: 'd MMM yyyy • hh:mm a IST'
+ * e.g. '17 Sep 2026 • 10:46 AM IST'
  */
 export function formatIssueDateTime(date: string | Date, fallback: string = 'N/A'): string {
   if (!date) return fallback;
   try {
-    const d = new Date(date);
+    const d = typeof date === 'string' ? new Date(date) : date;
     if (isNaN(d.getTime())) return fallback;
-    const datePart = format(d, 'd MMM yyyy');
-    const timePart = format(d, 'hh:mm a');
-    return `${datePart} • ${timePart}`;
+    const datePart = formatISTDate(d);
+    const timePart = formatISTTime(d, false);
+    return `${datePart} • ${timePart} IST`;
   } catch (error) {
     return fallback;
   }
 }
+
 
 /**
  * Generates a standard UUID

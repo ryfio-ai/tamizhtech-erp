@@ -55,6 +55,7 @@ export function Sidebar({
       title: "BUSINESS",
       items: [
         { name: "Customers", href: "/clients", icon: Users },
+        { name: "Quotations", href: "/quotations", icon: FileCheck },
         { name: "Products & Stock", href: "/products", icon: Package },
         { name: "Bills", href: "/invoices", icon: FileText },
         { name: "Payments", href: "/payments", icon: CreditCard },

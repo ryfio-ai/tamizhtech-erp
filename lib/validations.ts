@@ -1,26 +1,37 @@
 import * as z from 'zod';
+import { isValidMobile } from './phone';
 
 export const phoneRegex = /^\+?[0-9\s-]{7,15}$/;
 
 // ─── CRM Validations ───────────────────────────────────────
 export const clientSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters."),
-  company: z.string().optional(),
-  email: z.string().email("Please enter a valid email address."),
-  phone: z.string().regex(phoneRegex, "Please enter a valid phone number (7-15 digits)."),
-  city: z.string().optional().or(z.literal('')),
+  name: z.string().trim().min(2, "Customer name must be at least 2 characters."),
+  phone: z.string().trim().min(1, "Mobile / WhatsApp number is required.").refine(
+    (val) => isValidMobile(val),
+    "Please enter a valid mobile / WhatsApp number (e.g. +91 98765 43210, 9876543210, or international +country code)."
+  ),
+  email: z.string().trim().email("Please enter a valid email address.").optional().or(z.literal('')).nullable(),
+  company: z.string().trim().optional().or(z.literal('')).nullable(),
+  city: z.string().trim().optional().or(z.literal('')).nullable(),
+  address: z.string().trim().optional().or(z.literal('')).nullable(),
+  state: z.string().trim().optional().or(z.literal('')).nullable(),
+  pincode: z.string().trim().optional().or(z.literal('')).nullable(),
+  gstin: z.string().trim().optional().or(z.literal('')).nullable(),
   type: z.string().default("INDIVIDUAL"),
   status: z.string().default("LEAD"),
-  serviceType: z.string().optional(),
-  source: z.string().optional(),
-  notes: z.string().optional(),
-  assignedToId: z.string().optional(),
+  serviceType: z.string().optional().or(z.literal('')).nullable(),
+  source: z.string().optional().or(z.literal('')).nullable(),
+  notes: z.string().optional().or(z.literal('')).nullable(),
+  assignedToId: z.string().optional().or(z.literal('')).nullable(),
 });
 
 export const leadSchema = z.object({
-  name: z.string().min(2),
-  email: z.string().email().optional().or(z.literal('')),
-  phone: z.string().regex(phoneRegex).optional().or(z.literal('')),
+  name: z.string().trim().min(2, "Name must be at least 2 characters."),
+  email: z.string().trim().email("Please enter a valid email address.").optional().or(z.literal('')).nullable(),
+  phone: z.string().trim().optional().or(z.literal('')).nullable().refine(
+    (val) => !val || isValidMobile(val),
+    "Please enter a valid mobile / WhatsApp number."
+  ),
   status: z.string().default("NEW"),
   source: z.string().optional(),
   notes: z.string().optional(),

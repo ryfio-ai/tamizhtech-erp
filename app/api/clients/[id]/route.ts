@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { UpdateClientInput } from "@/types";
+import { normalizeMobile, isValidMobile } from "@/lib/phone";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -35,42 +36,88 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const body: Partial<UpdateClientInput> & { type?: string, status?: string, assignedToId?: string, company?: string, notes?: string } = await req.json();
-    
-    // Check duplicates if updating email or phone
-    if (body.email || body.phone) {
-      const duplicate = await prisma.client.findFirst({
+    const body: any = await req.json();
+
+    let mobileNormalized: string | undefined;
+    if (body.phone) {
+      if (!isValidMobile(body.phone)) {
+        return NextResponse.json(
+          { success: false, error: "Please enter a valid mobile / WhatsApp number." },
+          { status: 400 }
+        );
+      }
+      mobileNormalized = normalizeMobile(body.phone);
+
+      // Check if another customer owns this normalized mobile
+      const conflict = await prisma.client.findFirst({
         where: {
           id: { not: params.id },
-          OR: [
-            body.email ? { email: body.email } : undefined,
-            body.phone ? { phone: body.phone } : undefined
-          ].filter(Boolean) as any
-        }
+          mobileNormalized,
+        },
       });
-      if (duplicate) {
-        return NextResponse.json({ success: false, error: "Email or phone already in use" }, { status: 400 });
+
+      if (conflict) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "This mobile number is already linked to another customer.",
+            code: "DUPLICATE_MOBILE",
+            existingClient: {
+              id: conflict.id,
+              clientCode: conflict.clientCode,
+              name: conflict.name,
+              phone: conflict.phone,
+            },
+          },
+          { status: 409 }
+        );
       }
     }
 
-    const updated = await prisma.client.update({
-      where: { id: params.id },
-      data: {
-        name: body.name,
-        email: body.email,
-        phone: body.phone,
-        city: body.city,
-        company: body.company,
-        notes: body.notes,
-        serviceType: body.serviceType,
-        source: body.source,
-        type: body.type,
-        status: body.status,
-        assignedToId: body.assignedToId
-      }
-    });
+    try {
+      const updated = await prisma.client.update({
+        where: { id: params.id },
+        data: {
+          name: body.name ? body.name.trim() : undefined,
+          phone: body.phone ? body.phone.trim() : undefined,
+          mobileNormalized,
+          email: body.email !== undefined ? (body.email ? body.email.trim().toLowerCase() : null) : undefined,
+          city: body.city !== undefined ? (body.city ? body.city.trim() : null) : undefined,
+          company: body.company !== undefined ? (body.company ? body.company.trim() : null) : undefined,
+          address: body.address !== undefined ? (body.address ? body.address.trim() : null) : undefined,
+          state: body.state !== undefined ? (body.state ? body.state.trim() : null) : undefined,
+          pincode: body.pincode !== undefined ? (body.pincode ? body.pincode.trim() : null) : undefined,
+          gstin: body.gstin !== undefined ? (body.gstin ? body.gstin.trim().toUpperCase() : null) : undefined,
+          notes: body.notes !== undefined ? (body.notes ? body.notes.trim() : null) : undefined,
+          serviceType: body.serviceType,
+          source: body.source,
+          type: body.type,
+          status: body.status,
+          assignedToId: body.assignedToId,
+        },
+      });
 
-    return NextResponse.json({ success: true, data: { ...updated, createdAt: updated.createdAt.toISOString() } });
+      return NextResponse.json({
+        success: true,
+        data: { ...updated, createdAt: updated.createdAt.toISOString() },
+      });
+    } catch (updateErr: any) {
+      if (
+        updateErr.code === "P2002" ||
+        updateErr.code === 11000 ||
+        String(updateErr.message).includes("mobileNormalized")
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "This mobile number is already linked to another customer.",
+            code: "DUPLICATE_MOBILE",
+          },
+          { status: 409 }
+        );
+      }
+      throw updateErr;
+    }
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

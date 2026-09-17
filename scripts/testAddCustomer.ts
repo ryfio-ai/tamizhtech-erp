@@ -7,10 +7,14 @@ async function testAddCustomer() {
   const clientCode = await generateClientCode();
   console.log("Generated Client Code:", clientCode);
 
+  const uniqueDigits = Date.now().toString().slice(-9);
+  const testPhone = `9${uniqueDigits}`;
+
   const testData = {
     clientCode,
     name: "Sathish Kumar P",
-    phone: "9629463964",
+    phone: testPhone,
+    mobileNormalized: `+91${testPhone}`,
     email: "test.customer." + Date.now() + "@gmail.com",
     city: "Pudukkottai",
     company: "TamizhTech Test Org",

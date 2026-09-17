@@ -86,10 +86,15 @@ export default function ClientProfilePage({ params }: { params: { id: string } }
                 <StatusBadge status={client.status} />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 mt-4 text-sm text-gray-600">
-                <div className="flex items-center gap-2"><Phone className="w-4 h-4 text-gray-400" /> +91 {client.phone}</div>
-                <div className="flex items-center gap-2"><Mail className="w-4 h-4 text-gray-400" /> {client.email}</div>
-                <div className="flex items-center gap-2"><MapPin className="w-4 h-4 text-gray-400" /> {client.city}</div>
-                <div className="flex items-center gap-2"><CheckSquare className="w-4 h-4 text-gray-400" /> {client.serviceType}</div>
+                <div className="flex items-center gap-2"><Phone className="w-4 h-4 text-gray-400" /> {client.phone}</div>
+                {client.email && <div className="flex items-center gap-2"><Mail className="w-4 h-4 text-gray-400" /> {client.email}</div>}
+                {client.company && <div className="flex items-center gap-2"><span className="text-xs font-semibold uppercase text-gray-400">Co:</span> {client.company}</div>}
+                {client.type && <div className="flex items-center gap-2"><span className="text-xs font-semibold uppercase text-gray-400">Type:</span> {client.type}</div>}
+                {client.city && <div className="flex items-center gap-2"><MapPin className="w-4 h-4 text-gray-400" /> {client.city}</div>}
+                {client.address && <div className="flex items-center gap-2 text-xs text-gray-500 sm:col-span-2">{client.address}</div>}
+                {client.serviceType && <div className="flex items-center gap-2"><CheckSquare className="w-4 h-4 text-gray-400" /> {client.serviceType}</div>}
+                {client.createdAt && <div className="flex items-center gap-2 text-xs text-gray-400"><Calendar className="w-3.5 h-3.5" /> Created: {formatDate(client.createdAt)}</div>}
+                {client.updatedAt && <div className="flex items-center gap-2 text-xs text-gray-400"><Clock className="w-3.5 h-3.5" /> Updated: {formatDate(client.updatedAt)}</div>}
               </div>
             </div>
           </div>

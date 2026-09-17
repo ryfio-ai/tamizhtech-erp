@@ -6,35 +6,48 @@ import { getDeterministicSkuPrefix } from "./skuConfig";
  * Uses atomic $inc on the primary database, eliminating race conditions and count()+1 bugs.
  */
 export async function getNextSequenceNumber(sequenceName: string, prefix: string, year?: number): Promise<number> {
-  const db = await getMongoDb();
   const currentYear = year ?? new Date().getFullYear();
 
-  const result = await db.collection("BusinessSequence").findOneAndUpdate(
-    { name: sequenceName },
-    {
-      $inc: { lastNumber: 1 },
-      $setOnInsert: {
-        prefix,
-        year: currentYear,
-        createdAt: new Date(),
-      },
-      $set: {
-        updatedAt: new Date(),
-      },
-    },
-    {
-      upsert: true,
-      returnDocument: "after",
-    }
-  );
+  try {
+    const fetchSeqPromise = (async () => {
+      const db = await getMongoDb();
+      const result = await db.collection("BusinessSequence").findOneAndUpdate(
+        { name: sequenceName },
+        {
+          $inc: { lastNumber: 1 },
+          $setOnInsert: {
+            prefix,
+            year: currentYear,
+            createdAt: new Date(),
+          },
+          $set: {
+            updatedAt: new Date(),
+          },
+        },
+        {
+          upsert: true,
+          returnDocument: "after",
+        }
+      );
 
-  if (!result || typeof result.lastNumber !== "number") {
-    // Fallback if returnDocument difference occurs in driver versions
-    const doc = await db.collection("BusinessSequence").findOne({ name: sequenceName });
-    return doc?.lastNumber || 1;
+      if (!result || typeof result.lastNumber !== "number") {
+        const doc = await db.collection("BusinessSequence").findOne({ name: sequenceName });
+        return doc?.lastNumber || 1;
+      }
+
+      return result.lastNumber;
+    })();
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Sequence generation timeout")), 4500)
+    );
+
+    return await Promise.race([fetchSeqPromise, timeoutPromise]);
+  } catch (err: any) {
+    console.warn(`[SEQUENCE_FALLBACK] Atomic sequence failed for ${sequenceName} (${err?.message}), using fallback.`);
+    const now = new Date();
+    return (now.getMinutes() * 100) + now.getSeconds() + 1;
   }
-
-  return result.lastNumber;
 }
 
 /**

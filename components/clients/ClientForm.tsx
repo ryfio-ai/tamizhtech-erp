@@ -19,9 +19,11 @@ export function ClientForm({ initialData, onSubmit, onCancel, isLoading }: Clien
     resolver: zodResolver(clientSchema),
     defaultValues: initialData || {
       name: "",
-      email: "",
       phone: "",
+      email: "",
+      company: "",
       city: "",
+      address: "",
       type: "INDIVIDUAL",
       serviceType: "Robotics Workshop",
       source: "Walk-in",
@@ -36,61 +38,60 @@ export function ClientForm({ initialData, onSubmit, onCancel, isLoading }: Clien
         {/* Full Name */}
         <div className="space-y-1.5 sm:col-span-2">
           <label className="text-xs font-semibold uppercase tracking-wider text-ink-secondary">
-            Full Name <span className="text-danger">*</span>
+            Customer Name <span className="text-danger">*</span>
           </label>
           <Input 
             {...register("name")} 
-            placeholder="e.g. Sankar S / ABC College" 
+            placeholder="e.g. Sathish Kumar / ABC College" 
             className="h-10"
           />
           {errors.name && <p className="text-xs text-danger mt-1">{errors.name.message}</p>}
         </div>
 
-        {/* Phone */}
-        <div className="space-y-1.5">
+        {/* Mobile / WhatsApp Number */}
+        <div className="space-y-1.5 sm:col-span-2">
           <label className="text-xs font-semibold uppercase tracking-wider text-ink-secondary">
-            Phone Number <span className="text-danger">*</span>
+            Mobile / WhatsApp Number <span className="text-danger">*</span>
           </label>
           <Input 
             {...register("phone")} 
-            placeholder="10-digit mobile number" 
-            maxLength={10}
+            placeholder="e.g. 9876543210 or +91 98765 43210" 
             className="h-10 font-mono text-sm"
           />
           {errors.phone && <p className="text-xs text-danger mt-1">{errors.phone.message}</p>}
         </div>
 
-        {/* Email */}
+        {/* Email Address - Optional */}
         <div className="space-y-1.5">
           <label className="text-xs font-semibold uppercase tracking-wider text-ink-secondary">
-            Email Address <span className="text-danger">*</span>
+            Email Address
           </label>
           <Input 
             {...register("email")} 
             type="email"
-            placeholder="contact@client.com" 
+            placeholder="e.g. contact@client.com (optional)" 
             className="h-10"
           />
           {errors.email && <p className="text-xs text-danger mt-1">{errors.email.message}</p>}
         </div>
 
-        {/* City */}
+        {/* Company / Organization - Optional */}
         <div className="space-y-1.5">
           <label className="text-xs font-semibold uppercase tracking-wider text-ink-secondary">
-            City / Location
+            Company / Organization
           </label>
           <Input 
-            {...register("city")} 
-            placeholder="e.g. Coimbatore, Chennai" 
+            {...register("company")} 
+            placeholder="e.g. Acme Innovations" 
             className="h-10"
           />
-          {errors.city && <p className="text-xs text-danger mt-1">{errors.city.message}</p>}
+          {errors.company && <p className="text-xs text-danger mt-1">{errors.company.message}</p>}
         </div>
 
-        {/* Customer Type */}
+        {/* Customer Type - Optional */}
         <div className="space-y-1.5">
           <label className="text-xs font-semibold uppercase tracking-wider text-ink-secondary">
-            Customer Type
+            Customer Type / Profession
           </label>
           <select 
             {...register("type")}
@@ -103,7 +104,33 @@ export function ClientForm({ initialData, onSubmit, onCancel, isLoading }: Clien
           {errors.type && <p className="text-xs text-danger mt-1">{errors.type.message}</p>}
         </div>
 
-        {/* Service Type */}
+        {/* City / Location - Optional */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold uppercase tracking-wider text-ink-secondary">
+            City / Location
+          </label>
+          <Input 
+            {...register("city")} 
+            placeholder="e.g. Coimbatore, Chennai" 
+            className="h-10"
+          />
+          {errors.city && <p className="text-xs text-danger mt-1">{errors.city.message}</p>}
+        </div>
+
+        {/* Address - Optional */}
+        <div className="space-y-1.5 sm:col-span-2">
+          <label className="text-xs font-semibold uppercase tracking-wider text-ink-secondary">
+            Address
+          </label>
+          <Input 
+            {...register("address")} 
+            placeholder="Street address, building, or area" 
+            className="h-10"
+          />
+          {errors.address && <p className="text-xs text-danger mt-1">{errors.address.message}</p>}
+        </div>
+
+        {/* Service Type - Optional */}
         <div className="space-y-1.5">
           <label className="text-xs font-semibold uppercase tracking-wider text-ink-secondary">
             Service / Interest
@@ -126,7 +153,7 @@ export function ClientForm({ initialData, onSubmit, onCancel, isLoading }: Clien
           {errors.serviceType && <p className="text-xs text-danger mt-1">{errors.serviceType.message}</p>}
         </div>
 
-        {/* Source */}
+        {/* Source - Optional */}
         <div className="space-y-1.5">
           <label className="text-xs font-semibold uppercase tracking-wider text-ink-secondary">
             Lead Source
@@ -146,7 +173,7 @@ export function ClientForm({ initialData, onSubmit, onCancel, isLoading }: Clien
           {errors.source && <p className="text-xs text-danger mt-1">{errors.source.message}</p>}
         </div>
 
-        {/* Status */}
+        {/* Status - Optional */}
         <div className="space-y-1.5 sm:col-span-2">
           <label className="text-xs font-semibold uppercase tracking-wider text-ink-secondary">
             Customer Status
@@ -162,7 +189,7 @@ export function ClientForm({ initialData, onSubmit, onCancel, isLoading }: Clien
           {errors.status && <p className="text-xs text-danger mt-1">{errors.status.message}</p>}
         </div>
 
-        {/* Notes */}
+        {/* Notes - Optional */}
         <div className="space-y-1.5 sm:col-span-2">
           <label className="text-xs font-semibold uppercase tracking-wider text-ink-secondary">
             Internal Notes

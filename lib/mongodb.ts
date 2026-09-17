@@ -1,12 +1,11 @@
 import { MongoClient, Db } from 'mongodb';
 import dns from 'dns';
 
-if (process.env.NODE_ENV !== 'production') {
-  try {
-    dns.setServers(['8.8.8.8', '1.1.1.1']);
-  } catch (e) {
-    // Retain default host DNS
-  }
+// Ensure DNS resolution reliability
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch (e) {
+  // Retain default host DNS if restricted
 }
 
 const uri = process.env.DATABASE_URL || '';
@@ -16,31 +15,47 @@ if (!uri && process.env.NODE_ENV === 'production') {
   throw new Error('Please define the DATABASE_URL environment variable inside .env');
 }
 
-let client: MongoClient;
-let clientPromise: Promise<MongoClient>;
-
 declare global {
   var _mongoClientPromise: Promise<MongoClient> | undefined;
 }
 
-if (process.env.NODE_ENV === 'development') {
-  if (!global._mongoClientPromise && uri) {
-    client = new MongoClient(uri);
-    global._mongoClientPromise = client.connect();
+function createClientPromise(): Promise<MongoClient> {
+  if (!uri) {
+    return Promise.reject(new Error('DATABASE_URL not set'));
   }
-  clientPromise = global._mongoClientPromise || Promise.reject(new Error('DATABASE_URL not set'));
-} else {
-  client = new MongoClient(uri);
-  clientPromise = client.connect();
+  const client = new MongoClient(uri, {
+    maxPoolSize: 10,
+    minPoolSize: 0,
+    maxIdleTimeMS: 15000,
+    serverSelectionTimeoutMS: 5000,
+    connectTimeoutMS: 10000,
+    socketTimeoutMS: 20000,
+  });
+  return client.connect();
 }
 
+let clientPromise: Promise<MongoClient>;
+
+if (!global._mongoClientPromise) {
+  global._mongoClientPromise = createClientPromise();
+}
+clientPromise = global._mongoClientPromise;
+
 export async function getMongoClient(): Promise<MongoClient> {
-  return clientPromise;
+  try {
+    return await clientPromise;
+  } catch (err) {
+    // If disconnected or failed, refresh promise
+    global._mongoClientPromise = createClientPromise();
+    clientPromise = global._mongoClientPromise;
+    return await clientPromise;
+  }
 }
 
 export async function getMongoDb(): Promise<Db> {
-  const connectedClient = await clientPromise;
+  const connectedClient = await getMongoClient();
   return connectedClient.db(dbName);
 }
 
 export default clientPromise;
+

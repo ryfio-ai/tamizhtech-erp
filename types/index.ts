@@ -4,14 +4,19 @@ export interface Client {
   name: string
   company?: string | null
   phone: string
-  email: string
-  city: string | null
-  serviceType: string | null
-  source: string | null
+  mobileNormalized: string
+  email?: string | null
+  address?: string | null
+  city?: string | null
+  state?: string | null
+  pincode?: string | null
+  gstin?: string | null
+  serviceType?: string | null
+  source?: string | null
   type: string
   status: string
   notes?: string | null
-  assignedToId: string | null
+  assignedToId?: string | null
   createdAt: string
   updatedAt: string
 }

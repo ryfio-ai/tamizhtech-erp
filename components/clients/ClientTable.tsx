@@ -53,7 +53,7 @@ export function ClientTable({ data, loading, onEdit, onDelete }: ClientTableProp
       header: "City",
       accessorKey: "city",
       sortable: true,
-      cell: (row) => <span className="text-ink-secondary text-xs">{row.city || "Coimbatore"}</span>,
+      cell: (row) => <span className="text-ink-secondary text-xs">{row.city || "-"}</span>,
     },
     {
       header: "Outstanding",
@@ -124,7 +124,9 @@ export function ClientTable({ data, loading, onEdit, onDelete }: ClientTableProp
             {client.company && (
               <p className="text-xs text-ink-secondary font-medium mt-0.5">{client.company}</p>
             )}
-            <p className="text-xs text-ink-secondary mt-0.5">{client.city || "Coimbatore, Tamil Nadu"}</p>
+            {client.city && (
+              <p className="text-xs text-ink-secondary mt-0.5">{client.city}</p>
+            )}
           </div>
           <StatusBadge status={client.status || "ACTIVE"} />
         </div>

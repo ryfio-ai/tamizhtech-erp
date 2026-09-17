@@ -164,7 +164,8 @@ model Client {
   type                String          @default("INDIVIDUAL")
   status              String          @default("LEAD")
   phone               String
-  email               String
+  mobileNormalized    String          @unique
+  email               String?
   address             String?
   city                String?
   state               String?

@@ -40,13 +40,20 @@ export function useClients() {
         body: JSON.stringify(data),
       });
       const json = await res.json();
-      if (!json.success) throw new Error(json.error);
+      if (!json.success) {
+        const error: any = new Error(json.error || "Failed to save client");
+        error.code = json.code;
+        error.existingClient = json.existingClient;
+        throw error;
+      }
       
       setClients(prev => [json.data, ...prev]);
-      toast.success("Client saved successfully");
+      toast.success("Customer saved successfully");
       return json.data;
     } catch (err: any) {
-      toast.error(`Failed to save client: ${err.message}`);
+      if (err.code !== 'DUPLICATE_MOBILE') {
+        toast.error(`Failed to save client: ${err.message}`);
+      }
       throw err;
     }
   };
@@ -59,13 +66,19 @@ export function useClients() {
         body: JSON.stringify(data),
       });
       const json = await res.json();
-      if (!json.success) throw new Error(json.error);
+      if (!json.success) {
+        const error: any = new Error(json.error || "Failed to update client");
+        error.code = json.code;
+        throw error;
+      }
       
       setClients(prev => prev.map(c => c.id === id ? json.data : c));
-      toast.success("Client updated successfully");
+      toast.success("Customer updated successfully");
       return json.data;
     } catch (err: any) {
-      toast.error(`Failed to update client: ${err.message}`);
+      if (err.code !== 'DUPLICATE_MOBILE') {
+        toast.error(`Failed to update client: ${err.message}`);
+      }
       throw err;
     }
   };

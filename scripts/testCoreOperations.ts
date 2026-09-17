@@ -103,11 +103,13 @@ async function runCoreOperationsTest() {
     // -------------------------------------------------------------
     console.log("--- Test 4: Draft Bill ≠ Stock Deduction & Issue Deduction ---");
     // Create test customer
+    const testPhone = `98765${Date.now().toString().slice(-5)}`;
     const client = await prisma.client.create({
       data: {
         clientCode: `TT-CL-TEST-${Date.now().toString().slice(-4)}`,
         name: "Apex Robotics Club",
-        phone: "9876543210",
+        phone: testPhone,
+        mobileNormalized: `+91${testPhone}`,
         email: "apex@robotics.example.com",
         city: "Coimbatore",
       },

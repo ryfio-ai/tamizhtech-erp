@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { CreateApplicationInput } from "@/types";
 import { generateId } from "@/lib/utils";
+import { normalizeMobile } from "@/lib/phone";
 
 export const revalidate = 0;
 
@@ -32,16 +33,26 @@ export async function POST(req: NextRequest) {
 
     let clientId = body.clientId;
     if (!clientId) {
-      const client = await prisma.client.create({
-        data: {
-          clientCode: `CL-${Date.now().toString().slice(-4)}`,
-          name: body.name || "Student Applicant",
-          email: body.email || `applicant-${Date.now()}@tamizhtech.in`,
-          phone: body.phone || "0000000000",
-          city: body.city || "Coimbatore",
-          status: "STUDENT",
-        }
+      const rawPhone = body.phone || `987${Date.now().toString().slice(-7)}`;
+      const mobileNormalized = normalizeMobile(rawPhone);
+
+      let client = await prisma.client.findUnique({
+        where: { mobileNormalized },
       });
+
+      if (!client) {
+        client = await prisma.client.create({
+          data: {
+            clientCode: `CL-${Date.now().toString().slice(-4)}`,
+            name: body.name || "Student Applicant",
+            email: body.email || null,
+            phone: rawPhone,
+            mobileNormalized,
+            city: body.city || null,
+            status: "STUDENT",
+          },
+        });
+      }
       clientId = client.id;
     }
 

@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Client } from "@/types";
 import { useSearchParams, useRouter } from "next/navigation";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
+import { toast } from "sonner";
 
 function ClientsContent() {
   const { clients, loading, fetchClients, createClient, updateClient, deleteClient } = useClients();
@@ -44,8 +45,23 @@ function ClientsContent() {
       }
       setIsFormOpen(false);
       setEditingClient(null);
-    } catch (e) {
-      // Kept open on error
+    } catch (e: any) {
+      if (e.code === 'DUPLICATE_MOBILE') {
+        if (e.existingClient?.id) {
+          toast.error("Customer already exists with this mobile number.", {
+            action: {
+              label: "View Existing Customer",
+              onClick: () => {
+                setIsFormOpen(false);
+                router.push(`/clients/${e.existingClient.id}`);
+              },
+            },
+            duration: 8000,
+          });
+        } else {
+          toast.error(e.message || "This mobile number is already linked to another customer.");
+        }
+      }
     } finally {
       setSaving(false);
     }

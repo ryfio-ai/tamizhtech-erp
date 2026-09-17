@@ -197,6 +197,7 @@ async function runTests() {
         clientCode: 'TTRC-CLI-TEST',
         name: 'Test Robotics Lab Customer',
         phone: '9876543210',
+        mobileNormalized: '+919876543210',
         email: 'testlab@tamizhtech.in',
       },
     });

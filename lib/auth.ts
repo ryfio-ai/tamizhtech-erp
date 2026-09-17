@@ -13,29 +13,39 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error("Invalid credentials");
+          return null;
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email }
-        });
+        try {
+          const email = credentials.email.trim().toLowerCase();
+          const user = await prisma.user.findFirst({
+            where: { 
+              email: { equals: email, mode: "insensitive" } 
+            }
+          });
 
-        if (!user || !user.passwordHash) {
-          throw new Error("User not found");
+          if (!user || !user.passwordHash) {
+            console.warn(`[AUTH] Login failed: User not found for ${email}`);
+            return null;
+          }
+
+          const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
+
+          if (!isValid) {
+            console.warn(`[AUTH] Login failed: Invalid password for ${email}`);
+            return null;
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+          };
+        } catch (error: any) {
+          console.error("[AUTH] Database error during authorize:", error);
+          throw new Error(error.message || "Database connection error during authentication.");
         }
-
-        const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
-
-        if (!isValid) {
-          throw new Error("Invalid password");
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-        };
       }
     }),
   ],
@@ -62,5 +72,5 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET || "2588c5fd44fb0ef1766e4542e3d5610329423b0f04df86b3b996955468fbebda",
 };

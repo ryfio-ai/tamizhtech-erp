@@ -51,9 +51,15 @@ function LoginForm() {
         <div className="text-center space-y-2">
           <div className="inline-flex items-center justify-center p-2 rounded-xl mb-2">
             <img
-              src="/assets/ttrc-logo.png"
+              src="/logo.png"
               alt="Tamizh Tech Logo"
               className="h-16 w-auto object-contain"
+              onError={(e) => {
+                const target = e.currentTarget;
+                if (target.src.endsWith("/logo.png")) {
+                  target.src = "/assets/ttrc-logo.png";
+                }
+              }}
             />
           </div>
           <h1 className="text-2xl font-bold text-ink-primary tracking-tight">TamizhTech ERP</h1>

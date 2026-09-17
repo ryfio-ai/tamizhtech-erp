@@ -1,11 +1,12 @@
 "use client";
 
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { type InvoiceFormValues, invoiceSchema } from "@/lib/validations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Calculator } from "lucide-react";
+import { Loader2, Calculator, CheckCircle2 } from "lucide-react";
 import { InvoiceLineItems } from "./InvoiceLineItems";
 import { Client } from "@/types";
 import { formatCurrency } from "@/lib/utils";
@@ -20,55 +21,68 @@ interface InvoiceFormProps {
 }
 
 export function InvoiceForm({ initialData, clients, onSubmit, onCancel, isLoading, preselectedClient }: InvoiceFormProps) {
-  const { register, control, watch, handleSubmit, formState: { errors } } = useForm<InvoiceFormValues>({
+  const [submitMode, setSubmitMode] = useState<"DRAFT" | "ISSUED">("ISSUED");
+
+  const { register, control, watch, setValue, handleSubmit, formState: { errors } } = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceSchema),
     defaultValues: initialData || {
       clientId: preselectedClient || "",
-      date: new Date().toISOString().split('T')[0],
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      items: [{ description: "", qty: 1, unitPrice: 0 }],
+      date: new Date().toISOString().split("T")[0],
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+      items: [{ description: "", qty: 1, unitPrice: 0, productId: "" }],
       gstPercent: 18,
       discountPercent: 0,
-      paymentMethod: "Bank Transfer",
-      notes: "Thank you for your business!"
+      paymentMethod: "UPI",
+      notes: "Thank you for your business with Tamizh Tech Robotics Company!",
+      status: "ISSUED"
     }
   });
 
-  const watchItems = watch("items") || [];
-  const watchGst = watch("gstPercent") || 0;
-  const watchDiscount = watch("discountPercent") || 0;
+  const watchItems = (watch("items") as Array<{ description?: string; qty?: number; unitPrice?: number }>) || [];
+  const watchGst = Number(watch("gstPercent")) || 0;
+  const watchDiscount = Number(watch("discountPercent")) || 0;
 
   // Real-time calculation
-  const subtotal = watchItems.reduce((acc, item) => acc + ((item.qty || 0) * (item.unitPrice || 0)), 0);
+  const subtotal = watchItems.reduce((acc, item) => acc + ((Number(item?.qty) || 0) * (Number(item?.unitPrice) || 0)), 0);
   const gstAmount = subtotal * (watchGst / 100);
   const discountAmount = subtotal * (watchDiscount / 100);
-  const grandTotal = subtotal + gstAmount - discountAmount;
+  const grandTotal = Math.max(0, subtotal + gstAmount - discountAmount);
 
-  const activeClients = clients.filter(c => c.status !== 'Blacklisted');
+  const activeClients = clients.filter(c => c.status !== "Blacklisted");
+
+  const handleFormSubmit = async (data: InvoiceFormValues) => {
+    // Inject the selected status (DRAFT or ISSUED)
+    await onSubmit({
+      ...data,
+      status: submitMode,
+    });
+  };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 pb-12">
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8 pb-12">
       
       {/* 1. Basic Details */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <h3 className="text-base font-semibold text-navy mb-4">Invoice Details</h3>
+        <h3 className="text-base font-semibold text-navy mb-4">Customer & Bill Details</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Client *</label>
+            <label className="text-sm font-medium text-gray-700">Customer *</label>
             <select 
               {...register("clientId")}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
-              <option value="">Select a client...</option>
+              <option value="">Select a customer...</option>
               {activeClients.map(c => (
-                <option key={c.id} value={c.id}>{c.name} ({c.serviceType})</option>
+                <option key={c.id} value={c.id}>
+                  {c.name} {c.phone ? `(${c.phone})` : ""} {c.city ? `• ${c.city}` : ""}
+                </option>
               ))}
             </select>
             {errors.clientId && <p className="text-xs text-red-500">{errors.clientId.message}</p>}
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Issue Date *</label>
+            <label className="text-sm font-medium text-gray-700">Bill Date *</label>
             <Input type="date" {...register("date")} />
             {errors.date && <p className="text-xs text-red-500">{errors.date.message}</p>}
           </div>
@@ -81,11 +95,12 @@ export function InvoiceForm({ initialData, clients, onSubmit, onCancel, isLoadin
         </div>
       </div>
 
-      {/* 2. Line Items */}
+      {/* 2. Line Items with Product Catalog Selector */}
       <InvoiceLineItems 
         control={control} 
         register={register} 
         watch={watch} 
+        setValue={setValue}
         errors={errors} 
       />
 
@@ -94,28 +109,22 @@ export function InvoiceForm({ initialData, clients, onSubmit, onCancel, isLoadin
         
         {/* Settings */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-5">
-          <h3 className="text-base font-semibold text-navy">Settings & Notes</h3>
+          <h3 className="text-base font-semibold text-navy">Tax & Notes</h3>
           
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">GST (%)</label>
-              <Input type="number" {...register("gstPercent", { valueAsNumber: true })} />
-              {errors.gstPercent && <p className="text-xs text-red-500">{errors.gstPercent.message}</p>}
+              <label className="text-sm font-medium text-gray-700">GST Rate (%)</label>
+              <Input type="number" step="0.5" {...register("gstPercent")} />
             </div>
+
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Discount (%)</label>
-              <Input type="number" {...register("discountPercent", { valueAsNumber: true })} />
-              {errors.discountPercent && <p className="text-xs text-red-500">{errors.discountPercent.message}</p>}
+              <Input type="number" step="0.5" {...register("discountPercent")} />
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Payment Method</label>
-            <Input {...register("paymentMethod")} placeholder="e.g. Bank Transfer, UPI, Cash" />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Notes / Terms</label>
+            <label className="text-sm font-medium text-gray-700">Payment Terms / Notes</label>
             <textarea 
               {...register("notes")}
               rows={3}
@@ -158,14 +167,29 @@ export function InvoiceForm({ initialData, clients, onSubmit, onCancel, isLoadin
 
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-4 justify-end pt-4">
+      {/* Actions: Save Draft vs Issue Bill (Lock 1) */}
+      <div className="flex flex-wrap items-center gap-3 justify-end pt-4">
         <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading} className="bg-white">
           Cancel
         </Button>
-        <Button type="submit" disabled={isLoading} className="bg-brand hover:bg-brand-dark min-w-[150px]">
-          {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-          {isLoading ? "Saving..." : "Generate Invoice"}
+        <Button 
+          type="submit" 
+          variant="outline" 
+          disabled={isLoading} 
+          onClick={() => setSubmitMode("DRAFT")}
+          className="border-border text-ink-primary hover:bg-gray-50"
+        >
+          {isLoading && submitMode === "DRAFT" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+          Save as Draft
+        </Button>
+        <Button 
+          type="submit" 
+          disabled={isLoading} 
+          onClick={() => setSubmitMode("ISSUED")}
+          className="bg-brand hover:bg-brand-dark min-w-[150px] shadow-sm font-semibold"
+        >
+          {isLoading && submitMode === "ISSUED" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-1.5" />}
+          Issue Bill
         </Button>
       </div>
 

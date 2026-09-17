@@ -1,8 +1,11 @@
 import { google } from "googleapis";
 
 // Ensure environment variables are loaded
+// @ts-ignore
 import * as dotenv from 'dotenv';
-dotenv.config({ path: '.env.local' });
+if (typeof dotenv !== "undefined" && dotenv.config) {
+  dotenv.config({ path: '.env.local' });
+}
 
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
 

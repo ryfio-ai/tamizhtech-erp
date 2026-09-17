@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { usePayments } from "@/hooks/usePayments";
 import { useInvoices } from "@/hooks/useInvoices";
 import { PaymentForm } from "@/components/payments/PaymentForm";
 import { ArrowLeft, CreditCard } from "lucide-react";
+import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 
-export default function NewPaymentPage() {
+function NewPaymentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedInvoiceId = searchParams.get('invoiceId') || undefined;
@@ -68,5 +69,13 @@ export default function NewPaymentPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function NewPaymentPage() {
+  return (
+    <Suspense fallback={<LoadingSkeleton type="card" />}>
+      <NewPaymentContent />
+    </Suspense>
   );
 }

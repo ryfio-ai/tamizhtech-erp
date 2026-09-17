@@ -2,6 +2,7 @@ export interface Client {
   id: string
   clientCode: string
   name: string
+  company?: string | null
   phone: string
   email: string
   city: string | null
@@ -9,6 +10,7 @@ export interface Client {
   source: string | null
   type: string
   status: string
+  notes?: string | null
   assignedToId: string | null
   createdAt: string
   updatedAt: string
@@ -40,6 +42,22 @@ export interface Invoice {
   items?: LineItem[]
 }
 
+export interface CanonicalInvoiceFinancials {
+  subtotal: number
+  discountAmount: number
+  taxableAmount: number
+  gstPercent: number
+  cgstAmount: number
+  sgstAmount: number
+  totalGst: number
+  shippingAmount: number
+  totalAmount: number
+  totalInWords: string
+  netPaidAmount: number
+  outstandingBalance: number
+  paymentStatus: "PAID" | "PARTIALLY_PAID" | "UNPAID" | "OVERDUE"
+}
+
 export interface Payment {
   id: string
   paymentNo: string
@@ -56,20 +74,44 @@ export interface Payment {
 export interface FollowUp {
   id: string
   clientId: string | null
+  clientName?: string | null
   leadId: string | null
   date: string
+  time?: string | null
   mode: string
   status: string
   notes: string | null
+  summary?: string | null
+  nextAction?: string | null
+}
+
+export interface PaymentStatusBreakdown {
+  paid: number
+  partial: number
+  unpaid: number
+}
+
+export interface MonthlyRevenue {
+  month: string
+  revenue: number
 }
 
 export interface Application {
   id: string
-  appNo: string
-  clientId: string
+  appNo?: string
+  clientId?: string
+  clientName?: string
+  name?: string
+  phone?: string
+  email?: string
+  city?: string
+  appliedFor?: string
+  course?: string
+  source?: string
+  notes?: string
+  appliedDate?: string
   status: string
-  course: string
-  createdAt: string
+  createdAt?: string
 }
 
 export interface UpdateClientInput {
@@ -113,6 +155,43 @@ export interface DashboardStats {
   totalEmployees: number
   activeProjects: number
   inventoryValue: number
+}
+
+export interface CreatePaymentInput {
+  invoiceId?: string
+  clientId: string
+  amount: number
+  date?: string
+  mode?: string
+  status?: string
+  transactionId?: string
+  referenceNo?: string
+  notes?: string
+}
+
+export interface CreateFollowUpInput {
+  clientId?: string
+  leadId?: string
+  date?: string
+  time?: string
+  mode?: string
+  status?: string
+  notes?: string
+  summary?: string
+  nextAction?: string
+}
+
+export interface CreateApplicationInput {
+  clientId?: string
+  name?: string
+  email?: string
+  phone?: string
+  city?: string
+  appliedFor?: string
+  course?: string
+  source?: string
+  notes?: string
+  status?: string
 }
 
 export interface ApiResponse<T = any> {

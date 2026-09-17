@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   try {
     const followups = await prisma.followUp.findMany({
       include: { client: true },
-      orderBy: [{ date: 'asc' }, { time: 'asc' }]
+      orderBy: [{ date: 'asc' }]
     });
 
     // Dynamic Overdue resolution logic
@@ -26,10 +26,10 @@ export async function GET(req: NextRequest) {
 
       return {
         ...f,
-        clientName: f.client.name,
-        clientPhone: f.client.phone,
+        clientName: f.client?.name || "Client",
+        clientPhone: f.client?.phone || "",
         status: currentStatus,
-        createdAt: f.createdAt.toISOString()
+        createdAt: f.date.toISOString()
       };
     });
 
@@ -43,24 +43,27 @@ export async function POST(req: NextRequest) {
   try {
     const body: CreateFollowUpInput = await req.json();
     
-    const client = await prisma.client.findUnique({ where: { id: body.clientId } });
-    if (!client) throw new Error("Client not found");
+    let client: any = null;
+    if (body.clientId) {
+      client = await prisma.client.findUnique({ where: { id: body.clientId } });
+      if (!client) throw new Error("Client not found");
+    }
+
+    const notes = [body.summary, body.nextAction, body.notes].filter(Boolean).join(" | ");
 
     const newFollowUp = await prisma.followUp.create({
       data: {
         clientId: body.clientId,
-        date: body.date,
-        time: body.time,
-        mode: body.mode,
-        summary: body.summary,
-        nextAction: body.nextAction || "",
-        status: body.status || "Pending",
+        date: body.date ? new Date(body.date) : new Date(),
+        mode: body.mode || "CALL",
+        status: body.status || "PENDING",
+        notes: notes || undefined,
       }
     });
 
     return NextResponse.json({ 
       success: true, 
-      data: { ...newFollowUp, clientName: client.name, clientPhone: client.phone } 
+      data: { ...newFollowUp, clientName: client?.name || "Client", clientPhone: client?.phone || "" } 
     }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

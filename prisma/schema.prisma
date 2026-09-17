@@ -1,246 +1,603 @@
 // ============================================================
-// TAMIZHTECH ERP — COMPLETE PRISMA SCHEMA
-// Production-Ready | Full ERP | All Modules
+// TAMIZHTECH ERP 2.0 — COMPLETE PRISMA SCHEMA
+// Target: MongoDB Atlas Cluster0 (tamizhtech_erp)
+// Robust | Auditable | Concurrency-Safe | Fully Indexed
 // ============================================================
 
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["fullTextSearch", "fullTextIndex", "relationJoins"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
 }
 
-// ─── User & Auth ──────────────────────────────────────────
+// ─── Genuine State-Machine Enums ──────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  SALES
+  FINANCE
+  ENGINEERING
+  OPERATIONS
+  VIEWER
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REVERSED
+}
+
+enum PaymentEntryType {
+  PAYMENT
+  REVERSAL
+  ADJUSTMENT
+  CORRECTION
+}
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+enum OrderType {
+  PRODUCT
+  ENGINEERING
+  MIXED
+}
+
+enum OrderStatus {
+  PENDING
+  IN_PROGRESS
+  FULFILLED
+  CANCELLED
+}
+
+enum FulfillmentStatus {
+  NOT_REQUIRED
+  PENDING
+  PARTIAL
+  FULFILLED
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  DONE
+}
+
+// ─── User & Authentication ────────────────────────────────
+
 model User {
-  id                String     @id @default(cuid())
+  id                String            @id @default(auto()) @map("_id") @db.ObjectId
   name              String
-  email             String     @unique
+  email             String            @unique
   emailVerified     DateTime?
   image             String?
   phone             String?
-  role              String     @default("VIEWER") // Enum: UserRole
-  status            String     @default("ACTIVE") // Enum: UserStatus
+  role              UserRole          @default(VIEWER)
+  status            String            @default("ACTIVE")
   passwordHash      String?
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
   sessions          Session[]
   accounts          Account[]
   employee          Employee?
-  assignedLeads     Lead[]          @relation("AssignedToLead")
-  assignedClients   Client[]        @relation("AssignedToClient")
-  assignedTickets   SupportTicket[] @relation("AssignedTo")
-  assignedTasks     Task[]          @relation("AssignedTo")
-  createdTasks      Task[]          @relation("CreatedBy")
+  assignedLeads     Lead[]            @relation("AssignedToLead")
+  assignedClients   Client[]          @relation("AssignedToClient")
+  assignedTickets   SupportTicket[]   @relation("AssignedToTicket")
+  assignedTasks     Task[]            @relation("AssignedToTask")
+  createdTasks      Task[]            @relation("CreatedByTask")
   activityLogs      ActivityLog[]
   notifications     Notification[]
   auditLogs         AuditLog[]
-  createdExpenses   Expense[]       @relation("CreatedBy")
-  approvedExpenses  Expense[]       @relation("ApprovedBy")
+  createdExpenses   Expense[]         @relation("CreatedByExpense")
+  approvedExpenses  Expense[]         @relation("ApprovedByExpense")
   comments          Comment[]
-  createdProjects   Project[]       @relation("CreatedBy")
-  managedProjects   Project[]       @relation("Manager")
+  createdProjects   Project[]         @relation("CreatedByProject")
+  managedProjects   Project[]         @relation("ManagerProject")
+  createdOrders     SalesOrder[]      @relation("CreatedByOrder")
+  createdQuotations Quotation[]       @relation("CreatedByQuotation")
+  stockLedgerEntries StockLedgerEntry[] @relation("CreatedByStockEntry")
+  purchaseOrders    PurchaseOrder[]   @relation("CreatedByPO")
+  recordedPayments  Payment[]         @relation("RecordedByPayment")
+
+  @@index([role])
 }
 
 model Session {
-  id           String   @id @default(cuid())
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
   sessionToken String   @unique
-  userId       String
+  userId       String   @db.ObjectId
   expires      DateTime
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Account {
-  id                String  @id @default(cuid())
-  userId            String
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String  @db.ObjectId
   type              String
   provider          String
   providerAccountId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
-// ─── CRM & Marketing ──────────────────────────────────────
+// ─── CRM & Customers ──────────────────────────────────────
+
 model Client {
-  id                  String       @id @default(cuid())
-  clientCode          String       @unique
+  id                  String          @id @default(auto()) @map("_id") @db.ObjectId
+  clientCode          String          @unique
   name                String
-  type                String       @default("INDIVIDUAL") // Enum: ClientType
-  status              String       @default("LEAD")       // Enum: ClientStatus
+  type                String          @default("INDIVIDUAL")
+  status              String          @default("LEAD")
   phone               String
   email               String
   city                String?
   serviceType         String?
-  source              String?      // Enum: LeadSource
-  assignedToId        String?
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
+  source              String?
+  assignedToId        String?         @db.ObjectId
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
   contacts            ClientContact[]
   invoices            Invoice[]
   payments            Payment[]
   followUps           FollowUp[]
   applications        Application[]
   projects            Project[]       @relation("ClientProjects")
+  quotations          Quotation[]
+  orders              SalesOrder[]
   assignedTo          User?           @relation("AssignedToClient", fields: [assignedToId], references: [id])
+
+  @@index([assignedToId])
+  @@index([status])
+  @@index([name])
 }
 
 model ClientContact {
-  id          String      @id @default(cuid())
-  clientId    String
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  clientId    String      @db.ObjectId
   name        String
   phone       String?
   email       String?
-  type        String      @default("PRIMARY") // Enum: ContactType
-  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  type        String      @default("PRIMARY")
+  client      Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
 }
 
 model Lead {
-  id               String     @id @default(cuid())
-  leadCode         String     @unique
+  id               String       @id @default(auto()) @map("_id") @db.ObjectId
+  leadCode         String       @unique
   name             String
+  company          String?
   email            String?
   phone            String?
-  status           String     @default("NEW") // Enum: LeadStatus
-  source           String?    // Enum: LeadSource
-  assignedToId     String?
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
-  assignedTo   User?    @relation("AssignedToLead", fields: [assignedToId], references: [id])
-  followUps    FollowUp[]
+  status           String       @default("NEW")
+  source           String?      @default("WEBSITE")
+  requirement      String?
+  notes            String?
+  assignedToId     String?      @db.ObjectId
+  externalId       String?      @unique
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  assignedTo       User?        @relation("AssignedToLead", fields: [assignedToId], references: [id])
+  followUps        FollowUp[]
+
+  @@index([assignedToId])
+  @@index([status])
+  @@index([createdAt])
 }
 
-// ─── Sales ────────────────────────────────────────────────
+// ─── Sales: Quotations & Sales Orders ─────────────────────
+
+model Quotation {
+  id                String          @id @default(auto()) @map("_id") @db.ObjectId
+  quotationNo       String          @unique
+  clientId          String          @db.ObjectId
+  status            QuotationStatus @default(DRAFT)
+  validUntil        DateTime
+  subtotal          Float           @default(0)
+  discountAmount    Float           @default(0)
+  taxAmount         Float           @default(0)
+  total             Float
+  notes             String?
+  terms             String?
+  createdById       String          @db.ObjectId
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  client            Client          @relation(fields: [clientId], references: [id])
+  createdBy         User            @relation("CreatedByQuotation", fields: [createdById], references: [id])
+  items             QuotationItem[]
+  orders            SalesOrder[]
+
+  @@index([clientId])
+  @@index([status])
+}
+
+model QuotationItem {
+  id              String      @id @default(auto()) @map("_id") @db.ObjectId
+  quotationId     String      @db.ObjectId
+  description     String
+  qty             Float
+  unitPrice       Float
+  discountPercent Float       @default(0)
+  taxRate         Float       @default(18)
+  amount          Float
+
+  quotation       Quotation   @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@index([quotationId])
+}
+
+model SalesOrder {
+  id                String            @id @default(auto()) @map("_id") @db.ObjectId
+  orderNo           String            @unique
+  quotationId       String?           @db.ObjectId
+  clientId          String            @db.ObjectId
+  orderType         OrderType         @default(PRODUCT)
+  status            OrderStatus       @default(PENDING)
+  fulfillmentStatus FulfillmentStatus @default(NOT_REQUIRED)
+  subtotal          Float
+  taxAmount         Float             @default(0)
+  totalAmount       Float
+  notes             String?
+  createdById       String            @db.ObjectId
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  client            Client            @relation(fields: [clientId], references: [id])
+  quotation         Quotation?        @relation(fields: [quotationId], references: [id])
+  createdBy         User              @relation("CreatedByOrder", fields: [createdById], references: [id])
+  items             SalesOrderItem[]
+  invoices          Invoice[]
+  projects          Project[]
+
+  @@index([clientId])
+  @@index([status])
+}
+
+model SalesOrderItem {
+  id           String      @id @default(auto()) @map("_id") @db.ObjectId
+  orderId      String      @db.ObjectId
+  productId    String?     @db.ObjectId
+  description  String
+  quantity     Float
+  unitPrice    Float
+  totalAmount  Float
+
+  order        SalesOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product      Product?    @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+}
+
+// ─── Invoicing & Financial Ledger ─────────────────────────
+
 model Invoice {
-  id               String        @id @default(cuid())
-  invoiceNo        String        @unique
-  clientId         String
+  id               String          @id @default(auto()) @map("_id") @db.ObjectId
+  invoiceNo        String          @unique
+  clientId         String          @db.ObjectId
+  orderId          String?         @db.ObjectId
   clientName       String
-  status           String        @default("DRAFT") // Enum: InvoiceStatus
-  date             DateTime      @default(now())
+  status           InvoiceStatus   @default(DRAFT)
+  date             DateTime        @default(now())
   dueDate          DateTime
   subtotal         Float
-  gstAmount        Float         @default(0)
+  gstPercent       Float           @default(18)
+  gstAmount        Float           @default(0)
+  discountAmount   Float           @default(0)
   total            Float
-  paidAmount       Float         @default(0)
+  paidAmount       Float           @default(0)
   balance          Float
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  client      Client      @relation(fields: [clientId], references: [id])
-  items       InvoiceItem[]
-  payments    Payment[]
+  notes            String?
+  terms            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  client           Client          @relation(fields: [clientId], references: [id])
+  order            SalesOrder?     @relation(fields: [orderId], references: [id])
+  items            InvoiceItem[]
+  payments         Payment[]
+
+  @@index([clientId])
+  @@index([status])
+  @@index([dueDate])
 }
 
 model InvoiceItem {
-  id          String   @id @default(cuid())
-  invoiceId   String
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  invoiceId   String   @db.ObjectId
+  productId   String?  @db.ObjectId
   description String
-  qty         Float
-  unitPrice   Float
-  amount      Float
-  invoice Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  qty                Float
+  unitPrice          Float
+  amount             Float
+  configurationNotes String?
+
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product     Product? @relation(fields: [productId], references: [id])
+
+  @@index([invoiceId])
+  @@index([productId])
 }
 
-// ─── Products & Inventory ──────────────────────────────────
-model Product {
-  id              String        @id @default(cuid())
-  sku             String        @unique
-  name            String
-  description     String?
-  type            String        @default("PHYSICAL") // Enum: ProductType
-  status          String        @default("ACTIVE")   // Enum: ProductStatus
-  basePrice       Float
-  taxRate         Float         @default(18)
-  stockQuantity   Float         @default(0)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  stockMovements  StockMovement[]
-}
-
-model StockMovement {
-  id              String             @id @default(cuid())
-  productId       String
-  qty             Float
-  type            String             // Enum: StockMovementType
-  createdAt       DateTime           @default(now())
-  product         Product            @relation(fields: [productId], references: [id])
-}
-
-// ─── Sales & Marketing ─────────────────────────────────────
-model Quotation {
-  id                String          @id @default(cuid())
-  quotationNo       String          @unique
-  clientId          String
-  status            String          @default("DRAFT") // Enum: QuotationStatus
-  total             Float
-  validUntil        DateTime
-  createdAt         DateTime        @default(now())
-}
-
-// ─── Finance & Accounting ──────────────────────────────────
 model Payment {
-  id              String        @id @default(cuid())
-  paymentNo       String        @unique
-  invoiceId       String?
-  clientId        String
+  id              String            @id @default(auto()) @map("_id") @db.ObjectId
+  paymentNo       String            @unique
+  invoiceId       String?           @db.ObjectId
+  clientId        String            @db.ObjectId
   amount          Float
-  date            DateTime      @default(now())
-  mode            String        @default("UPI")       // Enum: PaymentMode
-  status          String        @default("COMPLETED") // Enum: PaymentStatus
+  date            DateTime          @default(now())
+  mode            String            @default("UPI")
+  status          PaymentStatus     @default(COMPLETED)
+  type            PaymentEntryType  @default(PAYMENT)
   transactionId   String?
-  referenceNo     String?       // Added for POST compatibility
-  notes           String?       // Added for POST compatibility
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  invoice         Invoice?      @relation(fields: [invoiceId], references: [id])
-  client          Client        @relation(fields: [clientId], references: [id])
+  referenceNo     String?
+  notes           String?
+  reversalOfId    String?           @db.ObjectId
+  createdById     String?           @db.ObjectId
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  invoice         Invoice?          @relation(fields: [invoiceId], references: [id])
+  client          Client            @relation(fields: [clientId], references: [id])
+  createdBy       User?             @relation("RecordedByPayment", fields: [createdById], references: [id])
+
+  @@index([invoiceId])
+  @@index([clientId])
+  @@index([status])
+  @@index([date])
 }
 
 model Expense {
-  id              String          @id @default(cuid())
+  id              String          @id @default(auto()) @map("_id") @db.ObjectId
   expenseNo       String          @unique
-  category        String          // Enum: ExpenseCategory
+  category        String
   amount          Float
   date            DateTime        @default(now())
   description     String?
-  status          String          @default("PENDING") // Enum: ExpenseStatus
-  createdById     String
-  approvedById    String?
-  createdBy       User            @relation("CreatedBy", fields: [createdById], references: [id])
-  approvedBy      User?           @relation("ApprovedBy", fields: [approvedById], references: [id])
+  status          String          @default("PENDING")
+  paymentMethod   String          @default("BANK_TRANSFER")
+  referenceNo     String?
+  createdById     String          @db.ObjectId
+  approvedById    String?         @db.ObjectId
+
+  createdBy       User            @relation("CreatedByExpense", fields: [createdById], references: [id])
+  approvedBy      User?           @relation("ApprovedByExpense", fields: [approvedById], references: [id])
+
+  @@index([category])
+  @@index([date])
 }
 
 model ChartOfAccount {
-  id              String          @id @default(cuid())
+  id              String          @id @default(auto()) @map("_id") @db.ObjectId
   code            String          @unique
   name            String
-  type            String          // Enum: AccountType
-  subType         String          // Enum: AccountSubType
+  type            String
+  subType         String
   balance         Float           @default(0)
   journalEntries  JournalEntry[]
 }
 
 model JournalEntry {
-  id              String           @id @default(cuid())
-  date            DateTime         @default(now())
-  accountId       String
-  type            String           // Enum: JournalEntryType
+  id              String          @id @default(auto()) @map("_id") @db.ObjectId
+  date            DateTime        @default(now())
+  accountId       String          @db.ObjectId
+  type            String
   amount          Float
   description     String?
-  account         ChartOfAccount   @relation(fields: [accountId], references: [id])
+
+  account         ChartOfAccount  @relation(fields: [accountId], references: [id])
+
+  @@index([accountId])
+  @@index([date])
 }
 
-// ─── HR & Payroll ──────────────────────────────────────────
+// ─── Products & Stock Ledger ──────────────────────────────
+
+model Product {
+  id                String              @id @default(auto()) @map("_id") @db.ObjectId
+  sku               String              @unique
+  name              String
+  description       String?
+  category          String?             @default("ROBOTICS")
+  type               String              @default("PHYSICAL_PRODUCT") // PHYSICAL_PRODUCT or SERVICE
+  pricingMode        String              @default("FIXED") // FIXED or REQUIREMENT_BASED
+  status             String              @default("ACTIVE")
+  basePrice          Float?
+  taxRate            Float               @default(18)
+  stockQuantity      Float               @default(0)
+  minStock           Float               @default(5)
+  normalizedName     String?
+  sourceType         String?             @default("MANUAL") // WEBSITE or MANUAL
+  sourceUrl          String?
+  sourceSlug         String?
+  sourceProductName  String?
+  configurationNotes String?             // General guidance (e.g. "Spec based on requirement"), no fake defaults
+  lastSyncedAt       DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  stockLedgerEntries StockLedgerEntry[]
+  orderItems         SalesOrderItem[]
+  poItems            PurchaseOrderItem[]
+  invoiceItems       InvoiceItem[]
+
+  @@index([status])
+  @@index([category])
+  @@index([normalizedName])
+  @@index([sourceSlug])
+}
+
+model StockLedgerEntry {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  productId      String    @db.ObjectId
+  quantitySigned Float     // Positive (+) inbound, Negative (-) outbound
+  unitCost       Float?
+  location       String?   @default("MAIN_WAREHOUSE")
+  type           String    // OPENING, PURCHASE, SALE, RESERVATION, RELEASE, ADJUSTMENT, DAMAGE, RETURN
+  referenceType  String?   // INVOICE, PURCHASE_ORDER, MANUAL_ADJUSTMENT, OPENING_BALANCE
+  referenceId    String?
+  notes          String?
+  createdById    String?   @db.ObjectId
+  createdAt      DateTime  @default(now())
+
+  product        Product   @relation(fields: [productId], references: [id])
+  createdBy      User?     @relation("CreatedByStockEntry", fields: [createdById], references: [id])
+
+  @@index([productId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// ─── Purchasing & Vendors ─────────────────────────────────
+
+model Vendor {
+  id             String          @id @default(auto()) @map("_id") @db.ObjectId
+  vendorCode     String          @unique
+  name           String
+  contactPerson  String?
+  email          String?
+  phone          String?
+  address        String?
+  gstin          String?
+  status         String          @default("ACTIVE")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  purchaseOrders PurchaseOrder[]
+}
+
+model PurchaseOrder {
+  id               String              @id @default(auto()) @map("_id") @db.ObjectId
+  poNo             String              @unique
+  vendorId         String              @db.ObjectId
+  status           String              @default("DRAFT")
+  totalAmount      Float               @default(0)
+  notes            String?
+  expectedDelivery DateTime?
+  createdById      String              @db.ObjectId
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  vendor           Vendor              @relation(fields: [vendorId], references: [id])
+  createdBy        User                @relation("CreatedByPO", fields: [createdById], references: [id])
+  items            PurchaseOrderItem[]
+
+  @@index([vendorId])
+}
+
+model PurchaseOrderItem {
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  purchaseOrderId String        @db.ObjectId
+  productId       String?       @db.ObjectId
+  description     String
+  quantity        Float
+  unitCost        Float
+  totalCost       Float
+
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product         Product?      @relation(fields: [productId], references: [id])
+
+  @@index([purchaseOrderId])
+}
+
+// ─── Projects & Tasks ─────────────────────────────────────
+
+model Project {
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  projectCode     String?       @unique
+  name            String
+  clientId        String        @db.ObjectId
+  orderId         String?       @db.ObjectId
+  status          ProjectStatus @default(PLANNING)
+  startDate       DateTime?
+  endDate         DateTime?
+  budget          Float         @default(0)
+  createdById     String        @db.ObjectId
+  managerId       String?       @db.ObjectId
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  client          Client        @relation("ClientProjects", fields: [clientId], references: [id])
+  order           SalesOrder?   @relation(fields: [orderId], references: [id])
+  createdBy       User          @relation("CreatedByProject", fields: [createdById], references: [id])
+  manager         User?         @relation("ManagerProject", fields: [managerId], references: [id])
+  tasks           Task[]
+
+  @@index([clientId])
+  @@index([status])
+}
+
+model Task {
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  projectId       String        @db.ObjectId
+  title           String
+  description     String?
+  status          TaskStatus    @default(TODO)
+  priority        String        @default("MEDIUM")
+  dueDate         DateTime?
+  assignedToId    String?       @db.ObjectId
+  createdById     String        @db.ObjectId
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  project         Project       @relation(fields: [projectId], references: [id])
+  assignedTo      User?         @relation("AssignedToTask", fields: [assignedToId], references: [id])
+  createdBy       User          @relation("CreatedByTask", fields: [createdById], references: [id])
+
+  @@index([projectId])
+  @@index([assignedToId])
+  @@index([status])
+}
+
+// ─── Human Resources ──────────────────────────────────────
+
 model Employee {
-  id              String         @id @default(cuid())
+  id              String         @id @default(auto()) @map("_id") @db.ObjectId
   employeeId      String         @unique
-  userId          String?        @unique
+  userId          String?        @unique @db.ObjectId
   firstName       String
   lastName        String
   designation     String
   department      String
-  status          String         @default("ACTIVE") // Enum: EmployeeStatus
+  status          String         @default("ACTIVE")
+
   user            User?          @relation(fields: [userId], references: [id])
   attendance      Attendance[]
   leaveRequests   LeaveRequest[]
@@ -248,149 +605,225 @@ model Employee {
 }
 
 model Attendance {
-  id              String           @id @default(cuid())
-  employeeId      String
+  id              String         @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId      String         @db.ObjectId
   date            DateTime
-  status          String           @default("PRESENT") // Enum: AttendanceStatus
-  employee        Employee         @relation(fields: [employeeId], references: [id])
+  status          String         @default("PRESENT")
+  employee        Employee       @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId])
 }
 
 model LeaveRequest {
-  id              String      @id @default(cuid())
-  employeeId      String
-  type            String      // Enum: LeaveType
+  id              String         @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId      String         @db.ObjectId
+  type            String
   startDate       DateTime
   endDate         DateTime
-  status          String      @default("PENDING") // Enum: LeaveStatus
-  employee        Employee    @relation(fields: [employeeId], references: [id])
+  status          String         @default("PENDING")
+  employee        Employee       @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId])
 }
 
 model Payroll {
-  id              String        @id @default(cuid())
-  employeeId      String
+  id              String         @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId      String         @db.ObjectId
   month           Int
   year            Int
   basicSalary     Float
   netSalary       Float
-  status          String        @default("DRAFT") // Enum: PayrollStatus
-  employee        Employee      @relation(fields: [employeeId], references: [id])
+  status          String         @default("DRAFT")
+  employee        Employee       @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId])
 }
 
-// ─── Projects & Tasks ──────────────────────────────────────
-model Project {
-  id              String        @id @default(cuid())
-  name            String
-  clientId        String
-  status          String        @default("PLANNING") // Enum: ProjectStatus
-  startDate       DateTime?
-  endDate         DateTime?
-  budget          Float         @default(0)
-  createdById     String
-  managerId       String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  client          Client        @relation("ClientProjects", fields: [clientId], references: [id])
-  createdBy       User          @relation("CreatedBy", fields: [createdById], references: [id])
-  manager         User?         @relation("Manager", fields: [managerId], references: [id])
-  tasks           Task[]
-}
+// ─── Training & Support ───────────────────────────────────
 
-model Task {
-  id              String        @id @default(cuid())
-  projectId       String
-  title           String
-  description     String?
-  status          String        @default("TODO") // Enum: TaskStatus
-  priority        String        @default("MEDIUM") // Enum: TaskPriority
-  dueDate         DateTime?
-  assignedToId    String?
-  createdById     String
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  project         Project       @relation(fields: [projectId], references: [id])
-  assignedTo      User?         @relation("AssignedTo", fields: [assignedToId], references: [id])
-  createdBy       User          @relation("CreatedBy", fields: [createdById], references: [id])
-}
-
-// ─── Education & Workshops ─────────────────────────────────
 model Application {
-  id              String            @id @default(cuid())
-  appNo           String            @unique
-  clientId        String
-  status          String            @default("NEW") // Enum: ApplicationStatus
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  appNo           String        @unique
+  clientId        String        @db.ObjectId
+  status          String        @default("NEW")
   course          String
-  createdAt       DateTime          @default(now())
-  client          Client            @relation(fields: [clientId], references: [id])
+  createdAt       DateTime      @default(now())
+
+  client          Client        @relation(fields: [clientId], references: [id])
+
+  @@index([clientId])
 }
 
 model Event {
-  id              String      @id @default(cuid())
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
   name            String
-  status          String      @default("DRAFT") // Enum: EventStatus
+  status          String        @default("DRAFT")
   date            DateTime
 }
 
-// ─── Support & Tickets ─────────────────────────────────────
 model SupportTicket {
-  id              String         @id @default(cuid())
-  ticketNo        String         @unique
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  ticketNo        String        @unique
   subject         String
-  status          String         @default("OPEN") // Enum: TicketStatus
-  priority        String         @default("MEDIUM") // Enum: TicketPriority
-  assignedToId    String?
-  assignedTo      User?          @relation("AssignedTo", fields: [assignedToId], references: [id])
+  status          String        @default("OPEN")
+  priority        String        @default("MEDIUM")
+  assignedToId    String?       @db.ObjectId
+
+  assignedTo      User?         @relation("AssignedToTicket", fields: [assignedToId], references: [id])
+
+  @@index([assignedToId])
 }
 
-// ─── CRM & Follow-ups ──────────────────────────────────────
+// ─── System Infrastructure & Operational Audit ────────────
+
 model FollowUp {
-  id              String         @id @default(cuid())
-  clientId        String?
-  leadId          String?
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  clientId        String?       @db.ObjectId
+  leadId          String?       @db.ObjectId
   date            DateTime
-  mode            String         @default("CALL")   // Enum: FollowUpMode
-  status          String         @default("PENDING") // Enum: FollowUpStatus
+  mode            String        @default("CALL")
+  status          String        @default("PENDING")
   notes           String?
-  client          Client?        @relation(fields: [clientId], references: [id])
-  lead            Lead?          @relation(fields: [leadId], references: [id])
+  assignedToId    String?       @db.ObjectId
+
+  client          Client?       @relation(fields: [clientId], references: [id])
+  lead            Lead?         @relation(fields: [leadId], references: [id])
+
+  @@index([clientId])
+  @@index([leadId])
+  @@index([date])
+  @@index([status])
 }
 
-// ─── Audit & Activity ──────────────────────────────────────
 model ActivityLog {
-  id              String         @id @default(cuid())
-  userId          String
-  module          String         // Enum: ActivityModule
-  action          String         // Enum: ActivityAction
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String        @db.ObjectId
+  module          String
+  action          String
   details         String?
-  createdAt       DateTime       @default(now())
-  user            User           @relation(fields: [userId], references: [id])
+  createdAt       DateTime      @default(now())
+
+  user            User          @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([module])
+  @@index([createdAt])
 }
 
 model Notification {
-  id              String         @id @default(cuid())
-  userId          String
-  type            String         // Enum: NotificationType
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String        @db.ObjectId
+  type            String
   title           String
   message         String
-  read            Boolean        @default(false)
-  createdAt       DateTime       @default(now())
-  user            User           @relation(fields: [userId], references: [id])
+  read            Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+
+  user            User          @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([read])
 }
 
 model AuditLog {
-  id              String    @id @default(cuid())
-  userId          String
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String        @db.ObjectId
   action          String
   module          String
+  entityId        String?
   oldData         String?
   newData         String?
-  createdAt       DateTime  @default(now())
-  user            User      @relation(fields: [userId], references: [id])
+  ipAddress       String?
+  createdAt       DateTime      @default(now())
+
+  user            User          @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([module])
+  @@index([entityId])
+  @@index([createdAt])
 }
 
 model Comment {
-  id              String    @id @default(cuid())
-  userId          String
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String        @db.ObjectId
   content         String
-  createdAt       DateTime  @default(now())
-  user            User      @relation(fields: [userId], references: [id])
+  entityType      String?
+  entityId        String?
+  createdAt       DateTime      @default(now())
+
+  user            User          @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model IdempotencyRecord {
+  id               String       @id @default(auto()) @map("_id") @db.ObjectId
+  key              String
+  scope            String
+  requestHash      String
+  entityType       String
+  entityId         String?
+  status           String       @default("PENDING")
+  responseSnapshot String?
+  createdAt        DateTime     @default(now())
+  expiresAt        DateTime
+
+  @@unique([key, scope])
+  @@index([expiresAt])
+}
+
+model BusinessSequence {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  name       String   @unique
+  prefix     String
+  year       Int
+  lastNumber Int      @default(0)
+  updatedAt  DateTime @updatedAt
+}
+
+model IntegrationLog {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  provider      String
+  operation     String
+  status        String
+  attemptCount  Int       @default(1)
+  requestId     String?
+  errorCode     String?
+  errorMessage  String?
+  payload       String?
+  response      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastAttemptAt DateTime  @default(now())
+  nextRetryAt   DateTime?
+
+  @@index([provider])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model DocumentAttachment {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  filename     String
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  storagePath  String
+  entityType   String
+  entityId     String
+  uploadedById String   @db.ObjectId
+  createdAt    DateTime @default(now())
+
+  @@index([entityType, entityId])
+}
+
+model SystemSetting {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  key         String   @unique
+  value       String
+  category    String   @default("GENERAL")
+  description String?
+  isPublic    Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
 }

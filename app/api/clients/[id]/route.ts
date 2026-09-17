@@ -76,37 +76,42 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    // Check for active invoices with balance
-    const invoices = await prisma.invoice.findMany({ where: { clientId: params.id } });
-    const hasBalance = invoices.some(inv => inv.balance > 0);
-    
-    if (hasBalance) {
-      return NextResponse.json({ success: false, error: "Cannot delete client with outstanding invoice balance." }, { status: 400 });
+    const client = await prisma.client.findUnique({
+      where: { id: params.id },
+      include: {
+        invoices: { select: { id: true } },
+        payments: { select: { id: true } },
+      }
+    });
+
+    if (!client) {
+      return NextResponse.json({ success: false, error: "Client not found" }, { status: 404 });
     }
 
-    // Manual cleanup for SQLite (handles cascaded deletions for relations)
+    // Protect financial accounting: If client has invoices or payments, never delete financial history
+    if (client.invoices.length > 0 || client.payments.length > 0) {
+      const deactivated = await prisma.client.update({
+        where: { id: params.id },
+        data: { status: "INACTIVE" }
+      });
+      return NextResponse.json({
+        success: true,
+        data: deactivated,
+        message: "Customer deactivated. Financial and invoice ledger history has been safely preserved."
+      });
+    }
+
+    // Only clients with zero financial history can be permanently deleted
     await prisma.$transaction([
-      // 1. Delete tasks belonging to client's projects
       prisma.task.deleteMany({ where: { project: { clientId: params.id } } }),
-      // 2. Delete projects
       prisma.project.deleteMany({ where: { clientId: params.id } }),
-      // 3. Delete invoice items
-      prisma.invoiceItem.deleteMany({ where: { invoice: { clientId: params.id } } }),
-      // 4. Delete payments
-      prisma.payment.deleteMany({ where: { clientId: params.id } }),
-      // 5. Delete invoices
-      prisma.invoice.deleteMany({ where: { clientId: params.id } }),
-      // 6. Delete follow-ups
       prisma.followUp.deleteMany({ where: { clientId: params.id } }),
-      // 7. Delete applications
       prisma.application.deleteMany({ where: { clientId: params.id } }),
-      // 8. Delete client contacts
       prisma.clientContact.deleteMany({ where: { clientId: params.id } }),
-      // 9. Finally delete the client
       prisma.client.delete({ where: { id: params.id } })
     ]);
 
-    return NextResponse.json({ success: true, data: null });
+    return NextResponse.json({ success: true, data: null, message: "Customer deleted successfully" });
   } catch (error: any) {
     console.error("DELETE Client Error:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

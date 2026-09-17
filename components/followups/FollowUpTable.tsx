@@ -23,8 +23,8 @@ export function FollowUpTable({ data, loading, onEdit, onDelete, onMarkDone }: F
       header: "Client",
       accessorKey: "clientName",
       cell: (row) => (
-         <Link href={`/clients/${row.clientId}`} className="font-medium text-brand hover:underline">
-            {row.clientName}
+         <Link href={`/clients/${row.clientId || ""}`} className="font-medium text-brand hover:underline">
+            {row.clientName || "Client"}
          </Link>
       )
     },
@@ -34,28 +34,28 @@ export function FollowUpTable({ data, loading, onEdit, onDelete, onMarkDone }: F
       sortable: true,
       cell: (row) => (
         <span className={row.status === 'Overdue' ? 'text-red-600 font-medium' : 'text-gray-600'}>
-          {formatDate(row.date)} at {row.time}
+          {formatDate(row.date)} {row.time ? `at ${row.time}` : ""}
         </span>
       )
     },
     {
       header: "Mode",
       accessorKey: "mode",
-      cell: (row) => <StatusBadge status={row.mode} type="followup" />
+      cell: (row) => <StatusBadge status={row.mode} />
     },
     {
       header: "Summary",
       accessorKey: "summary",
       cell: (row) => (
-        <div className="max-w-[250px] truncate" title={row.summary}>
-          {row.summary}
+        <div className="max-w-[250px] truncate" title={row.summary || row.notes || ""}>
+          {row.summary || row.notes || "-"}
         </div>
       )
     },
     {
       header: "Status",
       accessorKey: "status",
-      cell: (row) => <StatusBadge status={row.status} type="followup" />
+      cell: (row) => <StatusBadge status={row.status} />
     },
     {
       header: "Quick Action",

@@ -233,7 +233,19 @@ export default function FollowUpsPage() {
       {/* Forms & Dialogs */}
       {isFormOpen && (
         <FollowUpForm 
-          initialData={editingTask || undefined} 
+          initialData={
+            editingTask
+              ? {
+                  ...editingTask,
+                  notes: editingTask.notes || undefined,
+                  clientId: editingTask.clientId || undefined,
+                  leadId: editingTask.leadId || undefined,
+                  time: editingTask.time || undefined,
+                  summary: editingTask.summary || undefined,
+                  nextAction: editingTask.nextAction || undefined,
+                }
+              : undefined
+          } 
           clients={clients}
           onSubmit={handleFormSubmit}
           onCancel={() => {

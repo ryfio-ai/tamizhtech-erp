@@ -51,7 +51,7 @@ export function RecentInvoices({ data }: RecentInvoicesProps) {
                 {formatDate(inv.createdAt || inv.date)}
               </td>
               <td className="px-4 py-3 text-right">
-                <StatusBadge status={inv.paymentStatus} type="payment" />
+                <StatusBadge status={inv.status} />
               </td>
             </tr>
           ))}

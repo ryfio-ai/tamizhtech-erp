@@ -26,7 +26,7 @@ export default function KanbanBoard({
 
   return (
     <div className="flex space-x-6 overflow-x-auto pb-6 h-full min-h-[500px]">
-      {statuses.map((status) => (
+      {statuses.map((status: string) => (
         <KanbanColumn
           key={status}
           title={status}

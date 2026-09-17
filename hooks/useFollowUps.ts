@@ -41,7 +41,7 @@ export function useFollowUps() {
       
       setFollowUps(prev => {
         const next = [json.data, ...prev];
-        return next.sort((a,b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime());
+        return next.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       });
       toast.success("Follow-up task scheduled");
       return json.data as FollowUp;
@@ -88,13 +88,12 @@ export function useFollowUps() {
   const markAsDone = async (id: string, currentData: FollowUp) => {
     try {
        await updateFollowUp(id, {
-         clientId: currentData.clientId,
+         clientId: currentData.clientId || undefined,
+         leadId: currentData.leadId || undefined,
          date: currentData.date,
-         time: currentData.time,
          mode: currentData.mode,
-         summary: currentData.summary,
-         nextAction: currentData.nextAction,
-         status: 'Done'
+         notes: currentData.notes || undefined,
+         status: 'COMPLETED'
        });
     } catch (e) {
        console.error(e);

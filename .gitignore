@@ -1,11 +1,38 @@
-node_modules
-.next
-.env
-.env.local
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js build output
+.next/
+out/
+build/
+dist/
+
+# Environment configurations
+.env*
+!.env.example
+
+# Local SQLite databases & journals
 *.db
 *.db-journal
+*.sqlite
+*.sqlite3
+
+# Generated exports and uploads
+*.pdf
+uploads/
+scratch/
+
+# Test & Debug
+coverage/
+backups/
+*.tsbuildinfo
 test_delete_fix.ts
-out
-build
-dist
+test-script.js
+TTRC LOGO.png
+
+# OS Files
 .DS_Store
+*.pem
+Thumbs.db

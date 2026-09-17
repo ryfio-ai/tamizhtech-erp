@@ -1,15 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Hexagon, Loader2, Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { Loader2, Eye, EyeOff, Lock, Mail } from "lucide-react";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
@@ -33,99 +31,107 @@ export default function LoginPage() {
       });
 
       if (res?.error) {
-        toast.error(res.error || "Invalid credentials");
+        toast.error("Invalid email or password");
       } else {
-        toast.success("Login successful!");
+        toast.success("Welcome to TamizhTech ERP");
         router.push(callbackUrl);
         router.refresh();
       }
-    } catch (error) {
-      toast.error("Something went wrong");
+    } catch {
+      toast.error("Network error during sign in");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50/50 p-4">
-      <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-2xl border border-gray-100 shadow-xl shadow-navy/5">
+    <div className="min-h-screen flex items-center justify-center bg-surface p-4 sm:p-6">
+      <div className="w-full max-w-md bg-white p-6 sm:p-8 rounded-2xl border border-border shadow-sm space-y-6">
+        {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center p-3 bg-brand/10 rounded-xl mb-4">
-            <Hexagon className="w-10 h-10 text-brand fill-brand/20" />
+          <div className="inline-flex items-center justify-center p-2 rounded-xl mb-2">
+            <img
+              src="/assets/ttrc-logo.png"
+              alt="Tamizh Tech Logo"
+              className="h-16 w-auto object-contain"
+            />
           </div>
-          <h1 className="text-3xl font-bold text-navy tracking-tight">Welcome Back</h1>
-          <p className="text-gray-500 font-medium tracking-wide text-sm">
-            Access your TamizhTech ERP Account
+          <h1 className="text-2xl font-bold text-ink-primary tracking-tight">TamizhTech ERP</h1>
+          <p className="text-xs text-ink-secondary">
+            Internal Operations System • Coimbatore, Tamil Nadu
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-semibold text-navy ml-1">Email ID</Label>
-              <div className="relative group">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-brand transition-colors" />
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="admin@tamizhtech.in"
-                  required
-                  className="pl-10 h-12 bg-gray-50 border-gray-100 focus:bg-white transition-all rounded-xl"
-                  disabled={loading}
-                />
-              </div>
+        {/* Login Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-ink-primary uppercase tracking-wider mb-1.5">
+              Email Address
+            </label>
+            <div className="relative">
+              <Mail className="w-4 h-4 text-ink-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                name="email"
+                type="email"
+                required
+                defaultValue="erp@tamizhtech.in"
+                placeholder="erp@tamizhtech.in"
+                className="w-full h-12 pl-10 pr-4 text-sm bg-white border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-colors text-ink-primary"
+              />
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <div className="flex justify-between items-center ml-1">
-                <Label htmlFor="password" title="Enter your password"  className="text-sm font-semibold text-navy">Password</Label>
-                <button type="button" className="text-xs font-semibold text-brand hover:underline">Forgot password?</button>
-              </div>
-              <div className="relative group">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-brand transition-colors" />
-                <Input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  required
-                  className="pl-10 pr-10 h-12 bg-gray-50 border-gray-100 focus:bg-white transition-all rounded-xl"
-                  disabled={loading}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-navy transition-colors"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
+          <div>
+            <label className="block text-xs font-semibold text-ink-primary uppercase tracking-wider mb-1.5">
+              Password
+            </label>
+            <div className="relative">
+              <Lock className="w-4 h-4 text-ink-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                name="password"
+                type={showPassword ? "text" : "password"}
+                required
+                placeholder="••••••••"
+                className="w-full h-12 pl-10 pr-11 text-sm bg-white border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-colors text-ink-primary"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-ink-muted hover:text-ink-primary"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 
           <Button
             type="submit"
-            className="w-full h-12 text-base font-bold bg-brand hover:bg-brand-dark text-white rounded-xl shadow-lg shadow-brand/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
             disabled={loading}
+            className="w-full h-12 text-sm font-semibold shadow-sm mt-2"
           >
             {loading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Signing in...
-              </>
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Signing in...</span>
+              </div>
             ) : (
-              "Sign In"
+              "Sign In to ERP"
             )}
           </Button>
         </form>
 
-        <div className="pt-4 text-center border-t border-gray-100 mt-8">
-          <p className="text-xs text-gray-400 font-medium">
-            Contact your department head if you cannot access your account.
-          </p>
+        <div className="pt-2 text-center text-xs text-ink-muted border-t border-border">
+          Tamizh Tech Robotics Company &bull; Single Business Login
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-surface" />}>
+      <LoginForm />
+    </Suspense>
   );
 }

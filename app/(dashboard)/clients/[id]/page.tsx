@@ -82,7 +82,7 @@ export default function ClientProfilePage({ params }: { params: { id: string } }
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-2xl font-bold text-navy tracking-tight">{client.name}</h1>
-                <StatusBadge status={client.status} type="client" />
+                <StatusBadge status={client.status} />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 mt-4 text-sm text-gray-600">
                 <div className="flex items-center gap-2"><Phone className="w-4 h-4 text-gray-400" /> +91 {client.phone}</div>
@@ -93,15 +93,52 @@ export default function ClientProfilePage({ params }: { params: { id: string } }
             </div>
           </div>
           
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+             <Link href={`/invoices/new?client=${client.id}`}>
+               <Button className="bg-brand hover:bg-brand-dark text-white font-semibold shadow-sm">
+                 + Create Bill
+               </Button>
+             </Link>
              <Button variant="outline" className="border-gray-200 text-gray-700 hover:bg-gray-50 bg-white" onClick={() => setIsEditOpen(true)}>
-               <Edit className="w-4 h-4 mr-2" /> Edit Profile
+               <Edit className="w-4 h-4 mr-2" /> Edit
              </Button>
              <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 bg-white" onClick={() => setIsDeleteOpen(true)}>
                <Trash2 className="w-4 h-4" />
              </Button>
           </div>
         </div>
+
+        {/* Derived Financial Metrics */}
+        {(() => {
+          const invs = relations?.invoices || [];
+          const pays = relations?.payments || [];
+          const totalInvoiced = invs.reduce((acc, i) => acc + (Number(i.total) || 0), 0);
+          const totalPaid = pays.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+          const outstandingBalance = invs.reduce((acc, i) => acc + (Number(i.balance) || 0), 0);
+
+          return (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6 pt-6 border-t border-gray-100">
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <span className="text-xs text-gray-500 block">Total Bills</span>
+                <span className="text-lg font-bold text-navy">{invs.length}</span>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <span className="text-xs text-gray-500 block">Total Invoiced</span>
+                <span className="text-lg font-bold text-navy">{formatCurrency(totalInvoiced)}</span>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <span className="text-xs text-gray-500 block">Total Paid</span>
+                <span className="text-lg font-bold text-green-700">{formatCurrency(totalPaid)}</span>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <span className="text-xs text-gray-500 block">Outstanding Due</span>
+                <span className={`text-lg font-bold ${outstandingBalance > 0 ? "text-red-600" : "text-green-700"}`}>
+                  {formatCurrency(outstandingBalance)}
+                </span>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Navigation Tabs */}
@@ -143,7 +180,7 @@ export default function ClientProfilePage({ params }: { params: { id: string } }
                       <td className="p-4 text-gray-500">{formatDate(inv.date)}</td>
                       <td className="p-4 font-medium">{formatCurrency(inv.total)}</td>
                       <td className="p-4 text-red-600 font-medium">{inv.balance > 0 ? formatCurrency(inv.balance) : '-'}</td>
-                      <td className="p-4"><StatusBadge status={inv.paymentStatus} type="payment" /></td>
+                      <td className="p-4"><StatusBadge status={inv.status} /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -165,9 +202,9 @@ export default function ClientProfilePage({ params }: { params: { id: string } }
                 <tbody className="divide-y divide-gray-100">
                   {relations.payments.map(pay => (
                     <tr key={pay.id} className="hover:bg-gray-50/50">
-                      <td className="p-4 font-medium text-navy">{pay.paymentId}</td>
+                      <td className="p-4 font-medium text-navy">{pay.paymentNo}</td>
                       <td className="p-4 text-gray-500">{formatDate(pay.date)}</td>
-                      <td className="p-4 text-gray-500">{pay.invoiceNo}</td>
+                      <td className="p-4 text-gray-500">{pay.invoiceId || "-"}</td>
                       <td className="p-4"><StatusBadge status={pay.mode} /></td>
                       <td className="p-4 font-medium text-green-700">+{formatCurrency(pay.amount)}</td>
                     </tr>
@@ -193,16 +230,16 @@ export default function ClientProfilePage({ params }: { params: { id: string } }
                     <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-white p-4 rounded border border-gray-100 shadow-sm">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-semibold text-brand uppercase">{fu.mode}</span>
-                        <time className="text-xs font-medium text-gray-400">{formatDate(fu.date)} at {fu.time}</time>
+                        <time className="text-xs font-medium text-gray-400">{formatDate(fu.date)} {fu.time ? `at ${fu.time}` : ""}</time>
                       </div>
-                      <p className="text-sm text-gray-700 mt-2">{fu.summary}</p>
+                      <p className="text-sm text-gray-700 mt-2">{fu.summary || fu.notes || "-"}</p>
                       {fu.nextAction && (
                         <div className="mt-3 p-2 bg-amber-50 rounded text-xs text-amber-800 border border-amber-100">
                           <strong>Next Action:</strong> {fu.nextAction}
                         </div>
                       )}
                       <div className="mt-3">
-                         <StatusBadge status={fu.status} type="followup" />
+                         <StatusBadge status={fu.status} />
                       </div>
                     </div>
                   </div>

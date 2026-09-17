@@ -21,15 +21,17 @@ interface PaymentFormProps {
 export function PaymentForm({ invoices, onSubmit, onCancel, isLoading, preselectedInvoiceId }: PaymentFormProps) {
   
   // Only show unpaid or partially paid invoices for dropdown selection
-  const eligibleInvoices = invoices.filter(inv => inv.paymentStatus !== 'Paid' && inv.balance > 0);
+  const eligibleInvoices = invoices.filter(inv => inv.status !== 'PAID' && (inv.balance || 0) > 0);
 
   const { register, watch, setValue, handleSubmit, formState: { errors } } = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentSchema),
     defaultValues: {
       invoiceId: preselectedInvoiceId || "",
+      clientId: "",
       date: new Date().toISOString().split('T')[0],
       amount: 0,
       mode: "Bank Transfer",
+      status: "COMPLETED",
       referenceNo: "",
       notes: ""
     }
@@ -40,23 +42,28 @@ export function PaymentForm({ invoices, onSubmit, onCancel, isLoading, preselect
     return eligibleInvoices.find(inv => inv.id === selectedInvoiceId);
   }, [selectedInvoiceId, eligibleInvoices]);
 
-  // Handle invoice selection change -> auto fill max balance
+  // Handle invoice selection change -> auto fill max balance & clientId
   const handleInvoiceSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
     setValue("invoiceId", val);
     const inv = eligibleInvoices.find(i => i.id === val);
     if (inv) {
+      setValue("clientId", inv.clientId);
       setValue("amount", inv.balance);
     } else {
+      setValue("clientId", "");
       setValue("amount", 0);
     }
   };
 
-  // Pre-fill amount if loaded with preselected invoice
+  // Pre-fill amount & client if loaded with preselected invoice
   useEffect(() => {
     if (preselectedInvoiceId) {
       const inv = eligibleInvoices.find(i => i.id === preselectedInvoiceId);
-      if (inv) setValue("amount", inv.balance);
+      if (inv) {
+        setValue("clientId", inv.clientId);
+        setValue("amount", inv.balance);
+      }
     }
   }, [preselectedInvoiceId, eligibleInvoices, setValue]);
 

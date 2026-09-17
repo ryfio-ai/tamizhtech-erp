@@ -7,17 +7,17 @@ export const revalidate = 0;
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const [invoices, payments, followUps] = await Promise.all([
-      prisma.invoice.findMany({ where: { clientId: params.id }, orderBy: { createdAt: 'desc' } }),
+      prisma.invoice.findMany({ where: { clientId: params.id }, include: { items: true }, orderBy: { createdAt: 'desc' } }),
       prisma.payment.findMany({ where: { clientId: params.id }, orderBy: { createdAt: 'desc' } }),
-      prisma.followUp.findMany({ where: { clientId: params.id }, orderBy: { createdAt: 'desc' } })
+      prisma.followUp.findMany({ where: { clientId: params.id }, orderBy: { date: 'desc' } })
     ]);
     
     return NextResponse.json<ApiResponse>({ 
       success: true, 
       data: {
-        invoices: invoices.map(i => ({...i, items: typeof i.items === 'string' ? JSON.parse(i.items) : i.items, createdAt: i.createdAt.toISOString()})),
-        payments: payments.map(p => ({...p, createdAt: p.createdAt.toISOString()})),
-        followUps: followUps.map(f => ({...f, createdAt: f.createdAt.toISOString()}))
+        invoices: invoices.map(i => ({ ...i, createdAt: i.createdAt.toISOString() })),
+        payments: payments.map(p => ({ ...p, createdAt: p.createdAt.toISOString() })),
+        followUps: followUps.map(f => ({ ...f, date: f.date.toISOString() }))
       } 
     });
   } catch (error: any) {

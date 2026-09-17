@@ -12,7 +12,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
     return NextResponse.json({ 
       success: true, 
-      data: { ...followup, clientName: followup.client.name, clientPhone: followup.client.phone }
+      data: { ...followup, clientName: followup.client?.name || "Client", clientPhone: followup.client?.phone || "" }
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

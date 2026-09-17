@@ -55,14 +55,15 @@ export default function ApplicationsPage() {
   // Convert to Client
   const handleConvertToClient = (app: Application) => {
     // Navigate to new client form with prefilled URL params
-    const params = new URLSearchParams({
-      name: app.name,
-      email: app.email,
-      phone: app.phone,
-      city: app.city,
-      service: app.appliedFor,
+    const queryObj: Record<string, string> = {
+      name: app.name || "",
+      email: app.email || "",
+      phone: app.phone || "",
+      city: app.city || "",
+      service: app.appliedFor || "",
       source: app.source || 'Website'
-    });
+    };
+    const params = new URLSearchParams(queryObj);
     
     // Auto mark as Contacted/Enrolled on conversion
     if (app.status === 'New') updateApplicationStatus(app.id, 'Contacted');

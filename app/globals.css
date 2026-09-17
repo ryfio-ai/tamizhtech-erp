@@ -5,64 +5,48 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 0 0% 7%; /* #111111 */
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 7%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 0 0% 7%;
 
-    --primary: 6 60% 46%; /* #C0392B */
-    --primary-foreground: 210 40% 98%;
+    /* Tamizh Tech Primary Brand Orange #FF6B00 */
+    --primary: 25 100% 50%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Tamizh Tech Structural Navy #1B2A4A */
+    --navy: 221 46% 20%;
+    --navy-light: 221 44% 25%;
+    --navy-dark: 221 48% 14%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --secondary: 0 0% 98%; /* #FAFAFA */
+    --secondary-foreground: 0 0% 20%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 40%; /* #666666 */
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --accent: 25 100% 96%;
+    --accent-foreground: 25 100% 40%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 6 60% 46%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --radius: 0.75rem;
-  }
+    --border: 0 0% 90%; /* #E5E5E5 */
+    --input: 0 0% 90%;
+    --ring: 25 100% 50%;
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --radius: 0.625rem;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 6 60% 46%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 6 60% 46%;
+    /* Semantic Status Tokens */
+    --success: 142 76% 36%;
+    --success-bg: 142 76% 95%;
+    --warning: 38 92% 50%;
+    --warning-bg: 48 96% 95%;
+    --danger: 0 84% 60%;
+    --danger-bg: 0 84% 96%;
   }
 }
 
@@ -70,21 +54,61 @@
   * {
     @apply border-border;
   }
+  
+  html {
+    -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-[#FAFAFA] text-[#111111] antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Focus rings */
+  :focus-visible {
+    @apply outline-none ring-2 ring-[#FF6B00]/40 ring-offset-1;
   }
 }
 
-/* Custom classes */
-.bg-brand {
-    background-color: #C0392B;
+/* Safe area padding for mobile app bottom bar */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 1rem);
 }
-.text-brand {
-    color: #C0392B;
-}
-.bg-navy {
-    background-color: #1A1A2E;
-}
-.text-navy {
-    color: #1A1A2E;
+
+/* Printable A4 invoice styling: hides all ERP chrome and outputs pristine bill */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .no-print,
+  aside,
+  header,
+  nav,
+  button,
+  .print-hide {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .printable-invoice {
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 12mm !important;
+    width: 210mm !important;
+    min-height: 297mm !important;
+    page-break-after: auto;
+  }
 }

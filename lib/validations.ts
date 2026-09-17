@@ -5,6 +5,7 @@ export const phoneRegex = /^[0-9]{10}$/;
 // ─── CRM Validations ───────────────────────────────────────
 export const clientSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
+  company: z.string().optional(),
   email: z.string().email("Please enter a valid email address."),
   phone: z.string().regex(phoneRegex, "Phone must be exactly 10 digits."),
   city: z.string().min(2, "City is required.").optional(),
@@ -12,6 +13,7 @@ export const clientSchema = z.object({
   status: z.string().default("LEAD"),
   serviceType: z.string().optional(),
   source: z.string().optional(),
+  notes: z.string().optional(),
   assignedToId: z.string().optional(),
 });
 
@@ -21,21 +23,28 @@ export const leadSchema = z.object({
   phone: z.string().regex(phoneRegex).optional().or(z.literal('')),
   status: z.string().default("NEW"),
   source: z.string().optional(),
+  notes: z.string().optional(),
   assignedToId: z.string().optional(),
 });
 
 // ─── Sales Validations ─────────────────────────────────────
 export const lineItemSchema = z.object({
+  productId: z.string().optional(),
   description: z.string().min(1, "Description is required"),
   qty: z.coerce.number().min(1, "Quantity must be at least 1"),
   unitPrice: z.coerce.number().min(0, "Unit price cannot be negative"),
+  configurationNotes: z.string().optional(),
 });
 
 export const invoiceSchema = z.object({
   clientId: z.string().min(1, "Client is required"),
-  date: z.coerce.date().default(() => new Date()),
-  dueDate: z.coerce.date(),
+  date: z.union([z.date(), z.string()]).default(() => new Date()),
+  dueDate: z.union([z.date(), z.string()]),
   items: z.array(lineItemSchema).min(1, "At least one item is required"),
+  gstPercent: z.coerce.number().default(18),
+  discountPercent: z.coerce.number().default(0),
+  paymentMethod: z.string().optional(),
+  notes: z.string().optional(),
   status: z.string().default("DRAFT"),
 });
 
@@ -44,27 +53,41 @@ export const paymentSchema = z.object({
   invoiceId: z.string().optional(),
   clientId: z.string().min(1, "Client is required"),
   amount: z.coerce.number().positive("Amount must be greater than 0"),
-  date: z.coerce.date().default(() => new Date()),
+  date: z.union([z.date(), z.string()]).default(() => new Date()),
   mode: z.string().default("UPI"),
   status: z.string().default("COMPLETED"),
   transactionId: z.string().optional(),
+  referenceNo: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 // ─── CRM Follow-up Validations ─────────────────────────────
 export const followUpSchema = z.object({
   clientId: z.string().optional(),
   leadId: z.string().optional(),
-  date: z.coerce.date().default(() => new Date()),
+  date: z.union([z.date(), z.string()]).default(() => new Date()),
+  time: z.string().optional(),
   mode: z.string().default("CALL"),
   status: z.string().default("PENDING"),
   notes: z.string().optional(),
+  summary: z.string().optional(),
+  nextAction: z.string().optional(),
 });
 
 // ─── Education Validations ─────────────────────────────────
+export const ApplicationStatusEnum = z.enum(["New", "Contacted", "Waitlisted", "Enrolled", "Rejected"]);
+
 export const applicationSchema = z.object({
-  clientId: z.string().min(1, "Client is required"),
-  course: z.string().min(2, "Course is required"),
-  status: z.string().default("NEW"),
+  clientId: z.string().optional(),
+  name: z.string().min(2, "Name is required").optional(),
+  email: z.string().email("Invalid email").optional().or(z.literal('')),
+  phone: z.string().optional(),
+  city: z.string().optional(),
+  appliedFor: z.string().optional(),
+  course: z.string().optional(),
+  source: z.string().optional(),
+  notes: z.string().optional(),
+  status: z.string().default("New"),
 });
 
 // ─── HR Validations ──────────────────────────────────────────

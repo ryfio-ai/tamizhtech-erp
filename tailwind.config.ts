@@ -1,6 +1,6 @@
-import type { Config } from "tailwindcss"
+import type { Config } from "tailwindcss";
 
-const config = {
+const config: Config = {
   darkMode: ["class"],
   content: [
     './pages/**/*.{ts,tsx}',
@@ -12,7 +12,7 @@ const config = {
   theme: {
     container: {
       center: true,
-      padding: "2rem",
+      padding: "1.5rem",
       screens: {
         "2xl": "1400px",
       },
@@ -24,14 +24,27 @@ const config = {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        surface: "#FAFAFA",
+        // Tamizh Tech Brand Colors
         brand: {
-          DEFAULT: '#C0392B',
-          dark: '#922B21',
-          light: '#E74C3C'
+          DEFAULT: '#FF6B00',
+          dark: '#E05E00',
+          light: '#FFF4ED',
+          50: '#FFF7ED',
+          100: '#FFEDD5',
+          500: '#FF6B00',
+          600: '#EA580C',
+          700: '#C2410C',
         },
         navy: {
-          DEFAULT: '#1A1A2E',
-          light: '#2C2C4E'
+          DEFAULT: '#1B2A4A',
+          light: '#24365D',
+          dark: '#121D34',
+        },
+        ink: {
+          primary: '#111111',
+          secondary: '#666666',
+          muted: '#999999',
         },
         primary: {
           DEFAULT: "hsl(var(--primary))",
@@ -67,6 +80,14 @@ const config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      minHeight: {
+        touch: "44px",
+        action: "48px",
+      },
+      minWidth: {
+        touch: "44px",
+        action: "48px",
+      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },
@@ -84,6 +105,6 @@ const config = {
     },
   },
   plugins: [require("tailwindcss-animate")],
-} satisfies Config
+};
 
-export default config
+export default config;

@@ -27,14 +27,16 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const validated = projectSchema.parse(body);
 
+    const adminUser = await prisma.user.findFirst();
     const newProject = await prisma.project.create({
       data: {
         name: validated.name,
         clientId: validated.clientId,
-        status: validated.status || "PLANNING",
+        status: (validated.status as any) || "PLANNING",
         startDate: validated.startDate,
         endDate: validated.endDate,
-        budget: validated.budget
+        budget: validated.budget || 0,
+        createdById: adminUser?.id || "000000000000000000000000",
       }
     });
 

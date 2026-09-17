@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { User, Phone, MapPin, Calendar, MoreVertical, ExternalLink } from 'lucide-react';
 import { Application } from '@/types';
 import { formatDate } from '@/lib/utils';
-import StatusBadge from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -26,8 +26,8 @@ export default function ApplicationCard({ application, onView, onDelete }: Appli
         <CardContent className="p-4 space-y-3">
           <div className="flex justify-between items-start">
              <div>
-                <h4 className="font-black text-navy text-sm tracking-tight group-hover:text-brand transition-colors">{application.name}</h4>
-                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{application.course}</p>
+                <h4 className="font-black text-navy text-sm tracking-tight group-hover:text-brand transition-colors">{application.name || "Applicant"}</h4>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{application.course || application.appliedFor || "-"}</p>
              </div>
              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -44,18 +44,18 @@ export default function ApplicationCard({ application, onView, onDelete }: Appli
 
           <div className="space-y-2">
              <div className="flex items-center text-[10px] text-gray-500 font-medium">
-                <Phone className="h-3 w-3 mr-2 text-brand/50" /> {application.phone}
+                <Phone className="h-3 w-3 mr-2 text-brand/50" /> {application.phone || "-"}
              </div>
              <div className="flex items-center text-[10px] text-gray-500 font-medium">
-                <MapPin className="h-3 w-3 mr-2 text-brand/50" /> {application.city}
+                <MapPin className="h-3 w-3 mr-2 text-brand/50" /> {application.city || "-"}
              </div>
              <div className="flex items-center text-[10px] text-gray-500 font-medium">
-                <Calendar className="h-3 w-3 mr-2 text-brand/50" /> {formatDate(application.createdAt)}
+                <Calendar className="h-3 w-3 mr-2 text-brand/50" /> {formatDate(application.createdAt || new Date())}
              </div>
           </div>
 
           <div className="pt-2 flex justify-between items-center border-t border-dashed">
-             <StatusBadge status={application.status} type="application" />
+             <StatusBadge status={application.status} />
              <div className="flex -space-x-2">
                 <div className="h-5 w-5 rounded-full bg-navy border border-white flex items-center justify-center text-[8px] text-white font-bold">TT</div>
              </div>

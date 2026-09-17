@@ -1,68 +1,117 @@
 "use client";
 
+import React, { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Bell, Search, Menu } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { QuickActionMenu } from "./QuickActionMenu";
+import { GlobalSearchModal } from "./GlobalSearchModal";
 
-const getPageTitle = (pathname: string | null) => {
-  if (!pathname || pathname === "/") return "Dashboard";
-  if (pathname.startsWith("/clients")) return "Clients";
-  if (pathname.startsWith("/invoices")) return "Invoices";
-  if (pathname.startsWith("/payments")) return "Payments";
-  if (pathname.startsWith("/followups")) return "Follow-ups";
-  if (pathname.startsWith("/applications")) return "Applications";
-  return "Overview";
+interface TopBarProps {
+  onMobileMenuClick?: () => void;
+  overdueCount?: number;
+}
+
+const getPageContext = (pathname: string | null) => {
+  if (!pathname || pathname === "/") return { section: "Core", title: "Dashboard" };
+  if (pathname.startsWith("/clients")) return { section: "Sales", title: "Customers" };
+  if (pathname.startsWith("/leads")) return { section: "Sales", title: "Leads" };
+  if (pathname.startsWith("/quotations")) return { section: "Sales", title: "Quotations" };
+  if (pathname.startsWith("/orders")) return { section: "Sales", title: "Sales Orders" };
+  if (pathname.startsWith("/invoices")) return { section: "Finance", title: "Invoices" };
+  if (pathname.startsWith("/payments")) return { section: "Finance", title: "Payments" };
+  if (pathname.startsWith("/finance")) return { section: "Finance", title: "Expenses" };
+  if (pathname.startsWith("/products")) return { section: "Operations", title: "Products & Stock" };
+  if (pathname.startsWith("/projects")) return { section: "Operations", title: "Projects" };
+  if (pathname.startsWith("/followups")) return { section: "Sales", title: "Follow-ups" };
+  if (pathname.startsWith("/documents")) return { section: "Tools", title: "Documents" };
+  if (pathname.startsWith("/audit")) return { section: "System", title: "Audit Trail" };
+  if (pathname.startsWith("/settings")) return { section: "System", title: "Company Settings" };
+  return { section: "ERP", title: "Overview" };
 };
 
-export function TopBar({ onMenuClick, overdueCount = 0 }: { onMenuClick?: () => void, overdueCount?: number }) {
+export function TopBar({ onMobileMenuClick, overdueCount = 0 }: TopBarProps) {
   const pathname = usePathname();
-  const title = getPageTitle(pathname);
+  const { title, section } = getPageContext(pathname);
   const { data: session } = useSession();
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Global Ctrl + K listener
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200 shadow-sm flex items-center justify-between px-4 sm:px-6 sticky top-0 z-40">
-      
-      {/* Mobile Menu & Title */}
-      <div className="flex items-center gap-3">
-        <button 
-          onClick={onMenuClick}
-          className="md:hidden p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-md"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-        <h1 className="text-xl font-bold text-navy truncate">{title}</h1>
-      </div>
+    <>
+      <header className="h-14 sm:h-16 bg-white border-b border-border flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30 shrink-0">
+        {/* Left Side: Mobile Logo / Breadcrumb Title */}
+        <div className="flex items-center gap-3">
+          {/* Mobile App Branding */}
+          <div className="md:hidden flex items-center gap-2">
+            <img
+              src="/assets/ttrc-logo.png"
+              alt="Logo"
+              className="w-7 h-7 object-contain rounded"
+            />
+            <span className="font-bold text-base text-ink-primary tracking-tight">
+              {title}
+            </span>
+          </div>
 
-      {/* Right Side Actions */}
-      <div className="flex items-center gap-4">
-        
-        {/* Search */}
-        <div className="hidden sm:flex relative items-center">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3" />
-          <input 
-            type="text" 
-            placeholder="Search across app..." 
-            className="h-9 w-64 pl-9 pr-4 text-sm bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-all"
-          />
+          {/* Desktop Breadcrumb */}
+          <div className="hidden md:flex items-center gap-2 text-sm">
+            <span className="text-ink-secondary text-xs uppercase tracking-wider">{section}</span>
+            <span className="text-ink-muted">/</span>
+            <h2 className="text-base font-bold text-ink-primary tracking-tight">{title}</h2>
+          </div>
         </div>
 
-        {/* Notifications */}
-        <button className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
-          <Bell className="w-5 h-5" />
-          {overdueCount > 0 && (
-             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
-          )}
-        </button>
+        {/* Right Side: Global Search, Quick Action, Notifications, Profile */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Global Search Button */}
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="flex items-center gap-2 h-9 px-3 text-xs bg-surface border border-border text-ink-secondary hover:text-ink-primary hover:border-brand/40 rounded-lg transition-colors cursor-pointer"
+          >
+            <Search className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Search...</span>
+            <kbd className="hidden sm:inline-block bg-white text-[10px] px-1.5 py-0.5 rounded border border-border text-ink-muted">
+              Ctrl K
+            </kbd>
+          </button>
 
-        {/* Profile Avatar */}
-        <div className="h-8 w-8 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0">
-           {session?.user?.image ? (
-             <img src={session.user.image} alt="User" className="h-full w-full rounded-full object-cover" />
-           ) : (
-             <span className="text-xs font-bold text-brand">{session?.user?.name?.charAt(0) || 'A'}</span>
-           )}
+          {/* Quick Action Button (Desktop only here, mobile has FAB) */}
+          <div className="hidden sm:block">
+            <QuickActionMenu />
+          </div>
+
+          {/* Notifications */}
+          <button
+            aria-label="Notifications"
+            className="relative p-2 text-ink-secondary hover:text-ink-primary hover:bg-surface rounded-full transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
+          >
+            <Bell className="w-4 h-4" />
+            {overdueCount > 0 && (
+              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
+            )}
+          </button>
+
+          {/* User Profile Avatar */}
+          <div className="h-8 w-8 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center font-bold text-xs text-brand shrink-0">
+            {session?.user?.name?.charAt(0) || "T"}
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* Global Search Modal */}
+      <GlobalSearchModal open={searchOpen} onOpenChange={setSearchOpen} />
+    </>
   );
 }

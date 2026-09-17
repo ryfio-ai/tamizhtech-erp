@@ -28,22 +28,29 @@ export async function POST(req: NextRequest) {
     const newId = generateId();
 
     const count = await prisma.application.count();
-    const applicationNo = `APP-${String(count + 1).padStart(6, '0')}`;
+    const appNo = `APP-${String(count + 1).padStart(6, '0')}`;
+
+    let clientId = body.clientId;
+    if (!clientId) {
+      const client = await prisma.client.create({
+        data: {
+          clientCode: `CL-${Date.now().toString().slice(-4)}`,
+          name: body.name || "Student Applicant",
+          email: body.email || `applicant-${Date.now()}@tamizhtech.in`,
+          phone: body.phone || "0000000000",
+          city: body.city || "Coimbatore",
+          status: "STUDENT",
+        }
+      });
+      clientId = client.id;
+    }
 
     const newApp = await prisma.application.create({
       data: {
-        id: newId,
-        applicationNo,
-        name: body.name,
-        email: body.email,
-        phone: body.phone,
-        city: body.city,
-        appliedFor: body.appliedFor,
-        appliedDate: body.appliedDate || new Date().toISOString().split('T')[0],
-        status: body.status || "New",
-        source: body.source || "Website",
-        notes: body.notes || "",
-        emailSent: false
+        appNo,
+        clientId,
+        course: body.course || body.appliedFor || "Robotics Training",
+        status: (body.status || "NEW").toUpperCase(),
       }
     });
 

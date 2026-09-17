@@ -2,7 +2,7 @@
 
 import { Application } from "@/types";
 import { useState } from "react";
-import { MoreHorizontal, UserRefresh, CheckCircle2, XCircle, Trash2, Mail, Phone, ExternalLink } from "lucide-react";
+import { MoreHorizontal, UserCheck, CheckCircle2, XCircle, Trash2, Mail, Phone, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ApplicationKanbanProps {
@@ -91,7 +91,7 @@ export function ApplicationKanban({ data, onStatusChange, onDelete, onConvertToC
                     </div>
 
                     <div className="mt-4 pt-3 border-t border-gray-50 text-[10px] text-gray-400 flex justify-between items-center">
-                       <span>{new Date(app.appliedDate).toLocaleDateString('en-GB')}</span>
+                       <span>{app.appliedDate || app.createdAt ? new Date(app.appliedDate || app.createdAt || Date.now()).toLocaleDateString('en-GB') : '-'}</span>
                        {app.status !== 'Enrolled' && col.id !== 'Rejected' && (
                          <Button 
                            variant="outline" 

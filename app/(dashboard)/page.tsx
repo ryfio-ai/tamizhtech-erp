@@ -1,213 +1,322 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { DashboardStats } from "@/types";
-import { StatsCard } from "@/components/dashboard/StatsCard";
-import { RevenueChart } from "@/components/dashboard/RevenueChart";
-import { PaymentStatusChart } from "@/components/dashboard/PaymentStatusChart";
-import { RecentInvoices } from "@/components/dashboard/RecentInvoices";
-import { UpcomingFollowUps } from "@/components/dashboard/UpcomingFollowUps";
-import { formatCurrency, cn } from "@/lib/utils";
+import React, { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { 
+  Users, 
+  IndianRupee, 
+  Receipt, 
+  AlertTriangle, 
+  Plus, 
+  CreditCard, 
+  Package, 
+  CalendarClock, 
+  ArrowRight,
+  ExternalLink
+} from "lucide-react";
+import { StatCard } from "@/components/shared/StatCard";
+import { StatusBadge } from "@/components/shared/StatusBadge";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, IndianRupee, CreditCard, CalendarClock, AlertTriangle, FileText } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { formatCurrency, formatDate } from "@/lib/utils";
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const { data: session } = useSession();
+  const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchStats = async () => {
+  const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/dashboard/stats');
+      const res = await fetch("/api/dashboard/stats");
       const json = await res.json();
-      
       if (json.success) {
         setStats(json.data);
-      } else {
-        setError(json.error || "Failed to load dashboard data");
-        toast.error("Error loading dashboard data");
       }
     } catch (err: any) {
-       setError(err.message);
-       toast.error("Network error loading dashboard");
+      console.error("Dashboard load error:", err);
+      toast.error("Failed to refresh dashboard stats");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchStats();
-    // Auto refresh every 60 seconds
-    const interval = setInterval(fetchStats, 60000);
-    return () => clearInterval(interval);
+    fetchDashboardData();
   }, []);
 
-  if (loading && !stats) return <LoadingSkeleton type="page" />;
+  const userName = session?.user?.name || "TamizhTech Team";
+  const todayFormatted = new Date().toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 
-  if (error && !stats) {
-    return (
-      <div className="w-full h-96 flex flex-col items-center justify-center bg-white rounded-xl border border-red-100 p-8 shadow-sm">
-         <AlertTriangle className="w-12 h-12 text-red-500 mb-4" />
-         <h2 className="text-xl font-bold text-navy mb-2">Failed to load Dashboard</h2>
-         <p className="text-gray-500 mb-6">{error}</p>
-         <Button onClick={fetchStats} variant="outline">Try Again</Button>
-      </div>
-    );
+  if (loading && !stats) {
+    return <LoadingSkeleton type="page" />;
   }
 
-  if (!stats) return null;
+  const todayBillsCount = stats?.todayBillsCount || 0;
+  const todayBillsAmount = stats?.todayBillsAmount || 0;
+  const todayPaymentsAmount = stats?.todayPaymentsAmount || 0;
+  const totalOutstanding = stats?.totalOutstandingBalance || 0;
+  const lowStockCount = stats?.lowStockCount || 0;
+  const recentBills = stats?.recentBills || [];
+  const lowStockProducts = stats?.lowStockProducts || [];
+  const recentCustomers = stats?.recentCustomers || [];
+  const upcomingFollowUps = stats?.upcomingFollowUps || [];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto w-full">
-      
-      {/* Page Header & Quick Actions */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-6 w-full max-w-7xl mx-auto pb-10">
+      {/* 1. Operations Header & Fast Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-2xl border border-border shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold text-navy tracking-tight">Overview</h1>
-          <p className="text-sm text-gray-500">Welcome back. Here's what's happening today.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-ink-primary tracking-tight">
+            Good morning, {userName}
+          </h1>
+          <p className="text-xs sm:text-sm text-ink-secondary mt-0.5">
+            {todayFormatted} • Tamizh Tech Robotics Company Operations Workspace
+          </p>
         </div>
-        
+
+        {/* Core Quick Actions */}
         <div className="flex flex-wrap items-center gap-2">
-           <Link href="/clients?new=true">
-             <Button size="sm" className="bg-white text-navy border border-gray-200 hover:bg-gray-50 shadow-sm gap-2">
-                <Plus className="w-4 h-4" /> Client
-             </Button>
-           </Link>
-           <Link href="/invoices/new">
-             <Button size="sm" className="bg-brand text-white hover:bg-brand-dark shadow-sm gap-2">
-                <FileText className="w-4 h-4" /> Invoice
-             </Button>
-           </Link>
+          <Link href="/invoices/new">
+            <Button size="sm" className="gap-1.5 h-10 text-xs bg-brand hover:bg-brand-dark shadow-sm font-semibold">
+              <Plus className="w-3.5 h-3.5" />
+              <span>New Bill</span>
+            </Button>
+          </Link>
+          <Link href="/clients?new=true">
+            <Button variant="outline" size="sm" className="gap-1.5 h-10 text-xs text-ink-primary hover:text-brand">
+              <Users className="w-3.5 h-3.5 text-brand" />
+              <span>New Customer</span>
+            </Button>
+          </Link>
+          <Link href="/products">
+            <Button variant="outline" size="sm" className="gap-1.5 h-10 text-xs text-ink-primary hover:text-brand">
+              <Package className="w-3.5 h-3.5 text-brand" />
+              <span>Add Product</span>
+            </Button>
+          </Link>
+          <Link href="/payments/new">
+            <Button variant="outline" size="sm" className="gap-1.5 h-10 text-xs text-ink-primary hover:text-green-600">
+              <CreditCard className="w-3.5 h-3.5 text-green-600" />
+              <span>Record Payment</span>
+            </Button>
+          </Link>
         </div>
       </div>
 
-      {/* Alerts */}
-      {stats.overdueFollowUps > 0 && (
-        <div className="bg-red-50 border border-red-200 p-4 rounded-xl flex items-center justify-between shadow-sm">
-           <div className="flex items-center gap-3">
-             <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-               <CalendarClock className="w-5 h-5 text-red-600" />
-             </div>
-             <div>
-               <h3 className="text-sm font-semibold text-red-800">Action Required</h3>
-               <p className="text-xs text-red-600">You have {stats.overdueFollowUps} overdue follow-up{stats.overdueFollowUps !== 1 && 's'} pending.</p>
-             </div>
-           </div>
-           <Link href="/followups?filter=overdue">
-             <Button size="sm" variant="outline" className="text-red-700 border-red-300 hover:bg-red-100 bg-white">
-               View Tasks
-             </Button>
-           </Link>
-        </div>
-      )}
-
-      {/* Stat Cards Matrix */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatsCard 
-          title="Total Active Clients"
-          value={stats.totalActiveClients}
-          icon={Users}
-          iconClassName="bg-blue-50 text-blue-600"
-          description="Clients currently taking services"
+      {/* 2. Four Core Operations Metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <StatCard
+          title="Today's Bills"
+          value={todayBillsCount}
+          subtitle={`₹${todayBillsAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })} invoiced`}
+          icon={Receipt}
+          trend={todayBillsCount > 0 ? "Active today" : "No bills yet"}
+          trendDirection="neutral"
         />
-        <StatsCard 
-          title="Revenue This Month"
-          value={formatCurrency(stats.totalRevenueThisMonth)}
+
+        <StatCard
+          title="Today's Collections"
+          value={`₹${todayPaymentsAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
+          subtitle="Payments received today"
           icon={IndianRupee}
-          iconClassName="bg-green-50 text-green-600"
-          description="Invoiced amount grouped by month"
+          badgeVariant="success"
         />
-        <StatsCard 
-          title="Outstanding Balances"
-          value={formatCurrency(stats.totalOutstandingBalance)}
-          icon={CreditCard}
-          iconClassName="bg-amber-50 text-amber-600"
-          description="Total unpaid amounts across system"
-          trend={stats.overdueInvoices > 0 ? "down" : "neutral"}
-          trendValue={stats.overdueInvoices > 0 ? `${stats.overdueInvoices} overdue` : undefined}
+
+        <StatCard
+          title="Total Outstanding"
+          value={`₹${totalOutstanding.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
+          subtitle="Pending customer balances"
+          icon={IndianRupee}
+          badge={totalOutstanding > 0 ? "Collect Due" : "Settled"}
+          badgeVariant={totalOutstanding > 0 ? "warning" : "success"}
         />
-        <StatsCard 
-          title="Pending Follow-ups"
-          value={stats.pendingFollowUps}
-          icon={CalendarClock}
-          iconClassName="bg-purple-50 text-purple-600"
-          description="Total tasks waiting to be processed"
+
+        <StatCard
+          title="Low Stock Alert"
+          value={lowStockCount}
+          subtitle="Products below threshold"
+          icon={AlertTriangle}
+          badge={lowStockCount > 0 ? "Replenish" : "Stock Healthy"}
+          badgeVariant={lowStockCount > 0 ? "warning" : "default"}
         />
       </div>
 
-      {/* Main Content Sections */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* 3. Primary Operations Tables: Recent Bills & Low Stock Products */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* Revenue Chart (Spans 2 cols) */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col">
-          <div className="mb-4">
-            <h3 className="text-base font-semibold text-navy">Revenue Overview</h3>
-            <p className="text-xs text-gray-500">Gross revenue invoiced over the last 6 months</p>
-          </div>
-          <div className="flex-1 min-h-[300px]">
-            <RevenueChart data={stats.monthlyRevenue || []} />
-          </div>
-        </div>
-
-        {/* Payment Demographics */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col">
-          <div className="mb-4">
-            <h3 className="text-base font-semibold text-navy">Payment Distribution</h3>
-            <p className="text-xs text-gray-500">Status of all generated invoices</p>
-          </div>
-          <div className="flex-1 min-h-[300px]">
-            <PaymentStatusChart data={stats.paymentStatusBreakdown} />
-          </div>
-        </div>
-
-      </div>
-
-      {/* Bottom Row Tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-12">
-        
-        {/* Recent Invoices */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
-          <div className="p-5 border-b border-gray-50 flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-semibold text-navy">Recent Invoices</h3>
-              <p className="text-xs text-gray-500">Latest 5 invoices created</p>
+        {/* Recent Bills */}
+        <div className="bg-white rounded-xl border border-border shadow-sm p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Receipt className="w-4 h-4 text-brand" />
+              <h2 className="text-base font-bold text-ink-primary">Recent Bills</h2>
             </div>
-            <Link href="/invoices">
-              <span className="text-sm text-brand font-medium hover:underline">View All</span>
+            <Link href="/invoices" className="text-xs font-semibold text-brand hover:underline flex items-center gap-1">
+              View all <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
-          <div className="flex-1 p-0">
-             <RecentInvoices data={stats.recentInvoices || []} />
-          </div>
+
+          {recentBills.length === 0 ? (
+            <div className="py-8 text-center text-xs text-ink-secondary">
+              No bills created yet. Click &quot;New Bill&quot; to generate your first invoice.
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {recentBills.map((b: any) => (
+                <div key={b.id} className="py-3 flex items-center justify-between text-xs hover:bg-gray-50/50 rounded-lg px-2">
+                  <div>
+                    <Link href={`/invoices/${b.id}`} className="font-semibold text-brand hover:underline">
+                      {b.invoiceNo}
+                    </Link>
+                    <div className="text-ink-secondary font-medium mt-0.5">{b.clientName}</div>
+                  </div>
+
+                  <div className="text-right space-y-1">
+                    <div className="font-bold text-ink-primary">
+                      {formatCurrency(b.total)}
+                    </div>
+                    <StatusBadge status={b.status} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Upcoming Tasks */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
-          <div className="p-5 border-b border-gray-50 flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-semibold text-navy">Upcoming Follow-ups</h3>
-              <p className="text-xs text-gray-500">Scheduled for the next 7 days</p>
+        {/* Low Stock Products */}
+        <div className="bg-white rounded-xl border border-border shadow-sm p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Package className="w-4 h-4 text-amber-600" />
+              <h2 className="text-base font-bold text-ink-primary">Stock Alerts</h2>
             </div>
-            <Link href="/followups">
-              <span className="text-sm text-brand font-medium hover:underline">View Kanban</span>
+            <Link href="/products" className="text-xs font-semibold text-brand hover:underline flex items-center gap-1">
+              Manage stock <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
-          <div className="flex-1 p-5 pt-4">
-             <UpcomingFollowUps 
-               data={stats.upcomingFollowUps || []} 
-               onMarkDone={async (id) => {
-                 toast.info("Navigate to Follow-ups tab to execute action.");
-               }}
-             />
-          </div>
+
+          {lowStockProducts.length === 0 ? (
+            <div className="py-8 text-center text-xs text-green-700 bg-green-50/50 rounded-lg">
+              ✓ All catalog products are at or above safe stock levels.
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {lowStockProducts.map((p: any) => (
+                <div key={p.id} className="py-3 flex items-center justify-between text-xs hover:bg-gray-50/50 rounded-lg px-2">
+                  <div>
+                    <div className="font-semibold text-ink-primary">{p.name}</div>
+                    <div className="text-ink-secondary font-mono text-[11px] mt-0.5">{p.sku}</div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <span className="font-bold text-red-600 text-sm">{p.stockQuantity} units</span>
+                      <span className="text-[10px] text-ink-secondary block">Min: {p.minStock || 5}</span>
+                    </div>
+                    <Link href="/products">
+                      <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs text-brand">
+                        Adjust
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
       </div>
 
+      {/* 4. Secondary Operations Row: Recent Customers & Upcoming Follow-ups */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Recent Customers */}
+        <div className="bg-white rounded-xl border border-border shadow-sm p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-brand" />
+              <h2 className="text-base font-bold text-ink-primary">Recent Customers</h2>
+            </div>
+            <Link href="/clients" className="text-xs font-semibold text-brand hover:underline flex items-center gap-1">
+              View all <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          {recentCustomers.length === 0 ? (
+            <div className="py-8 text-center text-xs text-ink-secondary">
+              No customers registered yet. Click &quot;New Customer&quot; to add.
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {recentCustomers.map((c: any) => (
+                <div key={c.id} className="py-3 flex items-center justify-between text-xs hover:bg-gray-50/50 rounded-lg px-2">
+                  <div>
+                    <Link href={`/clients/${c.id}`} className="font-semibold text-ink-primary hover:text-brand">
+                      {c.name}
+                    </Link>
+                    <div className="text-ink-secondary text-[11px] mt-0.5">
+                      {c.company ? `${c.company} • ` : ""}{c.phone ? `+91 ${c.phone}` : c.email}
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <span className={`font-semibold block ${c.outstandingBalance > 0 ? "text-red-600" : "text-green-700"}`}>
+                      {c.outstandingBalance > 0 ? `Due: ${formatCurrency(c.outstandingBalance)}` : "No Due"}
+                    </span>
+                    <Link href={`/invoices/new?client=${c.id}`} className="text-[11px] text-brand hover:underline">
+                      + Create Bill
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Pending Follow-ups */}
+        <div className="bg-white rounded-xl border border-border shadow-sm p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CalendarClock className="w-4 h-4 text-brand" />
+              <h2 className="text-base font-bold text-ink-primary">Scheduled Follow-ups</h2>
+            </div>
+            <Link href="/followups" className="text-xs font-semibold text-brand hover:underline flex items-center gap-1">
+              View all <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          {upcomingFollowUps.length === 0 ? (
+            <div className="py-8 text-center text-xs text-ink-secondary">
+              No pending follow-ups scheduled for today.
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {upcomingFollowUps.map((f: any) => (
+                <div key={f.id} className="py-3 flex items-center justify-between text-xs hover:bg-gray-50/50 rounded-lg px-2">
+                  <div>
+                    <div className="font-semibold text-ink-primary">{f.clientName}</div>
+                    <div className="text-ink-secondary text-[11px] mt-0.5">{f.notes || "Follow-up discussion"}</div>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="font-medium text-ink-primary block">{formatDate(f.date)}</span>
+                    <span className="text-[10px] uppercase font-bold text-brand">{f.mode}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+      </div>
     </div>
   );
 }

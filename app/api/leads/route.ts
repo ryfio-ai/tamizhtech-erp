@@ -27,15 +27,19 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const validated = leadSchema.parse(body);
 
+    const count = await prisma.lead.count();
+    const leadCode = `LEAD-${String(count + 1).padStart(5, '0')}`;
+
     const newLead = await prisma.lead.create({
       data: {
+        leadCode,
         name: validated.name,
-        email: validated.email,
-        phone: validated.phone,
+        email: validated.email || null,
+        phone: validated.phone || null,
         status: validated.status || "NEW",
         source: validated.source || "ONLINE",
-        notes: validated.notes || "",
-        assignedToId: validated.assignedToId
+        notes: validated.notes || null,
+        assignedToId: validated.assignedToId || null
       }
     });
 

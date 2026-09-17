@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { InvoiceFormValues, invoiceSchema } from "@/lib/validations";
+import { generateInvoiceNo } from "@/lib/sequence";
+import { deductStockForIssuedInvoice } from "@/lib/stockService";
+import { getAuthoritativeInvoiceFinancials } from "@/lib/invoiceService";
 import { z } from "zod";
 
 export const revalidate = 0;
@@ -10,9 +13,13 @@ export async function GET(req: NextRequest) {
     const invoices = await prisma.invoice.findMany({
       include: { 
         client: true,
-        items: true
+        items: {
+          include: {
+            product: true,
+          }
+        }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: "desc" }
     });
 
     const formatted = invoices.map(i => ({
@@ -36,20 +43,24 @@ export async function POST(req: NextRequest) {
     const body: InvoiceFormValues = await req.json();
     const validated = invoiceSchema.parse(body);
 
-    // Auto-generate invoice number (TT-INV-XXXX)
-    const count = await prisma.invoice.count();
-    const invoiceNo = `TT-INV-${(count + 1).toString().padStart(6, '0')}`;
+    // Concurrency-safe atomic invoice number from BusinessSequence
+    const invoiceNo = await generateInvoiceNo();
 
-    // Get client
+    // Verify client
     const client = await prisma.client.findUnique({ where: { id: validated.clientId } });
     if (!client) {
-      return NextResponse.json({ success: false, error: "Client not found" }, { status: 404 });
+      return NextResponse.json({ success: false, error: "Customer not found" }, { status: 404 });
     }
 
-    // Calculate totals based on items
-    const subtotal = validated.items.reduce((sum, item) => sum + (item.qty * item.unitPrice), 0);
-    const gstAmount = subtotal * 0.18; // Default 18% GST for TamizhTech
-    const total = subtotal + gstAmount;
+    // Preliminary item totals
+    const subtotal = validated.items.reduce((sum, item) => sum + (Number(item.qty) * Number(item.unitPrice)), 0);
+    const gstPercent = Number(validated.gstPercent) || 18;
+    const gstAmount = subtotal * (gstPercent / 100);
+    const discountPercent = Number(validated.discountPercent) || 0;
+    const discountAmount = subtotal * (discountPercent / 100);
+    const total = Math.max(0, subtotal + gstAmount - discountAmount);
+
+    const initialStatus = (validated.status as any) || "DRAFT";
 
     const newInvoice = await prisma.invoice.create({
       data: {
@@ -58,25 +69,42 @@ export async function POST(req: NextRequest) {
         clientName: client.name,
         date: new Date(validated.date),
         dueDate: new Date(validated.dueDate),
-        status: validated.status || "DRAFT",
+        status: initialStatus,
         subtotal,
+        gstPercent,
         gstAmount,
+        discountAmount,
         total,
         paidAmount: 0,
         balance: total,
+        notes: validated.notes || "Thank you for your business!",
         items: {
           create: validated.items.map(item => ({
+            productId: (item as any).productId || null,
             description: item.description,
-            qty: item.qty,
-            unitPrice: item.unitPrice,
-            amount: item.qty * item.unitPrice
+            qty: Number(item.qty),
+            unitPrice: Number(item.unitPrice),
+            amount: Number(item.qty) * Number(item.unitPrice),
+            configurationNotes: (item as any).configurationNotes?.trim() || null,
           }))
         }
       },
       include: {
-        items: true
+        items: {
+          include: {
+            product: true
+          }
+        }
       }
     });
+
+    // Lock 1: Draft bills do NOT deduct stock. Only ISSUED bills deduct stock.
+    if (initialStatus === "ISSUED") {
+      await deductStockForIssuedInvoice(newInvoice.id);
+    }
+
+    // Authoritative calculation pipeline (Lock 1 from Gate 4)
+    await getAuthoritativeInvoiceFinancials(newInvoice.id);
 
     return NextResponse.json({ success: true, data: newInvoice }, { status: 201 });
   } catch (error: any) {

@@ -30,16 +30,16 @@ export function UpcomingFollowUps({ data, onMarkDone }: UpcomingFollowUpsProps) 
           <div key={idx} className="flex items-start justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
             <div className="flex flex-col gap-1 w-[70%]">
               <div className="flex items-center gap-2">
-                <span className="font-medium text-navy text-sm truncate">{item.clientName}</span>
+                <span className="font-medium text-navy text-sm truncate">{item.clientName || "Client"}</span>
                 {isOverdue && (
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">OVERDUE</span>
                 )}
               </div>
               <span className="text-xs text-brand font-medium">
-                {formatDate(item.date)} at {item.time} ({item.mode})
+                {formatDate(item.date)} {item.time ? `at ${item.time}` : ""} ({item.mode})
               </span>
-              <p className="text-xs text-gray-500 line-clamp-2 mt-1" title={item.nextAction || item.summary}>
-                {item.nextAction || item.summary || "No specific action noted"}
+              <p className="text-xs text-gray-500 line-clamp-2 mt-1" title={item.nextAction || item.summary || item.notes || ""}>
+                {item.nextAction || item.summary || item.notes || "No specific action noted"}
               </p>
             </div>
             
@@ -47,7 +47,7 @@ export function UpcomingFollowUps({ data, onMarkDone }: UpcomingFollowUpsProps) 
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={() => onMarkDone(item.id, item.clientId)}
+                onClick={() => onMarkDone(item.id, item.clientId || "")}
                 className="h-8 gap-1 border-gray-200 hover:border-green-500 hover:text-green-600 hover:bg-green-50 shrink-0"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />

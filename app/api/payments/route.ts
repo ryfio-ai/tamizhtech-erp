@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { CreatePaymentInput } from "@/types";
 import { generateId } from "@/lib/utils";
+import { generatePaymentNo } from "@/lib/sequence";
 
 export const revalidate = 0;
 
@@ -30,9 +31,8 @@ export async function POST(req: NextRequest) {
     const body: CreatePaymentInput = await req.json();
     const newId = generateId();
 
-    // Generate Payment ID (PAY-XXXXXX)
-    const count = await prisma.payment.count();
-    const paymentId = `PAY-${String(count + 1).padStart(6, '0')}`;
+    // Generate Payment Receipt No atomically from BusinessSequence
+    const paymentId = await generatePaymentNo();
 
     // Validate Invoice
     const invoice = await prisma.invoice.findUnique({ where: { id: body.invoiceId } });
@@ -62,16 +62,16 @@ export async function POST(req: NextRequest) {
       // 2. Update Invoice
       const newPaidAmount = invoice.paidAmount + body.amount;
       const newBalance = invoice.total - newPaidAmount;
-      let newStatus = "Partial";
-      if (newBalance <= 0) newStatus = "Paid";
-      if (newPaidAmount === 0 && invoice.total > 0) newStatus = "Unpaid";
+      let newStatus = "PARTIALLY_PAID";
+      if (newBalance <= 0) newStatus = "PAID";
+      if (newPaidAmount === 0 && invoice.total > 0) newStatus = "ISSUED";
 
       await tx.invoice.update({
         where: { id: invoice.id },
         data: {
           paidAmount: newPaidAmount,
           balance: newBalance,
-          status: newStatus
+          status: newStatus as any
         }
       });
 

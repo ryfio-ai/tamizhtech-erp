@@ -1,121 +1,107 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { DashboardStats } from "@/types";
 
 export const revalidate = 0;
 
 export async function GET(req: NextRequest) {
   try {
-    const [clients, invoices, payments, followups, employees, products, projects] = await Promise.all([
-      prisma.client.findMany({ include: { invoices: true } }),
-      prisma.invoice.findMany({ include: { client: true, items: true } }),
-      prisma.payment.findMany(),
-      prisma.followUp.findMany({ include: { client: true } }),
-      prisma.employee.findMany(),
-      prisma.product.findMany(),
-      prisma.project.findMany()
+    const [clients, invoices, payments, followups, products] = await Promise.all([
+      prisma.client.findMany({ 
+        include: { invoices: true, payments: true },
+        orderBy: { createdAt: "desc" }
+      }),
+      prisma.invoice.findMany({ 
+        include: { client: true, items: true },
+        orderBy: { createdAt: "desc" }
+      }),
+      prisma.payment.findMany({
+        include: { client: true, invoice: true },
+        orderBy: { createdAt: "desc" }
+      }),
+      prisma.followUp.findMany({ 
+        include: { client: true },
+        orderBy: { date: "asc" }
+      }),
+      prisma.product.findMany({
+        orderBy: { stockQuantity: "asc" }
+      }),
     ]);
 
-    const today = new Date();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    const isThisMonth = (d: Date) => {
-      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-    };
+    // 1. Today's Bills
+    const todayInvoices = invoices.filter(i => new Date(i.createdAt) >= startOfToday);
+    const todayBillsCount = todayInvoices.length;
+    const todayBillsAmount = todayInvoices.reduce((sum, i) => sum + (Number(i.total) || 0), 0);
 
-    const totalActiveClients = clients.filter(c => c.status === "ACTIVE").length;
-    const totalClients = clients.length;
-    const newClientsThisMonth = clients.filter(c => isThisMonth(c.createdAt)).length;
+    // 2. Today's Payments
+    const todayPaymentsList = payments.filter(p => new Date(p.createdAt) >= startOfToday);
+    const todayPaymentsAmount = todayPaymentsList.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
-    let totalRevenueThisMonth = 0;
-    let totalRevenueAllTime = 0;
-    
-    payments.forEach(p => {
-      totalRevenueAllTime += p.amount;
-      if (isThisMonth(p.date)) {
-        totalRevenueThisMonth += p.amount;
-      }
-    });
+    // 3. Outstanding Balance across all invoices
+    const totalOutstandingBalance = invoices.reduce((sum, i) => sum + (Number(i.balance) || 0), 0);
 
-    let totalOutstandingBalance = 0;
-    let totalOverdueAmount = 0;
-    let overdueInvoices = 0;
+    // 4. Low Stock Products
+    const physicalProducts = products.filter(p => p.type === "PHYSICAL_PRODUCT");
+    const lowStockProducts = physicalProducts.filter(p => (p.stockQuantity || 0) < (p.minStock || 5));
+    const lowStockCount = lowStockProducts.length;
 
-    const paymentStatusBreakdown = {
-      paid: 0, partial: 0, unpaid: 0,
-      paidAmount: 0, partialAmount: 0, unpaidAmount: 0
-    };
+    // 5. Recent Bills (Top 5)
+    const recentBills = invoices.slice(0, 5).map(i => ({
+      id: i.id,
+      invoiceNo: i.invoiceNo,
+      clientName: i.client?.name || i.clientName || "Unknown",
+      date: i.date.toISOString(),
+      total: i.total,
+      paidAmount: i.paidAmount,
+      balance: i.balance,
+      status: i.status,
+    }));
 
-    invoices.forEach(inv => {
-      totalOutstandingBalance += inv.balance;
-      
-      if (inv.status === "PAID") {
-        paymentStatusBreakdown.paid++;
-        paymentStatusBreakdown.paidAmount += inv.total;
-      } else if (inv.status === "PARTIAL") {
-        paymentStatusBreakdown.partial++;
-        paymentStatusBreakdown.partialAmount += inv.total;
-      } else {
-        paymentStatusBreakdown.unpaid++;
-        paymentStatusBreakdown.unpaidAmount += inv.total;
-      }
+    // 6. Recent Customers (Top 5)
+    const recentCustomers = clients.slice(0, 5).map(c => ({
+      id: c.id,
+      clientCode: c.clientCode,
+      name: c.name,
+      city: c.city,
+      phone: c.phone,
+      email: c.email,
+      outstandingBalance: c.invoices.reduce((sum, inv) => sum + (Number(inv.balance) || 0), 0),
+      status: c.status,
+    }));
 
-      const dueDate = new Date(inv.dueDate);
-      if (inv.balance > 0 && dueDate < today) {
-        totalOverdueAmount += inv.balance;
-        overdueInvoices++;
-      }
-    });
-
-    let pendingFollowUps = 0;
-    let overdueFollowUpsCount = 0;
-
+    // 7. Pending Follow-ups (Top 5 upcoming)
     const upcomingFollowUps = followups
-      .filter(f => {
-        if (f.status === "DONE") return false;
-        const fDate = new Date(f.date);
-        if (fDate < today) {
-          overdueFollowUpsCount++;
-        }
-        if (f.status === "PENDING") pendingFollowUps++;
-        return fDate >= today;
-      })
-      .sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .filter(f => f.status === "PENDING" && new Date(f.date) >= startOfToday)
       .slice(0, 5)
-      .map(f => ({...f, clientName: f.client?.name || "Unknown"}));
-
-    // Compile recent invoices
-    const recentInvoices = [...invoices]
-      .sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime())
-      .slice(0, 5)
-      .map(i => ({
-         ...i, 
-         clientName: i.client.name,
-         createdAt: i.createdAt.toISOString(),
-         date: i.date.toISOString(),
-         dueDate: i.dueDate.toISOString()
+      .map(f => ({
+        id: f.id,
+        date: f.date.toISOString(),
+        mode: f.mode,
+        notes: f.notes,
+        clientName: f.client?.name || "Customer",
       }));
 
-    const stats: DashboardStats = {
-      totalActiveClients,
-      totalRevenueThisMonth,
-      totalOutstandingBalance,
-      pendingFollowUps,
-      overdueFollowUps: overdueFollowUpsCount,
-      overdueInvoices,
-      monthlyRevenue: [],
-      paymentStatusBreakdown,
-      recentInvoices: recentInvoices as any,
-      upcomingFollowUps: upcomingFollowUps as any,
-      totalEmployees: employees.filter(e => e.status === "ACTIVE").length,
-      activeProjects: projects.filter(p => p.status === "IN_PROGRESS").length,
-      inventoryValue: products.reduce((acc, p) => acc + (p.basePrice * p.stockQuantity), 0)
-    };
-
-    return NextResponse.json({ success: true, data: stats });
+    return NextResponse.json({
+      success: true,
+      data: {
+        todayBillsCount,
+        todayBillsAmount,
+        todayPaymentsCount: todayPaymentsList.length,
+        todayPaymentsAmount,
+        totalOutstandingBalance,
+        lowStockCount,
+        totalProducts: products.length,
+        totalCustomers: clients.length,
+        recentBills,
+        lowStockProducts: lowStockProducts.slice(0, 5),
+        recentCustomers,
+        upcomingFollowUps,
+      },
+    });
   } catch (error: any) {
-    console.error("Dashboard Stats Error:", error);
+    console.error("GET Dashboard Stats Error:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

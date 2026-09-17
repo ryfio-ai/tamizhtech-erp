@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { ClientFormValues, clientSchema } from "@/lib/validations";
 import { ApiResponse, Client } from "@/types";
+import { generateClientCode } from "@/lib/sequence";
 import { z } from "zod";
 
 export const revalidate = 0; // Disable static caching for API
@@ -54,9 +55,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Client with this email or phone already exists" }, { status: 400 });
     }
 
-    // Generate Client Code: TT-CL-YYYYMM-XXXX
-    const count = await prisma.client.count();
-    const clientCode = `TT-CL-${new Date().getFullYear()}${(new Date().getMonth() + 1).toString().padStart(2, '0')}-${(count + 1).toString().padStart(4, '0')}`;
+    // Generate Client Code atomically from BusinessSequence
+    const clientCode = await generateClientCode();
 
     const newClient = await prisma.client.create({
       data: {

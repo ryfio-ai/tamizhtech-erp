@@ -20,7 +20,7 @@ export function ClientForm({ initialData, onSubmit, onCancel, isLoading }: Clien
     defaultValues: initialData || {
       name: "",
       email: "",
-      phone: "+91",
+      phone: "",
       city: "",
       serviceType: "Robotics Workshop",
       source: "Walk-in",

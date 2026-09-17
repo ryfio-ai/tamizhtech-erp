@@ -23,17 +23,15 @@ export async function GET(req: NextRequest) {
 
 import { hash } from "bcryptjs";
 import { UserRole } from "@prisma/client";
+import { generateEmployeeId } from "@/lib/sequence";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    console.log("POST Employee Body:", body);
     const validated = employeeSchema.parse(body);
-    console.log("POST Employee Validated:", validated);
 
-    // Auto-generate employee ID (TT-EMP-XXXX)
-    const count = await prisma.employee.count();
-    const employeeId = `TT-EMP-${(count + 1).toString().padStart(4, '0')}`;
+    // Concurrency-safe atomic employee ID (TT-EMP-XXXX)
+    const employeeId = await generateEmployeeId();
 
     const result = await prisma.$transaction(async (tx) => {
       let userId: string | undefined = undefined;

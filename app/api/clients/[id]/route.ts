@@ -67,7 +67,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         type: body.type,
         status: body.status,
         assignedToId: body.assignedToId
-      } as any
+      }
     });
 
     return NextResponse.json({ success: true, data: { ...updated, createdAt: updated.createdAt.toISOString() } });

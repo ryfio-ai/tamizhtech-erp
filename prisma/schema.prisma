@@ -160,11 +160,17 @@ model Client {
   id                  String          @id @default(auto()) @map("_id") @db.ObjectId
   clientCode          String          @unique
   name                String
+  company             String?
   type                String          @default("INDIVIDUAL")
   status              String          @default("LEAD")
   phone               String
   email               String
+  address             String?
   city                String?
+  state               String?
+  pincode             String?
+  gstin               String?
+  notes               String?
   serviceType         String?
   source              String?
   assignedToId        String?         @db.ObjectId

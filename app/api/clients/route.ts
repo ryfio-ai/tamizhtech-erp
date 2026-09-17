@@ -74,15 +74,15 @@ export async function POST(req: NextRequest) {
         name: validated.name,
         phone: validated.phone,
         email: validated.email,
-        city: validated.city || "",
-        company: validated.company || "",
-        notes: validated.notes || "",
-        serviceType: validated.serviceType || "",
+        city: validated.city || null,
+        company: validated.company || null,
+        notes: validated.notes || null,
+        serviceType: validated.serviceType || null,
         source: validated.source || "OTHER",
         status: validated.status || "LEAD",
         type: validated.type || "INDIVIDUAL",
-        assignedToId: validated.assignedToId
-      } as any
+        assignedToId: validated.assignedToId || null
+      }
     });
     
     return NextResponse.json<ApiResponse<any>>({ success: true, data: { ...newClient, createdAt: newClient.createdAt.toISOString() } }, { status: 201 });

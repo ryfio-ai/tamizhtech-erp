@@ -11,7 +11,8 @@
     "import:products": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/importWebsiteProducts.ts",
     "test:import": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/testWebsiteProductImport.ts",
     "test:core": "ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/testCoreOperations.ts",
-    "test:pdf": "ts-node -r tsconfig-paths/register -O \"{\\\"module\\\":\\\"commonjs\\\",\\\"jsx\\\":\\\"react\\\",\\\"baseUrl\\\":\\\".\\\"}\" scripts/testInvoicePdfLayout.ts"
+    "test:pdf": "ts-node -r tsconfig-paths/register -O \"{\\\"module\\\":\\\"commonjs\\\",\\\"jsx\\\":\\\"react\\\",\\\"baseUrl\\\":\\\".\\\"}\" scripts/testInvoicePdfLayout.ts",
+    "test:customer": "ts-node -r tsconfig-paths/register -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/testAddCustomer.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

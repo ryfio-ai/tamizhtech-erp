@@ -131,6 +131,7 @@ model User {
   createdSourcings  InventorySourcing[] @relation("CreatedBySourcing")
   createdSourcingPayments InventorySourcingPayment[] @relation("CreatedBySourcingPayment")
   createdExpensePayments  ExpensePayment[]  @relation("CreatedByExpensePayment")
+  createdProductions      ProductionRecord[] @relation("CreatedByProduction")
 
   @@index([role])
 }
@@ -441,7 +442,10 @@ model Expense {
 model ExpensePayment {
   id               String   @id @default(auto()) @map("_id") @db.ObjectId
   expenseId        String   @db.ObjectId
+  amountPaise      Int?
   amount           Int
+  direction        String   @default("INCREASE") // INCREASE | DECREASE
+  type             String   @default("PAYMENT") // PAYMENT | REVERSAL | ADJUSTMENT | CORRECTION
   paymentDate      DateTime @default(now())
   paymentMethod    String   @default("BANK_TRANSFER")
   paymentReference String?
@@ -454,7 +458,8 @@ model ExpensePayment {
 
   @@index([expenseId])
   @@index([paymentDate])
-
+  @@index([type])
+  @@index([direction])
 }
 
 model ChartOfAccount {
@@ -484,17 +489,20 @@ model JournalEntry {
 // ─── Products & Stock Ledger ──────────────────────────────
 
 model Product {
-  id                String              @id @default(auto()) @map("_id") @db.ObjectId
-  sku               String              @unique
-  name              String
-  description       String?
-  category          String?             @default("ROBOTICS")
-  type               String              @default("PHYSICAL_PRODUCT") // PHYSICAL_PRODUCT or SERVICE
+  id                 String              @id @default(auto()) @map("_id") @db.ObjectId
+  sku                String              @unique
+  name               String
+  description        String?
+  category           String?             @default("ROBOTICS")
+  type               String              @default("PHYSICAL_PRODUCT") // RAW_MATERIAL | COMPONENT | FINISHED_PRODUCT | CONSUMABLE | SERVICE (legacy PHYSICAL_PRODUCT)
+  isSaleable         Boolean             @default(false) // Default false. Only FINISHED_PRODUCT/SERVICE default to true in application logic
+  quantityScale      Int                 @default(1) // 1 for countable items, fixed scale (e.g. 1000 for kg/m) for fractional
   pricingMode        String              @default("FIXED") // FIXED or REQUIREMENT_BASED
   status             String              @default("ACTIVE")
   basePrice          Float?
   taxRate            Float               @default(18)
-  stockQuantity      Int                 @default(0)
+  stockQuantityMinor Int                 @default(0) // Authoritative minor stock quantity
+  stockQuantity      Int                 @default(0) // Normalized real integer quantity
   minStock           Int                 @default(5)
   normalizedName     String?
   sourceType         String?             @default("MANUAL") // WEBSITE or MANUAL
@@ -512,39 +520,52 @@ model Product {
   invoiceItems       InvoiceItem[]
   quotationItems     QuotationItem[]
   sourcings          InventorySourcing[]
+  producedRecords    ProductionRecord[]  @relation("ProducedInRecords")
+  consumedInItems    ProductionItem[]    @relation("ConsumedInProduction")
 
   @@index([status])
   @@index([category])
+  @@index([type])
+  @@index([isSaleable])
   @@index([normalizedName])
   @@index([sourceSlug])
 }
 
 model InventorySourcing {
-  id            String                     @id @default(auto()) @map("_id") @db.ObjectId
-  sourcingNo    String                     @unique
-  productId     String                     @db.ObjectId
-  quantity      Int
-  sourceType    String                     // ONLINE, OFFLINE, IN_HOUSE
-  vendorName    String?
-  unitCost      Int
-  totalCost     Int
-  purchaseDate  DateTime                   @default(now())
-  paymentStatus String                     @default("UNPAID") // UNPAID, PARTIAL, PAID
-  paidAmount    Int                        @default(0)
-  paidAt        DateTime?
-  paymentMethod String?                    // UPI, BANK_TRANSFER, CASH, CREDIT_CARD, etc.
-  referenceNo   String?
-  notes         String?
-  createdById   String?                    @db.ObjectId
-  createdAt     DateTime                   @default(now())
-  updatedAt     DateTime                   @updatedAt
+  id              String                     @id @default(auto()) @map("_id") @db.ObjectId
+  sourcingNo      String                     @unique
+  productId       String                     @db.ObjectId
+  quantityMinor   Int?                       // Authoritative minor quantity
+  quantity        Int
+  sourceType      String                     // ONLINE, OFFLINE, IN_HOUSE
+  vendorName      String?
+  unitCostPaise   Int?                       // Authoritative integer unit cost in paise
+  unitCost        Int
+  totalCostPaise  Int?                       // Authoritative integer total cost in paise
+  totalCost       Int
+  purchaseDate    DateTime                   @default(now())
+  status          String                     @default("ACTIVE") // ACTIVE | VOIDED
+  voidedAt        DateTime?
+  voidReason      String?
+  voidedById      String?                    @db.ObjectId
+  paymentStatus   String                     @default("UNPAID") // UNPAID, PARTIAL, PAID
+  paidAmountPaise Int?                       @default(0)
+  paidAmount      Int                        @default(0)
+  paidAt          DateTime?
+  paymentMethod   String?                    // UPI, BANK_TRANSFER, CASH, CREDIT_CARD, etc.
+  referenceNo     String?
+  notes           String?
+  createdById     String?                    @db.ObjectId
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
 
-  product       Product                    @relation(fields: [productId], references: [id])
-  createdBy     User?                      @relation("CreatedBySourcing", fields: [createdById], references: [id])
-  payments      InventorySourcingPayment[]
+  product         Product                    @relation(fields: [productId], references: [id])
+  createdBy       User?                      @relation("CreatedBySourcing", fields: [createdById], references: [id])
+  payments        InventorySourcingPayment[]
 
   @@index([productId])
   @@index([sourceType])
+  @@index([status])
   @@index([purchaseDate])
   @@index([paidAt])
   @@index([createdAt])
@@ -553,7 +574,10 @@ model InventorySourcing {
 model InventorySourcingPayment {
   id               String            @id @default(auto()) @map("_id") @db.ObjectId
   sourcingId       String            @db.ObjectId
+  amountPaise      Int?              // Positive integer paise
   amount           Int
+  direction        String            @default("INCREASE") // INCREASE | DECREASE
+  type             String            @default("PAYMENT") // PAYMENT | REVERSAL | ADJUSTMENT | CORRECTION
   paymentDate      DateTime          @default(now())
   paymentMethod    String            @default("BANK_TRANSFER")
   paymentReference String?
@@ -566,28 +590,91 @@ model InventorySourcingPayment {
 
   @@index([sourcingId])
   @@index([paymentDate])
+  @@index([type])
+  @@index([direction])
 }
 
 model StockLedgerEntry {
-  id             String    @id @default(auto()) @map("_id") @db.ObjectId
-  productId      String    @db.ObjectId
-  quantitySigned Int       // Positive (+) inbound, Negative (-) outbound
-  unitCost       Int?      // Effective cost/WAC in paise at movement time
-  costAmount     Int?      // abs(quantitySigned) * unitCost snapshot in paise
-  location       String?   @default("MAIN_WAREHOUSE")
-  type           String    // OPENING, PURCHASE, PRODUCTION, SALE, CUSTOMER_RETURN, SUPPLIER_RETURN, RESERVATION, RELEASE, ADJUSTMENT, DAMAGE
-  referenceType  String?   // INVOICE, PURCHASE_ORDER, MANUAL_ADJUSTMENT, OPENING_BALANCE, INVENTORY_SOURCING
-  referenceId    String?
-  notes          String?
-  createdById    String?   @db.ObjectId
-  createdAt      DateTime  @default(now())
+  id                   String    @id @default(auto()) @map("_id") @db.ObjectId
+  productId            String    @db.ObjectId
+  quantitySignedMinor  Int?      // Authoritative minor quantity signed (+/-)
+  quantitySigned       Int       // Positive (+) inbound, Negative (-) outbound
+  unitCostPaise        Int?      // Effective cost/WAC in paise at movement time
+  unitCost             Int?      // Legacy alias
+  costAmountPaise      Int?      // abs(quantitySigned) * unitCost snapshot in paise
+  costAmount           Int?      // Legacy alias
+  effectiveAt          DateTime? @default(now()) // Authoritative chronological inventory timestamp
+  location             String?   @default("MAIN_WAREHOUSE")
+  type                 String    // OPENING, PURCHASE, PRODUCTION, PRODUCTION_CONSUMPTION, SALE, CUSTOMER_RETURN, SUPPLIER_RETURN, PRODUCTION_REVERSAL, PRODUCTION_CONSUMPTION_REVERSAL, PURCHASE_REVERSAL, RESERVATION, RELEASE, ADJUSTMENT, DAMAGE
+  referenceType        String?   // INVOICE, PURCHASE_ORDER, MANUAL_ADJUSTMENT, OPENING_BALANCE, INVENTORY_SOURCING, PRODUCTION, PRODUCTION_CANCELLATION, INVENTORY_SOURCING_VOID
+  referenceId          String?
+  notes                String?
+  createdById          String?   @db.ObjectId
+  createdAt            DateTime  @default(now())
 
-  product        Product   @relation(fields: [productId], references: [id])
-  createdBy      User?     @relation("CreatedByStockEntry", fields: [createdById], references: [id])
+  product              Product   @relation(fields: [productId], references: [id])
+  createdBy            User?     @relation("CreatedByStockEntry", fields: [createdById], references: [id])
 
   @@index([productId])
+  @@index([productId, effectiveAt])
   @@index([type])
+  @@index([effectiveAt])
   @@index([createdAt])
+}
+
+model ProductionRecord {
+  id                       String             @id @default(auto()) @map("_id") @db.ObjectId
+  productionNo             String             @unique
+  idempotencyKey           String?
+  finishedProductId        String             @db.ObjectId
+  quantityProducedMinor    Int?               // Authoritative minor quantity produced
+  quantityProduced         Int
+  materialCostPaise        Int                // in paise (sum of component WACs * qty)
+  materialCost             Int                // legacy alias
+  directCostPaise          Int                @default(0) // in paise (direct labor/machining)
+  directCost               Int                @default(0) // legacy alias
+  totalProductionCostPaise Int                // in paise (materialCost + directCost)
+  totalProductionCost      Int                // legacy alias
+  unitProductionCostPaise  Int                // in paise (totalProductionCost / quantityProduced)
+  unitProductionCost       Int                // legacy alias
+  productionDate           DateTime           @default(now())
+  status                   String             @default("COMPLETED") // COMPLETED | CANCELLED
+  notes                    String?
+  cancelledAt              DateTime?
+  cancelReason             String?
+  cancelledById            String?            @db.ObjectId
+  createdById              String?            @db.ObjectId
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+
+  finishedProduct          Product            @relation("ProducedInRecords", fields: [finishedProductId], references: [id])
+  createdBy                User?              @relation("CreatedByProduction", fields: [createdById], references: [id])
+  items                    ProductionItem[]
+
+  @@index([finishedProductId])
+  @@index([idempotencyKey])
+  @@index([productionDate])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ProductionItem {
+  id                    String             @id @default(auto()) @map("_id") @db.ObjectId
+  productionId          String             @db.ObjectId
+  inputProductId        String             @db.ObjectId
+  quantityConsumedMinor Int?               // Authoritative minor quantity consumed
+  quantityConsumed      Int
+  unitCostPaise         Int?               // in paise snapshot (component WAC)
+  unitCost              Int                // legacy alias
+  totalCostPaise        Int?               // in paise snapshot (quantityConsumed * unitCost)
+  totalCost             Int                // legacy alias
+  notes                 String?
+
+  production            ProductionRecord   @relation(fields: [productionId], references: [id])
+  inputProduct          Product            @relation("ConsumedInProduction", fields: [inputProductId], references: [id])
+
+  @@index([productionId])
+  @@index([inputProductId])
 }
 
 
@@ -883,7 +970,7 @@ model BusinessSequence {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   name       String   @unique
   prefix     String
-  year       Int
+  year       Int?
   lastNumber Int      @default(0)
   updatedAt  DateTime @updatedAt
 }
@@ -933,3 +1020,4 @@ model SystemSetting {
   isPublic    Boolean  @default(false)
   updatedAt   DateTime @updatedAt
 }
+

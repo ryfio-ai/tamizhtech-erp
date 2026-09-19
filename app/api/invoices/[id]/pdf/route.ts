@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { renderToStream } from "@react-pdf/renderer";
-import { InvoicePDFTemplate } from "@/components/invoices/InvoicePDFTemplate";
-import { getCanonicalInvoiceFinancials } from "@/lib/invoiceService";
-import { getCompanySettings } from "@/lib/company";
-import { getServerLogoDataUri } from "@/lib/serverLogo";
-import prisma from "@/lib/prisma";
+import { BusinessDocumentPDFTemplate } from "@/components/shared/BusinessDocumentPDFTemplate";
+import { getNormalizedInvoiceData } from "@/lib/businessDocumentData";
 import React from "react";
 
 export async function GET(
@@ -12,39 +9,21 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const [invoice, financials, company] = await Promise.all([
-      prisma.invoice.findUnique({
-        where: { id: params.id },
-        include: {
-          client: true,
-          items: true,
-        },
-      }),
-      getCanonicalInvoiceFinancials(params.id),
-      getCompanySettings(),
-    ]);
+    const data = await getNormalizedInvoiceData(params.id);
 
-    if (!invoice) {
+    if (!data) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    const logoSrc = getServerLogoDataUri();
-
     const stream = await renderToStream(
-      React.createElement(InvoicePDFTemplate, {
-        invoice,
-        client: invoice.client,
-        financials: financials || undefined,
-        company,
-        logoSrc,
-      }) as any
+      React.createElement(BusinessDocumentPDFTemplate, { data }) as any
     );
 
     const res = new NextResponse(stream as any);
     res.headers.set("Content-Type", "application/pdf");
     res.headers.set(
       "Content-Disposition",
-      `inline; filename="TamizhTech-Invoice-${invoice.invoiceNo}.pdf"`
+      `inline; filename="TamizhTech-Invoice-${data.documentNumber}.pdf"`
     );
 
     return res;

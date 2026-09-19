@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { toPaise, fromPaise, roundToPaise } from "@/lib/money";
 import { getAuthoritativeInvoiceFinancials } from "@/lib/invoiceService";
+import { getNormalizedInvoiceData } from "@/lib/businessDocumentData";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -16,7 +17,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
     if (!invoice) return NextResponse.json({ success: false, error: "Not found" }, { status: 404 });
 
-    const financials = await getAuthoritativeInvoiceFinancials(params.id);
+    const [financials, documentData] = await Promise.all([
+      getAuthoritativeInvoiceFinancials(params.id),
+      getNormalizedInvoiceData(params.id),
+    ]);
 
     const formatted = {
       ...invoice,
@@ -36,10 +40,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         amount: fromPaise(it.amount),
       })),
       financials,
+      documentData,
       createdAt: invoice.createdAt.toISOString()
     };
 
-    return NextResponse.json({ success: true, data: formatted });
+    return NextResponse.json({ success: true, data: formatted, documentData });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

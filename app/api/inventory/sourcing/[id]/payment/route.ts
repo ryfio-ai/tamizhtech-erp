@@ -25,14 +25,18 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ success: false, error: "Sourcing record not found" }, { status: 404 });
     }
 
-    const currentPaidPaise = sourcing.payments.reduce((acc, p) => acc + p.amount, 0);
+    const currentPaidPaise = sourcing.payments.reduce((acc, p) => {
+      const amt = p.amountPaise ?? p.amount ?? 0;
+      return (p.direction === "DECREASE" || p.type === "REVERSAL") ? acc - amt : acc + amt;
+    }, 0);
     const newTotalPaidPaise = currentPaidPaise + paymentAmountPaise;
 
-    if (newTotalPaidPaise > sourcing.totalCost) {
+    const totalCostPaise = sourcing.totalCostPaise ?? sourcing.totalCost;
+    if (newTotalPaidPaise > totalCostPaise) {
       return NextResponse.json(
         {
           success: false,
-          error: `Payment exceeds total cost. Remaining balance is ₹${fromPaise(sourcing.totalCost - currentPaidPaise)}`,
+          error: `Payment exceeds total cost. Remaining balance is ₹${fromPaise(totalCostPaise - currentPaidPaise)}`,
         },
         { status: 400 }
       );
@@ -44,7 +48,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const payment = await prisma.inventorySourcingPayment.create({
       data: {
         sourcingId,
+        amountPaise: paymentAmountPaise,
         amount: paymentAmountPaise,
+        direction: "INCREASE",
+        type: "PAYMENT",
         paymentDate: effectiveDate,
         paymentMethod,
         paymentReference: paymentReference || null,
@@ -54,10 +61,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     });
 
     // Update parent projections
-    const updatedStatus = newTotalPaidPaise >= sourcing.totalCost ? "PAID" : "PARTIAL";
+    const updatedStatus = newTotalPaidPaise >= totalCostPaise ? "PAID" : "PARTIAL";
     const updatedSourcing = await prisma.inventorySourcing.update({
       where: { id: sourcingId },
       data: {
+        paidAmountPaise: newTotalPaidPaise,
         paidAmount: newTotalPaidPaise,
         paymentStatus: updatedStatus,
         paidAt: effectiveDate,

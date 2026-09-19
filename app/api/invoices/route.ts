@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { InvoiceFormValues, invoiceSchema } from "@/lib/validations";
-import { generateInvoiceNo } from "@/lib/sequence";
+import { allocateInvoiceNoTx, generateDraftInvoiceNo } from "@/lib/sequence";
 import { deductStockForIssuedInvoice } from "@/lib/stockService";
 import { getAuthoritativeInvoiceFinancials } from "@/lib/invoiceService";
 import { toPaise, fromPaise, roundToPaise } from "@/lib/money";
@@ -55,9 +55,6 @@ export async function POST(req: NextRequest) {
     const body: InvoiceFormValues = await req.json();
     const validated = invoiceSchema.parse(body);
 
-    // Concurrency-safe atomic invoice number from BusinessSequence
-    const invoiceNo = await generateInvoiceNo();
-
     // Verify client
     const client = await prisma.client.findUnique({ where: { id: validated.clientId } });
     if (!client) {
@@ -89,34 +86,44 @@ export async function POST(req: NextRequest) {
 
     const initialStatus = (validated.status as any) || "DRAFT";
 
-    const newInvoice = await prisma.invoice.create({
-      data: {
-        invoiceNo,
-        clientId: client.id,
-        clientName: client.name,
-        date: new Date(validated.date),
-        dueDate: new Date(validated.dueDate),
-        status: initialStatus,
-        issuedAt: initialStatus === "ISSUED" ? new Date() : null,
-        subtotal: subtotalPaise,
-        gstPercent,
-        gstAmount: gstAmountPaise,
-        discountAmount: discountAmountPaise,
-        total: totalPaise,
-        paidAmount: 0,
-        balance: totalPaise,
-        notes: validated.notes || "Thank you for your business!",
-        items: {
-          create: processedItems,
-        }
-      },
-      include: {
-        items: {
-          include: {
-            product: true
-          }
-        }
+    // Transaction-safe atomic creation & sequence allocation
+    const newInvoice = await prisma.$transaction(async (tx) => {
+      let invoiceNo: string;
+      if (initialStatus === "ISSUED") {
+        invoiceNo = await allocateInvoiceNoTx(tx);
+      } else {
+        invoiceNo = generateDraftInvoiceNo();
       }
+
+      return tx.invoice.create({
+        data: {
+          invoiceNo,
+          clientId: client.id,
+          clientName: client.name,
+          date: new Date(validated.date),
+          dueDate: new Date(validated.dueDate),
+          status: initialStatus,
+          issuedAt: initialStatus === "ISSUED" ? new Date() : null,
+          subtotal: subtotalPaise,
+          gstPercent,
+          gstAmount: gstAmountPaise,
+          discountAmount: discountAmountPaise,
+          total: totalPaise,
+          paidAmount: 0,
+          balance: totalPaise,
+          notes: validated.notes || "Thank you for your business!",
+          items: {
+            create: processedItems,
+          },
+        },
+        include: {
+          items: {
+            include: {
+              product: true,
+            },
+          },
+        },
+      });
     });
 
     // Lock 1: Draft bills do NOT deduct stock. Only ISSUED bills deduct stock.

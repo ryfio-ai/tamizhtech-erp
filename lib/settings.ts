@@ -24,26 +24,26 @@ export interface SystemSettingsMap {
 
 export const DEFAULT_SYSTEM_SETTINGS: SystemSettingsMap = {
   DEFAULT_GST_RATE: 18,
-  COMPANY_NAME: "TAMIZHTECH",
-  COMPANY_LEGAL_NAME: "TAMIZHTECH ROBOTICS & AUTOMATION PRIVATE LIMITED",
-  COMPANY_TAGLINE: "Next-Gen Robotics & Embedded Solutions",
-  COMPANY_ADDRESS: "No. 45, Technology Corridor, Anna Nagar, Chennai, Tamil Nadu - 600040",
-  COMPANY_PHONE: "+91 94440 12345",
-  COMPANY_EMAIL: "contact@tamizhtech.com",
-  COMPANY_GSTIN: "33AAAAA0000A1Z5",
-  COMPANY_PAN: "AAAAA0000A",
-  COMPANY_WEBSITE: "https://tamizhtech.com",
+  COMPANY_NAME: "Tamizh Tech Robotics Company",
+  COMPANY_LEGAL_NAME: "Tamizh Tech Robotics Company",
+  COMPANY_TAGLINE: "Robotics & Industrial Automation",
+  COMPANY_ADDRESS: "Sri Vari Garden, 22, 3rd Cross, Kurumbapalayam, SSKulam, Sarcarsamakulam, Coimbatore, Tamil Nadu - 641107, India",
+  COMPANY_PHONE: "+91 81480 45030",
+  COMPANY_EMAIL: "contact@tamizhtech.in",
+  COMPANY_GSTIN: "",
+  COMPANY_PAN: "",
+  COMPANY_WEBSITE: "https://www.tamizhtech.in/",
   BANK_NAME: "HDFC Bank",
-  BANK_ACCOUNT_NAME: "TAMIZHTECH ROBOTICS & AUTOMATION PVT LTD",
+  BANK_ACCOUNT_NAME: "Tamizh Tech Robotics Company",
   BANK_ACCOUNT_NO: "50200012345678",
   BANK_IFSC: "HDFC0001234",
-  BANK_BRANCH: "Anna Nagar West, Chennai",
+  BANK_BRANCH: "Coimbatore",
   UPI_ID: "tamizhtech@hdfcbank",
   QUOTATION_VALIDITY_DAYS: 30,
   DEFAULT_QUOTATION_TERMS:
-    "1. Quotation valid for 30 days from date of issue.\n2. 50% advance along with confirmed purchase order.\n3. Balance payment upon delivery/completion.\n4. Delivery timeline: 2-3 weeks from receipt of advance.\n5. Standard 1-year manufacturer warranty on physical parts.",
+    "1. All prices are inclusive of GST / taxes as applicable.\n2. Work will resume after 100% Advance Payment or approved Purchase Order.\n3. In the case of a Purchase Order, payment is due as per agreed terms.\n4. HSN/Tax rates are subject to government statutory amendments.\n5. Standard delivery time for in-stock items is approximately 3-5 working days.\n6. Customized robotics/automation orders require 15-20 working days.\n7. Goods once sold are subject to standard manufacturer warranty policies.",
   DEFAULT_INVOICE_TERMS:
-    "1. Payment due upon receipt of invoice unless credit terms agreed.\n2. Please mention Invoice Number in bank transfer/UPI remarks.\n3. Goods once sold will not be taken back without prior authorization.",
+    "1. Payment is due upon receipt of invoice unless credit terms are explicitly agreed.\n2. Please mention Invoice Number in bank transfer or UPI payment remarks.\n3. Goods once sold are subject to standard warranty and inspection policies.\n4. Disputes, if any, shall be subject to Coimbatore jurisdiction.",
 };
 
 /**

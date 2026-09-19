@@ -11,11 +11,14 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { DEFAULT_COMPANY_SETTINGS } from "@/lib/companyProfile";
 import { formatIssueDateTime } from "@/lib/utils";
+import { BusinessDocumentView } from "@/components/shared/BusinessDocumentView";
+import type { BusinessDocumentModel } from "@/types/businessDocument";
 
 export default function InvoiceDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [invoice, setInvoice] = useState<any>(null);
   const [client, setClient] = useState<any>(null);
+  const [documentData, setDocumentData] = useState<BusinessDocumentModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [sendingEmail, setSendingEmail] = useState(false);
 
@@ -27,6 +30,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
       if (json.success && json.data) {
         setInvoice(json.data);
         setClient(json.data.client);
+        setDocumentData(json.documentData || json.data.documentData || null);
       }
     } catch (e: any) {
       console.error(e);
@@ -224,196 +228,16 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
 
       {/* Authoritative Standard Tax Invoice Container */}
       <div className="w-full overflow-x-auto pb-4">
-        <div className="printable-invoice invoice-print bg-white rounded-xl border border-border shadow-sm p-6 sm:p-10 min-w-[700px] text-ink-primary">
-          {/* 1. Header */}
-          <div className="flex justify-between items-start border-b-2 border-brand pb-6 mb-6">
-            <div className="w-48">
-              <img
-                src="/assets/ttrc-logo.png"
-                alt="Tamizh Tech Logo"
-                className="h-14 w-auto object-contain"
-              />
-            </div>
-            <div className="text-right max-w-sm">
-              <h2 className="text-base font-bold text-navy">{company.companyName}</h2>
-              <p className="text-xs text-ink-secondary mt-0.5">{company.addressLine1}</p>
-              <p className="text-xs text-ink-secondary">
-                {company.addressLine2}, {company.city} – {company.pincode}
-              </p>
-              <p className="text-xs text-ink-secondary mt-1">
-                Phone: {company.phone} | Email: {company.email}
-              </p>
-              <p className="text-xs text-ink-secondary font-medium">{company.website}</p>
-            </div>
+        {documentData ? (
+          <BusinessDocumentView
+            data={documentData}
+            showToolbar={false}
+          />
+        ) : (
+          <div className="bg-white rounded-xl border border-border p-8 text-center text-slate-500">
+            Loading preview...
           </div>
-
-          {/* 2. Document Title */}
-          <div className="text-center bg-navy text-white py-1.5 rounded-sm font-bold text-sm tracking-widest uppercase mb-5">
-            TAX INVOICE
-          </div>
-
-          {/* 3. Invoice Meta Grid (Strictly: Invoice Number, Issue Date & Time, Payment Status - No Due Date) */}
-          <div className="grid grid-cols-3 border border-border bg-surface rounded-md text-xs mb-5 divide-x divide-border">
-            <div className="p-2.5">
-              <span className="text-[10px] uppercase font-bold text-ink-secondary block">Invoice Number</span>
-              <span className="font-bold text-ink-primary mt-0.5 block">{invoice.invoiceNo}</span>
-            </div>
-            <div className="p-2.5">
-              <span className="text-[10px] uppercase font-bold text-ink-secondary block">Issue Date &amp; Time</span>
-              <span className="font-bold text-ink-primary mt-0.5 block">{issueDateTimeStr}</span>
-            </div>
-            <div className="p-2.5">
-              <span className="text-[10px] uppercase font-bold text-ink-secondary block">Payment Status</span>
-              <span className="mt-0.5 inline-block">
-                <StatusBadge status={invoice.status || "UNPAID"} />
-              </span>
-            </div>
-          </div>
-
-          {/* 4. Billed By / Billed To */}
-          <div className="grid grid-cols-2 border border-border rounded-md text-xs mb-6 divide-x divide-border">
-            <div className="p-4">
-              <h4 className="text-[10px] font-bold text-brand uppercase tracking-wider mb-2">Billed By</h4>
-              <p className="font-bold text-sm text-navy">{company.companyName}</p>
-              <p className="text-ink-secondary mt-0.5">{company.addressLine1}</p>
-              <p className="text-ink-secondary">
-                {company.addressLine2}, {company.city}, {company.state} – {company.pincode}
-              </p>
-              <p className="text-ink-secondary mt-1">Phone: {company.phone}</p>
-              <p className="text-ink-secondary">Email: {company.email}</p>
-              {company.gstin && <p className="text-ink-secondary mt-1">GSTIN: {company.gstin}</p>}
-            </div>
-
-            <div className="p-4">
-              <h4 className="text-[10px] font-bold text-brand uppercase tracking-wider mb-2">Billed To</h4>
-              <p className="font-bold text-sm text-navy">{client?.name || invoice.clientName}</p>
-              {client?.company && <p className="text-ink-primary font-medium">{client.company}</p>}
-              {client?.address && <p className="text-ink-secondary mt-0.5">{client.address}</p>}
-              {(client?.city || client?.state) && (
-                <p className="text-ink-secondary">
-                  {[client.city, client.state, client.pincode].filter(Boolean).join(", ")}
-                </p>
-              )}
-              {client?.phone && <p className="text-ink-secondary mt-1">Phone: {client.phone}</p>}
-              {client?.email && <p className="text-ink-secondary">Email: {client.email}</p>}
-              {client?.gstin && <p className="text-ink-secondary mt-1 font-semibold">GSTIN: {client.gstin}</p>}
-            </div>
-          </div>
-
-          {/* 5. Line Item Table */}
-          <div className="border border-border rounded-md overflow-hidden mb-6">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-navy text-white text-[11px] font-semibold">
-                  <th className="p-2.5 text-center w-12">S.No</th>
-                  <th className="p-2.5">Item / Service Description</th>
-                  <th className="p-2.5 text-center w-24">HSN/SAC</th>
-                  <th className="p-2.5 text-center w-16">GST %</th>
-                  <th className="p-2.5 text-center w-16">Qty</th>
-                  <th className="p-2.5 text-right w-24">Rate (₹)</th>
-                  <th className="p-2.5 text-right w-24">Amount (₹)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {items.map((item: any, idx: number) => {
-                  const lineAmt = item.amount || item.qty * item.unitPrice;
-                  return (
-                    <tr key={idx} className="hover:bg-surface/50">
-                      <td className="p-2.5 text-center text-ink-secondary">{idx + 1}</td>
-                      <td className="p-2.5 font-medium text-ink-primary">{item.description}</td>
-                      <td className="p-2.5 text-center text-ink-secondary">{item.hsnCode || item.sacCode || "-"}</td>
-                      <td className="p-2.5 text-center text-ink-secondary">{gstPercent}%</td>
-                      <td className="p-2.5 text-center font-medium">{item.qty}</td>
-                      <td className="p-2.5 text-right text-ink-secondary">{Number(item.unitPrice).toFixed(2)}</td>
-                      <td className="p-2.5 text-right font-bold text-ink-primary">{Number(lineAmt).toFixed(2)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* 6. Summary & Totals */}
-          <div className="grid grid-cols-2 gap-6 mb-6">
-            {/* Notes & Amount in words */}
-            <div className="border border-border rounded-md p-3.5 bg-surface text-xs space-y-3">
-              <div>
-                <span className="text-[10px] font-bold text-ink-secondary uppercase block mb-1">
-                  Total Amount in Words
-                </span>
-                <p className="font-bold text-navy leading-relaxed">
-                  {invoice.totalInWords || "INDIAN RUPEES ONLY"}
-                </p>
-              </div>
-
-              {invoice.notes && (
-                <div>
-                  <span className="text-[10px] font-bold text-ink-secondary uppercase block mb-0.5">Notes</span>
-                  <p className="text-ink-secondary text-[11px]">{invoice.notes}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Financial Calculations Table */}
-            <div className="border border-border rounded-md overflow-hidden text-xs">
-              <div className="flex justify-between p-2.5 border-b border-border">
-                <span className="text-ink-secondary">Subtotal</span>
-                <span className="font-medium">₹{Number(subtotal).toFixed(2)}</span>
-              </div>
-
-              {discountAmount > 0 && (
-                <div className="flex justify-between p-2.5 border-b border-border text-green-700">
-                  <span>Discount</span>
-                  <span>-₹{Number(discountAmount).toFixed(2)}</span>
-                </div>
-              )}
-
-              <div className="flex justify-between p-2.5 border-b border-border">
-                <span className="text-ink-secondary">CGST ({(gstPercent / 2).toFixed(1)}%)</span>
-                <span className="font-medium">₹{Number(cgst).toFixed(2)}</span>
-              </div>
-
-              <div className="flex justify-between p-2.5 border-b border-border">
-                <span className="text-ink-secondary">SGST ({(gstPercent / 2).toFixed(1)}%)</span>
-                <span className="font-medium">₹{Number(sgst).toFixed(2)}</span>
-              </div>
-
-              <div className="flex justify-between p-3 bg-navy text-white font-bold text-sm">
-                <span>GRAND TOTAL</span>
-                <span>₹{Number(grandTotal).toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 7. Payment Ledger & Signatory */}
-          <div className="grid grid-cols-2 gap-6 pt-4 border-t border-border text-xs mb-8">
-            <div className="border border-border rounded-md p-3.5 bg-surface">
-              <span className="text-[10px] font-bold text-ink-secondary uppercase block mb-1">
-                Payment Ledger Summary
-              </span>
-              <p className="text-ink-secondary">Paid Amount: <strong className="text-ink-primary">₹{Number(paidAmount).toFixed(2)}</strong></p>
-              <p className="text-ink-secondary mt-0.5">Outstanding Balance: <strong className="text-ink-primary">₹{Number(balance).toFixed(2)}</strong></p>
-              <p className="mt-2 text-xs font-semibold" style={{ color: balance <= 0 ? "#16A34A" : "#D97706" }}>
-                {balance <= 0 ? "Payment Settled (Full)" : `Status: ${invoice.status || "UNPAID"}`}
-              </p>
-            </div>
-
-            <div className="text-right flex flex-col justify-end items-end pr-4">
-              <p className="font-bold text-navy text-xs mb-10">For {company.companyName}</p>
-              <div className="w-40 border-t border-gray-400 pt-1 text-center text-[11px] text-ink-secondary">
-                Authorised Signatory
-              </div>
-            </div>
-          </div>
-
-          {/* 8. Compact Footer */}
-          <div className="border-t border-border pt-4 text-center text-[11px] text-ink-secondary">
-            <p>{company.companyName} • {company.addressLine1}, {company.city} • {company.phone}</p>
-            <p className="mt-0.5 text-[10px] text-ink-muted">
-              This is a computer-generated tax invoice issued by TamizhTech ERP.
-            </p>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

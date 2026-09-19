@@ -173,7 +173,7 @@ async function runTests() {
     type: 'PURCHASE',
     notes: 'Restocked from supplier',
   });
-  console.log(`Stock after +5 PURCHASE: ${afterPurchase.product.stockQuantity} (Expected: 7)`);
+  console.log(`Stock after +5 PURCHASE: ${afterPurchase.product!.stockQuantity} (Expected: 7)`);
 
   const afterDamage = await adjustStock({
     productId: testCharger.id,
@@ -181,10 +181,10 @@ async function runTests() {
     type: 'DAMAGE',
     notes: 'Connector damaged during testing',
   });
-  console.log(`Stock after -2 DAMAGE: ${afterDamage.product.stockQuantity} (Expected: 5)`);
+  console.log(`Stock after -2 DAMAGE: ${afterDamage.product!.stockQuantity} (Expected: 5)`);
 
-  if (afterDamage.product.stockQuantity !== 5) {
-    throw new Error(`Expected stock 5, got ${afterDamage.product.stockQuantity}`);
+  if (afterDamage.product!.stockQuantity !== 5) {
+    throw new Error(`Expected stock 5, got ${afterDamage.product!.stockQuantity}`);
   }
   console.log('✅ Test 6 Passed: Stock safety rules (no manual SALE, negative stock block, signed adjustments) verified.');
 

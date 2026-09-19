@@ -92,3 +92,61 @@ export function formatINR(amount: number, showDecimals: boolean = true): string 
     maximumFractionDigits: showDecimals ? 2 : 0,
   }).format(rounded);
 }
+
+// ─── Fixed-Scale Quantity & Intermediate Costing ──────────────────
+
+/**
+ * Converts a real quantity to integer minor units using product's quantityScale.
+ * Countable: scale = 1 -> 5 pieces = 5 minor units
+ * Fractional: scale = 1000 -> 1.250 kg = 1250 minor units
+ */
+export function toMinorQuantity(realQty: number, scale: number = 1): number {
+  if (typeof realQty !== 'number' || isNaN(realQty)) return 0;
+  const safeScale = Math.max(1, Math.round(scale || 1));
+  return Math.round((realQty + Number.EPSILON) * safeScale);
+}
+
+/**
+ * Converts integer minor units back to real quantity using product's quantityScale.
+ */
+export function fromMinorQuantity(minorQty: number, scale: number = 1): number {
+  if (typeof minorQty !== 'number' || isNaN(minorQty)) return 0;
+  const safeScale = Math.max(1, Math.round(scale || 1));
+  return minorQty / safeScale;
+}
+
+/**
+ * Calculates intermediate cost in paise for fractional/minor quantities.
+ * Formula: exact intermediate = (minorQty * unitCostPaise) / scale
+ * Rounds ONLY the final persisted monetary result to nearest integer paise.
+ */
+export function calculateMinorCostPaise(
+  minorQty: number,
+  scale: number,
+  unitCostPaise: number
+): number {
+  if (typeof minorQty !== 'number' || isNaN(minorQty) || minorQty === 0) return 0;
+  if (typeof unitCostPaise !== 'number' || isNaN(unitCostPaise) || unitCostPaise === 0) return 0;
+  const safeScale = Math.max(1, Math.round(scale || 1));
+  const rawCost = (minorQty * unitCostPaise) / safeScale;
+  return roundToPaise(rawCost);
+}
+
+/**
+ * Calculates unit cost in paise given total cost in paise and produced minor quantity.
+ * Formula: realQty = minorQty / scale; unitCost = totalCostPaise / realQty
+ * Rounded only at final integer paise level.
+ */
+export function calculateUnitCostFromMinor(
+  totalCostPaise: number,
+  minorQty: number,
+  scale: number
+): number {
+  if (typeof totalCostPaise !== 'number' || isNaN(totalCostPaise) || totalCostPaise <= 0) return 0;
+  if (typeof minorQty !== 'number' || isNaN(minorQty) || minorQty <= 0) return 0;
+  const safeScale = Math.max(1, Math.round(scale || 1));
+  const realQty = minorQty / safeScale;
+  if (realQty <= 0) return 0;
+  return roundToPaise(totalCostPaise / realQty);
+}
+

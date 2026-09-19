@@ -83,7 +83,7 @@ async function runCoreOperationsTest() {
       type: "PURCHASE",
       notes: "Received batch order from supplier",
     });
-    console.log(`Stock after purchase (+10): ${purchaseAdjustment.product.stockQuantity} units (Expected 35)`);
+    console.log(`Stock after purchase (+10): ${purchaseAdjustment.product?.stockQuantity} units (Expected 35)`);
 
     const damageAdjustment = await adjustStock({
       productId: motorProduct.id,
@@ -91,9 +91,9 @@ async function runCoreOperationsTest() {
       type: "DAMAGE",
       notes: "Defective gearboxes found during QA",
     });
-    console.log(`Stock after damage (-3): ${damageAdjustment.product.stockQuantity} units (Expected 32)`);
+    console.log(`Stock after damage (-3): ${damageAdjustment.product?.stockQuantity} units (Expected 32)`);
 
-    if (damageAdjustment.product.stockQuantity !== 32) {
+    if (damageAdjustment.product?.stockQuantity !== 32) {
       throw new Error("Stock quantity calculation mismatch after adjustments");
     }
     console.log("✅ Test 3 Passed: Stock adjustments recorded with signed ledger entries.\n");

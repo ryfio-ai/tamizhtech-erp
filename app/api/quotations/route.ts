@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { generateQuotationNo } from "@/lib/sequence";
+import { allocateQuotationNoTx, generateDraftQuotationNo } from "@/lib/sequence";
 import { getSystemSetting } from "@/lib/settings";
 import { roundMoney, safeAdd, toPaise, fromPaise } from "@/lib/money";
 
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
     let calculatedDiscount = 0;
     let calculatedTax = 0;
 
-    const processedItems = [];
+    const processedItems: any[] = [];
 
     for (const item of items) {
       const qty = parseFloat(item.qty);
@@ -168,37 +168,46 @@ export async function POST(req: NextRequest) {
 
     const calculatedTotal = calculatedSubtotal - calculatedDiscount + calculatedTax;
 
-    const quotationNo = await generateQuotationNo();
+    const initialStatus = body.status === "SENT" ? "SENT" : "DRAFT";
 
     const validityDate = validUntil
       ? new Date(validUntil)
       : new Date(Date.now() + (defaultValidityDays || 30) * 24 * 60 * 60 * 1000);
 
-    const quotation = await prisma.quotation.create({
-      data: {
-        quotationNo,
-        clientId,
-        status: "DRAFT",
-        validUntil: validityDate,
-        subtotal: calculatedSubtotal,
-        discountAmount: calculatedDiscount,
-        taxAmount: calculatedTax,
-        total: calculatedTotal,
-        notes: notes || null,
-        terms: terms || defaultTerms || null,
-        createdById: createdById || null,
-        items: {
-          create: processedItems,
-        },
-      },
-      include: {
-        client: true,
-        items: {
-          include: {
-            product: true,
+    const quotation = await prisma.$transaction(async (tx) => {
+      let quotationNo: string;
+      if (initialStatus === "SENT") {
+        quotationNo = await allocateQuotationNoTx(tx);
+      } else {
+        quotationNo = generateDraftQuotationNo();
+      }
+
+      return tx.quotation.create({
+        data: {
+          quotationNo,
+          clientId,
+          status: initialStatus,
+          validUntil: validityDate,
+          subtotal: calculatedSubtotal,
+          discountAmount: calculatedDiscount,
+          taxAmount: calculatedTax,
+          total: calculatedTotal,
+          notes: notes || null,
+          terms: terms || defaultTerms || null,
+          createdById: createdById || null,
+          items: {
+            create: processedItems,
           },
         },
-      },
+        include: {
+          client: true,
+          items: {
+            include: {
+              product: true,
+            },
+          },
+        },
+      });
     });
 
     const formattedQuotation = {

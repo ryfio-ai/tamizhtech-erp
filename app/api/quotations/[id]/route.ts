@@ -1,20 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { fromPaise } from "@/lib/money";
+import { getNormalizedQuotationData } from "@/lib/businessDocumentData";
+import { allocateQuotationNoTx } from "@/lib/sequence";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const quotation = await prisma.quotation.findUnique({
-      where: { id: params.id },
-      include: {
-        client: true,
-        items: {
-          include: {
-            product: true,
+    const [quotation, documentData] = await Promise.all([
+      prisma.quotation.findUnique({
+        where: { id: params.id },
+        include: {
+          client: true,
+          items: {
+            include: {
+              product: true,
+            },
           },
         },
-      },
-    });
+      }),
+      getNormalizedQuotationData(params.id),
+    ]);
 
     if (!quotation) {
       return NextResponse.json({ success: false, error: "Quotation not found" }, { status: 404 });
@@ -31,9 +36,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         unitPrice: fromPaise(it.unitPrice),
         amount: fromPaise(it.amount),
       })),
+      documentData,
     };
 
-    return NextResponse.json({ success: true, quotation: formatted });
+    return NextResponse.json({ success: true, quotation: formatted, documentData });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message || "Failed to fetch quotation" },
@@ -63,13 +69,31 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (notes !== undefined) data.notes = notes;
     if (terms !== undefined) data.terms = terms;
 
-    const updated = await prisma.quotation.update({
+    const currentQuotation = await prisma.quotation.findUnique({
       where: { id: params.id },
-      data,
-      include: {
-        client: true,
-        items: true,
-      },
+    });
+
+    if (!currentQuotation) {
+      return NextResponse.json({ success: false, error: "Quotation not found" }, { status: 404 });
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      // Allocate official sequence number when transitioning from DRAFT to SENT (or ACCEPTED)
+      if (
+        (status === "SENT" || status === "ACCEPTED") &&
+        currentQuotation.quotationNo.startsWith("DRAFT-")
+      ) {
+        data.quotationNo = await allocateQuotationNoTx(tx);
+      }
+
+      return tx.quotation.update({
+        where: { id: params.id },
+        data,
+        include: {
+          client: true,
+          items: true,
+        },
+      });
     });
 
     const formatted = {

@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import { formatINR } from "@/lib/money";
 import { formatISTDate } from "@/lib/time";
+import { BusinessDocumentView } from "@/components/shared/BusinessDocumentView";
+import type { BusinessDocumentModel } from "@/types/businessDocument";
 
 export default function QuotationDetailPage() {
   const params = useParams();
@@ -29,6 +31,7 @@ export default function QuotationDetailPage() {
   const quotationId = params.id as string;
 
   const [quotation, setQuotation] = useState<any>(null);
+  const [documentData, setDocumentData] = useState<BusinessDocumentModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [converting, setConverting] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
@@ -41,6 +44,7 @@ export default function QuotationDetailPage() {
       const data = await res.json();
       if (data.success) {
         setQuotation(data.quotation);
+        setDocumentData(data.documentData || null);
       } else {
         alert(data.error || "Quotation not found");
       }
@@ -68,6 +72,7 @@ export default function QuotationDetailPage() {
       const data = await res.json();
       if (data.success) {
         setQuotation(data.quotation);
+        fetchQuotation();
       } else {
         alert(data.error || "Failed to update status");
       }
@@ -268,155 +273,17 @@ export default function QuotationDetailPage() {
       </div>
 
       {/* Main Quotation View Paper */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-8 space-y-6">
-        {/* Document Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pb-6 border-b border-gray-200">
-          <div>
-            <div className="flex items-center gap-3">
-              <img
-                src="/assets/ttrc-logo.png"
-                alt="TamizhTech"
-                className="w-10 h-10 object-contain rounded"
-              />
-              <div>
-                <h2 className="text-xl font-bold text-navy">TAMIZHTECH</h2>
-                <p className="text-xs text-gray-500">Commercial Quotation</p>
-              </div>
-            </div>
+      <div className="w-full overflow-x-auto pb-4">
+        {documentData ? (
+          <BusinessDocumentView
+            data={documentData}
+            showToolbar={false}
+          />
+        ) : (
+          <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-slate-500">
+            Loading preview...
           </div>
-
-          <div className="text-right sm:w-80">
-            <div className="text-xs text-gray-500">Quotation Reference</div>
-            <div className="text-lg font-bold text-navy">{quotation.quotationNo}</div>
-            <div className="text-xs text-gray-600 mt-1">
-              Issue Date: {new Date(quotation.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
-            </div>
-            <div className="text-xs text-amber-700 font-medium">
-              Valid Until: {new Date(quotation.validUntil).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
-            </div>
-          </div>
-        </div>
-
-        {/* Client Details */}
-        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-          <div>
-            <div className="text-gray-500 uppercase font-semibold text-[10px] tracking-wider mb-1">
-              Quotation Issued To:
-            </div>
-            <div className="text-sm font-bold text-navy">{quotation.client?.name}</div>
-            {quotation.client?.company && (
-              <div className="text-gray-600 flex items-center gap-1.5 mt-0.5">
-                <Building className="w-3.5 h-3.5 text-gray-400" />
-                {quotation.client.company}
-              </div>
-            )}
-            <div className="text-gray-600 flex items-center gap-1.5 mt-0.5">
-              <Phone className="w-3.5 h-3.5 text-gray-400" />
-              {quotation.client?.phone || quotation.client?.mobileNormalized}
-            </div>
-            {quotation.client?.email && (
-              <div className="text-gray-600 flex items-center gap-1.5 mt-0.5">
-                <Mail className="w-3.5 h-3.5 text-gray-400" />
-                {quotation.client.email}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <div className="text-gray-500 uppercase font-semibold text-[10px] tracking-wider mb-1">
-              Commercial Summary:
-            </div>
-            <div className="text-gray-700">Currency: Indian Rupees (INR ₹)</div>
-            <div className="text-gray-700">Pricing Mode: Line-rate quoted snapshot</div>
-            <div className="text-gray-700">Stock Reservation: Nil (Commercial Proposal)</div>
-            <div className="text-gray-700 mt-1">
-              Status: <span className="font-semibold text-navy">{quotation.status}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Line Items Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-100 border-b border-gray-200 text-xs font-semibold text-gray-700 uppercase">
-                <th className="py-2.5 px-3 w-12 text-center">#</th>
-                <th className="py-2.5 px-3">Item & Specifications</th>
-                <th className="py-2.5 px-3 text-center">Type</th>
-                <th className="py-2.5 px-3 text-center">Qty</th>
-                <th className="py-2.5 px-3 text-right">Quoted Rate</th>
-                <th className="py-2.5 px-3 text-right">GST %</th>
-                <th className="py-2.5 px-3 text-right">Amount</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 text-xs">
-              {(quotation.items || []).map((it: any, index: number) => (
-                <tr key={it.id || index} className="hover:bg-gray-50/50">
-                  <td className="py-3 px-3 text-center text-gray-500">{index + 1}</td>
-                  <td className="py-3 px-3">
-                    <div className="font-semibold text-gray-900">{it.description || it.name}</div>
-                    {it.configurationNotes && (
-                      <div className="text-gray-500 text-[11px] mt-0.5">
-                        {it.configurationNotes}
-                      </div>
-                    )}
-                  </td>
-                  <td className="py-3 px-3 text-center text-gray-600">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100">
-                      {it.itemType === "SERVICE" ? "Service" : "Product"}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-center font-medium">{it.qty}</td>
-                  <td className="py-3 px-3 text-right text-gray-800">{formatINR(it.unitPrice)}</td>
-                  <td className="py-3 px-3 text-right text-gray-600">{it.taxRate}%</td>
-                  <td className="py-3 px-3 text-right font-semibold text-navy">{formatINR(it.amount)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Financial Totals */}
-        <div className="flex justify-end pt-4 border-t border-gray-200">
-          <div className="w-80 space-y-2 text-xs">
-            <div className="flex justify-between text-gray-600">
-              <span>Subtotal:</span>
-              <span className="font-semibold text-gray-800">{formatINR(quotation.subtotal)}</span>
-            </div>
-            {quotation.discountAmount > 0 && (
-              <div className="flex justify-between text-emerald-600">
-                <span>Discount:</span>
-                <span className="font-semibold">-{formatINR(quotation.discountAmount)}</span>
-              </div>
-            )}
-            <div className="flex justify-between text-gray-600">
-              <span>Tax (GST):</span>
-              <span className="font-semibold text-gray-800">{formatINR(quotation.taxAmount)}</span>
-            </div>
-            <div className="flex justify-between text-base font-bold text-navy border-t border-gray-200 pt-2">
-              <span>Total Quoted:</span>
-              <span>{formatINR(quotation.total)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Terms & Notes */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-gray-200 text-xs">
-          {quotation.notes && (
-            <div>
-              <div className="font-semibold text-gray-700 mb-1">Notes:</div>
-              <p className="text-gray-600 leading-relaxed">{quotation.notes}</p>
-            </div>
-          )}
-          {quotation.terms && (
-            <div>
-              <div className="font-semibold text-gray-700 mb-1">Terms & Conditions:</div>
-              <pre className="text-gray-600 whitespace-pre-wrap font-sans leading-relaxed">
-                {quotation.terms}
-              </pre>
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );

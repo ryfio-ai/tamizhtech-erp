@@ -1,57 +1,94 @@
-import prisma from "./prisma";
-import { generateSku } from "./sequence";
-import { getProductRollingWACPaise } from "./costService";
-import { roundMoney, safeMultiplyQuantityByPaise } from "./money";
+import prisma from "@/lib/prisma";
+import { generateSku } from "@/lib/sequence";
+import { invalidateProductCache, invalidateStockCache } from "@/lib/cache";
+import { getProductRollingWACPaise } from "@/lib/costService";
+import {
+  toMinorQuantity,
+  fromMinorQuantity,
+  calculateMinorCostPaise,
+  roundToPaise,
+} from "@/lib/money";
 
-
-export type StockMovementType =
-  | "OPENING"
-  | "PURCHASE"
-  | "SALE"
-  | "ADJUSTMENT"
-  | "DAMAGE"
-  | "RETURN"
-  | "RESERVATION"
-  | "RELEASE";
+export type ProductClassificationType =
+  | "RAW_MATERIAL"
+  | "COMPONENT"
+  | "FINISHED_PRODUCT"
+  | "CONSUMABLE"
+  | "SERVICE"
+  | "PHYSICAL_PRODUCT";
 
 export interface CreateProductInput {
   name: string;
   category?: string;
-  basePrice?: number | null;
+  description?: string;
+  type?: ProductClassificationType | string;
+  isSaleable?: boolean;
+  quantityScale?: number;
   pricingMode?: string;
+  basePrice?: number | null;
   taxRate?: number;
-  type?: "PHYSICAL_PRODUCT" | "SERVICE";
-  status?: string;
   initialStock?: number;
   minStock?: number;
-  description?: string;
   sourceType?: string;
   sourceUrl?: string;
   sourceSlug?: string;
   sourceProductName?: string;
   configurationNotes?: string;
+  status?: string;
 }
+
+export type StockMovementType =
+  | "OPENING"
+  | "PURCHASE"
+  | "PRODUCTION"
+  | "PRODUCTION_CONSUMPTION"
+  | "PRODUCTION_REVERSAL"
+  | "PRODUCTION_CONSUMPTION_REVERSAL"
+  | "PURCHASE_REVERSAL"
+  | "SALE"
+  | "CUSTOMER_RETURN"
+  | "SUPPLIER_RETURN"
+  | "ADJUSTMENT"
+  | "DAMAGE"
+  | "RETURN";
 
 export interface AdjustStockInput {
   productId: string;
-  quantityChange: number; // positive or negative
-  type: StockMovementType;
+  quantityChange: number; // positive for addition, negative for reduction
+  type: StockMovementType | string;
   notes?: string;
-  userId?: string;
+  referenceType?: string;
+  referenceId?: string;
   isBilling?: boolean;
+  effectiveAt?: Date;
 }
 
 /**
- * Creates a new product with deterministic auto-generated SKU and records OPENING stock entry if initialStock > 0.
+ * Creates a product with deterministic SKU, type-specific saleability defaults,
+ * fixed-scale minor units, and logs an opening balance stock ledger entry if physical stock > 0.
  */
 export async function createProductWithStock(input: CreateProductInput, userId?: string) {
   const category = input.category || "General";
-  const productType = input.type || "PHYSICAL_PRODUCT";
   const sku = await generateSku(category);
-  const initialStock = productType === "PHYSICAL_PRODUCT" ? Math.max(0, Number(input.initialStock) || 0) : 0;
-  const pricingMode = input.pricingMode || (input.basePrice !== undefined && input.basePrice !== null ? "FIXED" : "REQUIREMENT_BASED");
 
-  // Import normalizeProductName
+  // Normalize product type
+  const rawType = (input.type || "FINISHED_PRODUCT").toUpperCase();
+  const validTypes = ["RAW_MATERIAL", "COMPONENT", "FINISHED_PRODUCT", "CONSUMABLE", "SERVICE", "PHYSICAL_PRODUCT"];
+  const productType = validTypes.includes(rawType) ? rawType : "FINISHED_PRODUCT";
+  const isPhysical = productType !== "SERVICE";
+
+  // Application Defaults for Saleability:
+  // FINISHED_PRODUCT and SERVICE default to isSaleable: true.
+  // RAW_MATERIAL, COMPONENT, and CONSUMABLE default to isSaleable: false unless explicitly toggled.
+  const isSaleable = input.isSaleable !== undefined
+    ? Boolean(input.isSaleable)
+    : (productType === "FINISHED_PRODUCT" || productType === "SERVICE");
+
+  const pricingMode = input.pricingMode === "REQUIREMENT_BASED" ? "REQUIREMENT_BASED" : "FIXED";
+  const initialStock = isPhysical ? Math.max(0, Math.round(Number(input.initialStock) || 0)) : 0;
+  const quantityScale = Math.max(1, Math.round(Number(input.quantityScale) || 1));
+  const initialStockMinor = toMinorQuantity(initialStock, quantityScale);
+
   const normalizedName = input.name
     .trim()
     .toLowerCase()
@@ -69,10 +106,13 @@ export async function createProductWithStock(input: CreateProductInput, userId?:
       category,
       description: input.description?.trim() || null,
       type: productType,
+      isSaleable,
+      quantityScale,
       pricingMode,
       status: input.status || "ACTIVE",
       basePrice: input.basePrice !== undefined && input.basePrice !== null ? Number(input.basePrice) : null,
       taxRate: Number(input.taxRate) || 18,
+      stockQuantityMinor: initialStockMinor,
       stockQuantity: initialStock,
       minStock: Number(input.minStock) || 5,
       sourceType: input.sourceType || "MANUAL",
@@ -83,12 +123,18 @@ export async function createProductWithStock(input: CreateProductInput, userId?:
     },
   });
 
-  // Lock 3: Record explicit OPENING stock ledger movement if physical and stock > 0
-  if (productType === "PHYSICAL_PRODUCT" && initialStock > 0) {
+  // Record explicit OPENING stock ledger movement if physical and stock > 0
+  if (isPhysical && initialStock > 0) {
     await prisma.stockLedgerEntry.create({
       data: {
         productId: product.id,
+        quantitySignedMinor: initialStockMinor,
         quantitySigned: initialStock,
+        unitCostPaise: 0,
+        unitCost: 0,
+        costAmountPaise: 0,
+        costAmount: 0,
+        effectiveAt: new Date(),
         type: "OPENING",
         referenceType: "OPENING_BALANCE",
         referenceId: product.id,
@@ -100,15 +146,60 @@ export async function createProductWithStock(input: CreateProductInput, userId?:
     });
   }
 
+  await invalidateProductCache(product.id);
   return product;
+}
+
+/**
+ * Updates a product while strictly enforcing quantityScale immutability once stock transactions exist.
+ */
+export async function updateProduct(
+  productId: string,
+  data: Partial<CreateProductInput>,
+  userId?: string
+) {
+  const existing = await prisma.product.findUnique({
+    where: { id: productId },
+    select: { id: true, quantityScale: true },
+  });
+
+  if (!existing) {
+    throw new Error(`Product not found: ${productId}`);
+  }
+
+  if (data.quantityScale !== undefined && data.quantityScale !== existing.quantityScale) {
+    const movementCount = await prisma.stockLedgerEntry.count({
+      where: { productId },
+    });
+    if (movementCount > 0) {
+      throw new Error(
+        `Cannot change quantityScale from ${existing.quantityScale} to ${data.quantityScale}: Product already has ${movementCount} historical stock transactions.`
+      );
+    }
+  }
+
+  return prisma.product.update({
+    where: { id: productId },
+    data: {
+      ...(data.name ? { name: data.name.trim() } : {}),
+      ...(data.category ? { category: data.category } : {}),
+      ...(data.description !== undefined ? { description: data.description } : {}),
+      ...(data.type ? { type: data.type } : {}),
+      ...(data.isSaleable !== undefined ? { isSaleable: data.isSaleable } : {}),
+      ...(data.quantityScale ? { quantityScale: data.quantityScale } : {}),
+      ...(data.basePrice !== undefined ? { basePrice: data.basePrice } : {}),
+      ...(data.taxRate !== undefined ? { taxRate: data.taxRate } : {}),
+      ...(data.minStock !== undefined ? { minStock: data.minStock } : {}),
+    },
+  });
 }
 
 /**
  * Records an adjustment, damage, purchase, or return in the Stock Ledger and updates Product stockQuantity atomically.
  * Manual SALE movements are blocked (SALE is strictly generated by billing).
- * Negative stock is blocked.
+ * Negative stock is blocked via atomic conditional updates.
  */
-export async function adjustStock(input: AdjustStockInput) {
+export async function adjustStock(input: AdjustStockInput, userId?: string) {
   const product = await prisma.product.findUnique({
     where: { id: input.productId },
   });
@@ -130,40 +221,78 @@ export async function adjustStock(input: AdjustStockInput) {
     throw new Error("Invalid quantity change");
   }
 
-  const currentStock = product.stockQuantity || 0;
-  if (currentStock + quantitySigned < 0) {
-    throw new Error(`Insufficient stock: requested ${Math.abs(quantitySigned)} but only ${currentStock} available.`);
-  }
+  const scale = product.quantityScale || 1;
+  const absQty = Math.abs(quantitySigned);
+  const minorQty = toMinorQuantity(absQty, scale);
+  const quantitySignedMinor = quantitySigned >= 0 ? minorQty : -minorQty;
+  const effectiveAt = input.effectiveAt || new Date();
 
-  const newStock = currentStock + quantitySigned;
+  // Snapshot current rolling WAC
+  const currentWACPaise = await getProductRollingWACPaise(input.productId, effectiveAt);
+  const costAmountPaise = calculateMinorCostPaise(minorQty, scale, currentWACPaise);
 
-  // Write immutable ledger entry
-  const entry = await prisma.stockLedgerEntry.create({
-    data: {
-      productId: product.id,
-      quantitySigned,
-      type: input.type,
-      referenceType: "MANUAL_ADJUSTMENT",
-      notes: input.notes || `Stock ${input.type}`,
-      createdById: input.userId || null,
+  const result = await prisma.$transaction(
+    async (tx) => {
+      if (quantitySigned < 0) {
+        const decRes = await tx.product.updateMany({
+          where: {
+            id: input.productId,
+            stockQuantityMinor: { gte: minorQty },
+          },
+          data: {
+            stockQuantityMinor: { decrement: minorQty },
+            stockQuantity: { decrement: Math.round(absQty) },
+          },
+        });
+
+        if (decRes.count === 0) {
+          throw new Error(
+            `Insufficient stock for ${product.name}: required ${absQty}, available ${(product.stockQuantityMinor || 0) / scale}.`
+          );
+        }
+      } else {
+        await tx.product.update({
+          where: { id: input.productId },
+          data: {
+            stockQuantityMinor: { increment: minorQty },
+            stockQuantity: { increment: Math.round(absQty) },
+          },
+        });
+      }
+
+      const ledgerEntry = await tx.stockLedgerEntry.create({
+        data: {
+          productId: input.productId,
+          quantitySignedMinor,
+          quantitySigned: Math.round(quantitySigned),
+          unitCostPaise: currentWACPaise,
+          unitCost: currentWACPaise,
+          costAmountPaise,
+          costAmount: costAmountPaise,
+          effectiveAt,
+          type: input.type,
+          referenceType: input.referenceType || "MANUAL_ADJUSTMENT",
+          referenceId: input.referenceId,
+          notes: input.notes,
+          createdById: userId || null,
+        },
+      });
+
+      const updatedProduct = await tx.product.findUniqueOrThrow({ where: { id: input.productId } });
+      return { ledgerEntry, updatedProduct, product: updatedProduct };
     },
-  });
+    { maxWait: 15000, timeout: 30000 }
+  );
 
-  // Update product stock balance
-  const updatedProduct = await prisma.product.update({
-    where: { id: product.id },
-    data: {
-      stockQuantity: newStock,
-    },
-  });
-
-  return { product: updatedProduct, entry };
+  await invalidateStockCache(input.productId);
+  return result;
 }
 
 /**
- * Lock 1 & 4: Deducts stock when a bill is ISSUED or FULFILLED.
- * Only applies to PHYSICAL_PRODUCT items. Services create no stock movement.
- * Draft bills must NEVER invoke this.
+ * Deducts stock when an invoice transitions to ISSUED status.
+ * Atomic conditional decrement strictly prevents concurrent negative stock.
+ * Only physical products (RAW_MATERIAL, COMPONENT, FINISHED_PRODUCT, CONSUMABLE) deduct inventory.
+ * SERVICES create zero stock movements.
  */
 export async function deductStockForIssuedInvoice(invoiceId: string, userId?: string) {
   const invoice = await prisma.invoice.findUnique({
@@ -178,10 +307,10 @@ export async function deductStockForIssuedInvoice(invoiceId: string, userId?: st
   });
 
   if (!invoice) {
-    throw new Error("Invoice not found");
+    throw new Error(`Invoice not found: ${invoiceId}`);
   }
 
-  // Prevent duplicate deductions if already deducted
+  // Idempotency: verify stock hasn't already been deducted for this invoice
   const existingEntries = await prisma.stockLedgerEntry.findMany({
     where: {
       referenceType: "INVOICE",
@@ -195,41 +324,71 @@ export async function deductStockForIssuedInvoice(invoiceId: string, userId?: st
     return;
   }
 
+  // Only physical items track inventory (SERVICES create zero stock movement)
   const physicalItems = invoice.items.filter(
-    (item) => item.productId && item.product && item.product.type === "PHYSICAL_PRODUCT"
+    (item) => item.productId && item.product && item.product.type !== "SERVICE"
+  );
+
+  const effectiveAt = invoice.issuedAt || invoice.date || new Date();
+
+  // Deduct atomically inside transaction
+  await prisma.$transaction(
+    async (tx) => {
+      for (const item of physicalItems) {
+        if (!item.productId || !item.product) continue;
+
+        const scale = item.product.quantityScale || 1;
+        const qtyToDeduct = Math.round(item.qty ?? 1);
+        const minorQty = toMinorQuantity(qtyToDeduct, scale);
+
+        // Atomic conditional decrement
+        const decRes = await tx.product.updateMany({
+          where: {
+            id: item.productId,
+            stockQuantityMinor: { gte: minorQty },
+          },
+          data: {
+            stockQuantityMinor: { decrement: minorQty },
+            stockQuantity: { decrement: qtyToDeduct },
+          },
+        });
+
+        if (decRes.count === 0) {
+          throw new Error(
+            `Insufficient stock to issue invoice for ${item.product.name}: required ${qtyToDeduct}, available ${(item.product.stockQuantityMinor || 0) / scale}.`
+          );
+        }
+
+        const currentWACPaise = await getProductRollingWACPaise(item.productId, effectiveAt);
+        const costAmountPaise = calculateMinorCostPaise(minorQty, scale, currentWACPaise);
+
+        await tx.stockLedgerEntry.create({
+          data: {
+            productId: item.productId,
+            quantitySignedMinor: -minorQty,
+            quantitySigned: -qtyToDeduct,
+            unitCostPaise: currentWACPaise,
+            unitCost: currentWACPaise,
+            costAmountPaise,
+            costAmount: costAmountPaise,
+            effectiveAt,
+            type: "SALE",
+            referenceType: "INVOICE",
+            referenceId: invoiceId,
+            notes: `Sale via Invoice ${invoice.invoiceNo} (${item.description})`,
+            createdById: userId || null,
+            createdAt: effectiveAt,
+          },
+        });
+      }
+    },
+    { maxWait: 15000, timeout: 30000 }
   );
 
   for (const item of physicalItems) {
-    if (!item.productId) continue;
-
-    const qtyToDeduct = Math.round(item.qty ?? 1);
-    const currentWACPaise = await getProductRollingWACPaise(item.productId);
-    const costAmountPaise = safeMultiplyQuantityByPaise(qtyToDeduct, currentWACPaise);
-
-    await prisma.stockLedgerEntry.create({
-      data: {
-        productId: item.productId,
-        quantitySigned: -qtyToDeduct,
-        unitCost: currentWACPaise,
-        costAmount: costAmountPaise,
-        type: "SALE",
-        referenceType: "INVOICE",
-        referenceId: invoiceId,
-        notes: `Sale via Invoice ${invoice.invoiceNo} (${item.description})`,
-        createdById: userId || null,
-        createdAt: invoice.issuedAt || invoice.date || new Date(),
-      },
-    });
-
-    // Update product stockQuantity
-    await prisma.product.update({
-      where: { id: item.productId },
-      data: {
-        stockQuantity: {
-          decrement: qtyToDeduct,
-        },
-      },
-    });
+    if (item.productId) {
+      await invalidateStockCache(item.productId);
+    }
   }
 }
 
@@ -264,36 +423,181 @@ export async function reverseStockForCancelledInvoice(invoiceId: string, userId?
     return;
   }
 
+  const cancelDate = new Date();
+
+  await prisma.$transaction(
+    async (tx) => {
+      for (const entry of saleEntries) {
+        const qtyToRestore = Math.abs(entry.quantitySigned);
+        const minorToRestore = entry.quantitySignedMinor ? Math.abs(entry.quantitySignedMinor) : qtyToRestore;
+        const unitCostPaise = entry.unitCostPaise ?? entry.unitCost ?? 0;
+        const costAmountPaise = entry.costAmountPaise ?? entry.costAmount ?? 0;
+
+        await tx.stockLedgerEntry.create({
+          data: {
+            productId: entry.productId,
+            quantitySignedMinor: minorToRestore,
+            quantitySigned: qtyToRestore,
+            unitCostPaise,
+            unitCost: unitCostPaise,
+            costAmountPaise,
+            costAmount: costAmountPaise,
+            effectiveAt: cancelDate,
+            type: "CUSTOMER_RETURN",
+            referenceType: "INVOICE",
+            referenceId: invoiceId,
+            notes: `Restored stock from cancelled invoice ${invoiceId}`,
+            createdById: userId || null,
+            createdAt: cancelDate,
+          },
+        });
+
+        await tx.product.update({
+          where: { id: entry.productId },
+          data: {
+            stockQuantityMinor: { increment: minorToRestore },
+            stockQuantity: { increment: qtyToRestore },
+          },
+        });
+      }
+    },
+    { maxWait: 15000, timeout: 30000 }
+  );
+
   for (const entry of saleEntries) {
-    const qtyToRestore = Math.abs(entry.quantitySigned);
-
-    await prisma.stockLedgerEntry.create({
-      data: {
-        productId: entry.productId,
-        quantitySigned: qtyToRestore,
-        unitCost: entry.unitCost,
-        costAmount: entry.costAmount,
-        type: "CUSTOMER_RETURN",
-        referenceType: "INVOICE",
-        referenceId: invoiceId,
-        notes: `Restored stock from cancelled invoice ${invoiceId}`,
-        createdById: userId || null,
-      },
-    });
-
-    await prisma.product.update({
-      where: { id: entry.productId },
-      data: {
-        stockQuantity: {
-          increment: qtyToRestore,
-        },
-      },
-    });
+    await invalidateStockCache(entry.productId);
   }
 }
 
 /**
- * Returns complete stock movement history for a product.
+ * Safely voids an active InventorySourcing record:
+ * - Strictly rejects void if remaining available stock < sourced quantity (preventing negative inventory).
+ * - Creates PURCHASE_REVERSAL stock movement with atomic conditional decrement.
+ * - Reverses ONLY actual valid payment ledger events (derives net paid from events, not parent projection).
+ * - Recalculates parent paidAmount and status.
+ * - Marks status = "VOIDED".
+ * - Preserves immutable audit history.
+ */
+export async function voidInventorySourcing(sourcingId: string, reason: string, userId?: string) {
+  const sourcing = await prisma.inventorySourcing.findUnique({
+    where: { id: sourcingId },
+    include: { product: true, payments: true },
+  });
+
+  if (!sourcing) {
+    throw new Error(`Sourcing record not found: ${sourcingId}`);
+  }
+
+  if (sourcing.status === "VOIDED") {
+    throw new Error(`Sourcing record ${sourcing.sourcingNo} is already voided.`);
+  }
+
+  const scale = sourcing.product.quantityScale || 1;
+  const sourcedMinorQty = sourcing.quantityMinor ?? toMinorQuantity(sourcing.quantity, scale);
+  const availableMinor = sourcing.product.stockQuantityMinor ?? toMinorQuantity(sourcing.product.stockQuantity || 0, scale);
+
+  // Business Rule: Sourcing void requires remaining available stock >= sourced quantity
+  if (availableMinor < sourcedMinorQty) {
+    throw new Error(
+      `Cannot void sourcing ${sourcing.sourcingNo}: Available stock for ${sourcing.product.name} is ${availableMinor / scale}, but ${sourcing.quantity} is required for reversal. Consumed or sold inventory requires supplier return / reconciliation workflow.`
+    );
+  }
+
+  const voidDate = new Date();
+  const unitCostPaise = sourcing.unitCostPaise ?? sourcing.unitCost;
+  const totalCostPaise = sourcing.totalCostPaise ?? sourcing.totalCost;
+
+  // Calculate actual net paid amount from append-only payment ledger events
+  const netPaidPaise = sourcing.payments.reduce((sum, p) => {
+    const amt = p.amountPaise ?? p.amount ?? 0;
+    if (p.direction === "DECREASE" || p.type === "REVERSAL") {
+      return sum - amt;
+    }
+    return sum + amt;
+  }, 0);
+
+  const voided = await prisma.$transaction(
+    async (tx) => {
+      // 1. Atomic Conditional Decrement on Product Stock
+      const decRes = await tx.product.updateMany({
+        where: {
+          id: sourcing.productId,
+          stockQuantityMinor: { gte: sourcedMinorQty },
+        },
+        data: {
+          stockQuantityMinor: { decrement: sourcedMinorQty },
+          stockQuantity: { decrement: sourcing.quantity },
+        },
+      });
+
+      if (decRes.count === 0) {
+        throw new Error(
+          `Insufficient stock or concurrent modification while voiding sourcing ${sourcing.sourcingNo}.`
+        );
+      }
+
+      // 2. Mark sourcing VOIDED and reset parent projection
+      const updatedSourcing = await tx.inventorySourcing.update({
+        where: { id: sourcing.id },
+        data: {
+          status: "VOIDED",
+          voidedAt: voidDate,
+          voidReason: reason.trim(),
+          voidedById: userId || null,
+          paidAmountPaise: 0,
+          paidAmount: 0,
+          paymentStatus: "UNPAID",
+        },
+      });
+
+      // 3. Compensating Stock Reversal Movement
+      await tx.stockLedgerEntry.create({
+        data: {
+          productId: sourcing.productId,
+          quantitySignedMinor: -sourcedMinorQty,
+          quantitySigned: -sourcing.quantity,
+          unitCostPaise,
+          unitCost: unitCostPaise,
+          costAmountPaise: totalCostPaise,
+          costAmount: totalCostPaise,
+          effectiveAt: voidDate,
+          type: "PURCHASE_REVERSAL",
+          referenceType: "INVENTORY_SOURCING_VOID",
+          referenceId: sourcing.id,
+          notes: `Voided sourcing ${sourcing.sourcingNo}: ${reason}`,
+          createdById: userId || null,
+          createdAt: voidDate,
+        },
+      });
+
+      // 4. Compensating Payment Reversal ONLY if net paid from actual ledger events > 0
+      if (netPaidPaise > 0) {
+        await tx.inventorySourcingPayment.create({
+          data: {
+            sourcingId: sourcing.id,
+            amountPaise: netPaidPaise,
+            amount: netPaidPaise,
+            direction: "DECREASE",
+            type: "REVERSAL",
+            paymentDate: voidDate,
+            paymentMethod: sourcing.paymentMethod || "BANK_TRANSFER",
+            notes: `Compensating payment reversal for voided sourcing ${sourcing.sourcingNo}`,
+            createdById: userId || null,
+          },
+        });
+      }
+
+      return updatedSourcing;
+    },
+    { maxWait: 15000, timeout: 30000 }
+  );
+
+  await invalidateStockCache(sourcing.productId);
+  return voided;
+}
+
+/**
+ * Returns complete stock movement history for a product ordered by effectiveAt.
  */
 export async function getProductStockHistory(productId: string) {
   return prisma.stockLedgerEntry.findMany({
@@ -303,6 +607,6 @@ export async function getProductStockHistory(productId: string) {
         select: { name: true, email: true },
       },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { effectiveAt: "desc" },
   });
 }

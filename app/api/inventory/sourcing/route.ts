@@ -2,17 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { generateSourcingNo } from "@/lib/sequence";
 import { recordStockMovement } from "@/lib/costService";
-import { roundMoney, safeAdd, safeSub, toPaise, fromPaise } from "@/lib/money";
+import { roundMoney, toPaise, fromPaise } from "@/lib/money";
+import { invalidateStockCache } from "@/lib/cache";
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const productId = searchParams.get("productId");
     const sourceType = searchParams.get("sourceType");
+    const status = searchParams.get("status");
 
     const where: any = {};
     if (productId) where.productId = productId;
     if (sourceType) where.sourceType = sourceType;
+    if (status) where.status = status;
 
     const sourcings = await prisma.inventorySourcing.findMany({
       where,
@@ -24,6 +27,7 @@ export async function GET(req: NextRequest) {
             sku: true,
             stockQuantity: true,
             type: true,
+            category: true,
           },
         },
         payments: {
@@ -33,16 +37,25 @@ export async function GET(req: NextRequest) {
       orderBy: { purchaseDate: "desc" },
     });
 
-    const formatted = sourcings.map((s) => ({
-      ...s,
-      unitCost: fromPaise(s.unitCost),
-      totalCost: fromPaise(s.totalCost),
-      paidAmount: fromPaise(s.paidAmount),
-      payments: s.payments.map((p) => ({
-        ...p,
-        amount: fromPaise(p.amount),
-      })),
-    }));
+    const formatted = sourcings.map((s) => {
+      const netPaidPaise = s.payments
+        .filter((p) => p.type === "PAYMENT")
+        .reduce((sum, p) => sum + p.amount, 0)
+        - s.payments
+        .filter((p) => p.type === "REVERSAL")
+        .reduce((sum, p) => sum + p.amount, 0);
+
+      return {
+        ...s,
+        unitCost: fromPaise(s.unitCost),
+        totalCost: fromPaise(s.totalCost),
+        paidAmount: fromPaise(netPaidPaise),
+        payments: s.payments.map((p) => ({
+          ...p,
+          amount: fromPaise(p.amount),
+        })),
+      };
+    });
 
     return NextResponse.json({ success: true, sourcings: formatted });
   } catch (error: any) {
@@ -104,18 +117,34 @@ export async function POST(req: NextRequest) {
     const effectivePurchaseDate = purchaseDate ? new Date(purchaseDate) : new Date();
     const paidAt = cleanPaidPaise > 0 ? effectivePurchaseDate : null;
 
-    // Create sourcing record
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true, quantityScale: true },
+    });
+    if (!product) {
+      return NextResponse.json({ success: false, error: "Product not found" }, { status: 404 });
+    }
+
+    const scale = product.quantityScale || 1;
+    const quantityMinor = Math.round(parsedQty * scale);
+
+    // Create sourcing record with ACTIVE status
     const sourcing = await prisma.inventorySourcing.create({
       data: {
         sourcingNo,
         productId,
+        quantityMinor,
         quantity: parsedQty,
         sourceType,
         vendorName: vendorName || (sourceType === "IN_HOUSE" ? "TamizhTech In-House Lab" : null),
+        unitCostPaise,
         unitCost: unitCostPaise,
+        totalCostPaise,
         totalCost: totalCostPaise,
         purchaseDate: effectivePurchaseDate,
+        status: "ACTIVE",
         paymentStatus,
+        paidAmountPaise: cleanPaidPaise,
         paidAmount: cleanPaidPaise,
         paidAt,
         paymentMethod: cleanPaidPaise > 0 ? paymentMethod : null,
@@ -125,12 +154,15 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // If initial payment was made, log payment ledger entry
+    // If initial payment was made, log payment ledger entry with type PAYMENT and direction INCREASE
     if (cleanPaidPaise > 0) {
       await prisma.inventorySourcingPayment.create({
         data: {
           sourcingId: sourcing.id,
+          amountPaise: cleanPaidPaise,
           amount: cleanPaidPaise,
+          direction: "INCREASE",
+          type: "PAYMENT",
           paymentDate: effectivePurchaseDate,
           paymentMethod,
           paymentReference: referenceNo || null,
@@ -151,9 +183,11 @@ export async function POST(req: NextRequest) {
       referenceId: sourcing.id,
       notes: `Sourcing ${sourcingNo} (${sourceType})`,
       createdById: createdById || null,
+      effectiveAt: effectivePurchaseDate,
       createdAt: effectivePurchaseDate,
     });
 
+    await invalidateStockCache(productId);
 
     const fullSourcing = await prisma.inventorySourcing.findUnique({
       where: { id: sourcing.id },

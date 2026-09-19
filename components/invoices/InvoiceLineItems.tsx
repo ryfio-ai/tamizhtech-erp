@@ -37,7 +37,7 @@ export function InvoiceLineItems({ control, register, watch, setValue, errors }:
   useEffect(() => {
     async function loadProducts() {
       try {
-        const res = await fetch("/api/products");
+        const res = await fetch("/api/products?saleable=true");
         const json = await res.json();
         if (json.success) {
           setProducts(json.data || []);
@@ -111,11 +111,11 @@ export function InvoiceLineItems({ control, register, watch, setValue, errors }:
                     <option value="">Custom Service / Manual</option>
                     {products.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.name} ({p.sku || "No SKU"}) {p.type === "PHYSICAL_PRODUCT" ? `• ${p.stockQuantity} in stock` : "• Service"}
+                        {p.name} ({p.sku || "No SKU"}) {p.type === "SERVICE" ? "• Service" : `• ${p.stockQuantity} in stock`}
                       </option>
                     ))}
                   </select>
-                  {selectedProduct && selectedProduct.type === "PHYSICAL_PRODUCT" && (
+                  {selectedProduct && selectedProduct.type !== "SERVICE" && (
                     <div className="flex items-center gap-1 text-[11px] text-ink-secondary">
                       <Package className="w-3 h-3 text-brand" />
                       <span>Available: <b>{selectedProduct.stockQuantity} units</b></span>

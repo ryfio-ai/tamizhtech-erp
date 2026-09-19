@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { ClientFormValues, clientSchema } from "@/lib/validations";
 import { ApiResponse } from "@/types";
-import { generateClientCode } from "@/lib/sequence";
+import { allocateClientCodeTx } from "@/lib/sequence";
 import { normalizeMobile } from "@/lib/phone";
 import { z } from "zod";
 
@@ -114,42 +114,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Generate Client Code atomically from BusinessSequence with fallback
-    let clientCode: string;
+    // 2. Concurrency-safe atomic Client Code allocation & creation inside transaction
     try {
-      clientCode = await generateClientCode();
-    } catch {
-      clientCode = `TT-CL-${Date.now().toString().slice(-4)}`;
-    }
-
-    // Ensure clientCode uniqueness safeguard
-    const existingCode = await prisma.client.findUnique({ where: { clientCode } }).catch(() => null);
-    if (existingCode) {
-      clientCode = `TT-CL-${Date.now().toString().slice(-5)}`;
-    }
-
-    // 3. Create customer with unique mobileNormalized
-    try {
-      const newClient = await prisma.client.create({
-        data: {
-          clientCode,
-          name: validated.name.trim(),
-          phone: validated.phone.trim(),
-          mobileNormalized,
-          email: validated.email ? validated.email.trim().toLowerCase() : null,
-          company: validated.company ? validated.company.trim() : null,
-          city: validated.city ? validated.city.trim() : null,
-          address: validated.address ? validated.address.trim() : null,
-          state: validated.state ? validated.state.trim() : null,
-          pincode: validated.pincode ? validated.pincode.trim() : null,
-          gstin: validated.gstin ? validated.gstin.trim().toUpperCase() : null,
-          serviceType: validated.serviceType || null,
-          source: validated.source || "OTHER",
-          status: validated.status || "LEAD",
-          type: validated.type || "INDIVIDUAL",
-          notes: validated.notes ? validated.notes.trim() : null,
-          assignedToId: validated.assignedToId || null,
-        },
+      const newClient = await prisma.$transaction(async (tx) => {
+        const clientCode = await allocateClientCodeTx(tx);
+        return tx.client.create({
+          data: {
+            clientCode,
+            name: validated.name.trim(),
+            phone: validated.phone.trim(),
+            mobileNormalized,
+            email: validated.email ? validated.email.trim().toLowerCase() : null,
+            company: validated.company ? validated.company.trim() : null,
+            city: validated.city ? validated.city.trim() : null,
+            address: validated.address ? validated.address.trim() : null,
+            state: validated.state ? validated.state.trim() : null,
+            pincode: validated.pincode ? validated.pincode.trim() : null,
+            gstin: validated.gstin ? validated.gstin.trim().toUpperCase() : null,
+            serviceType: validated.serviceType || null,
+            source: validated.source || "OTHER",
+            status: validated.status || "LEAD",
+            type: validated.type || "INDIVIDUAL",
+            notes: validated.notes ? validated.notes.trim() : null,
+            assignedToId: validated.assignedToId || null,
+          },
+        });
       });
 
       return NextResponse.json<ApiResponse<any>>(

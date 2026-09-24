@@ -179,7 +179,7 @@ export async function POST(req: NextRequest) {
             message,
             payload: validatedPayload,
             attachmentMetadata,
-            sheetSyncStatus: "PENDING",
+            sheetSyncStatus: "SKIPPED",
             customerEmailStatus: "PENDING",
             adminEmailStatus: "PENDING",
           },
@@ -246,8 +246,10 @@ export async function POST(req: NextRequest) {
     await invalidateCachePrefix("dashboard:");
 
     // 8. Execute Side-Effects (Sheets sync & Emails)
-    // Runs within the serverless request lifecycle; errors do not rollback createdSubmission
-    processAllSubmissionSideEffects(createdSubmission).catch((sideEffectErr) => {
+    // Await execution so that serverless runtimes (Vercel / AWS Lambda) do not terminate
+    // or freeze the process before Google Sheets sync and emails finish executing.
+    // Errors inside processAllSubmissionSideEffects are handled safely and will not rollback createdSubmission.
+    await processAllSubmissionSideEffects(createdSubmission).catch((sideEffectErr) => {
       console.error("[SIDE_EFFECTS_ORCHESTRATION_WARN]:", sideEffectErr);
     });
 

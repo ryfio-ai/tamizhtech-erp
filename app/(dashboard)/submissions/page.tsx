@@ -21,7 +21,6 @@ import {
   MapPin,
   FileCheck,
   Send,
-  Table as TableIcon,
   X
 } from "lucide-react";
 import { toast } from "sonner";
@@ -82,7 +81,6 @@ export default function SubmissionsPage() {
     CONTACT: 0,
     CAREER: 0,
     CLUB_REGISTRATION: 0,
-    FAILED_SHEETS: 0,
     FAILED_EMAILS: 0,
   });
 
@@ -92,7 +90,7 @@ export default function SubmissionsPage() {
       const params = new URLSearchParams();
       if (activeTab !== "ALL") params.set("type", activeTab);
       if (statusFilter !== "ALL") params.set("status", statusFilter);
-      if (syncFilter !== "ALL") params.set("sheetSyncStatus", syncFilter);
+      if (syncFilter !== "ALL") params.set("emailStatus", syncFilter);
       if (searchQuery.trim()) params.set("search", searchQuery.trim());
       params.set("limit", "50");
 
@@ -195,11 +193,11 @@ export default function SubmissionsPage() {
       const data = await res.json();
       if (data.success) {
         toast.success(data.message || "Retry processed successfully");
-        openDetail(selectedSubmission);
-        fetchSubmissions();
       } else {
-        toast.error(data.error || "Retry failed");
+        toast.error(data.error || data.message || "Retry failed");
       }
+      await openDetail(selectedSubmission);
+      fetchSubmissions();
     } catch (err: any) {
       toast.error(err.message || "Retry error");
     } finally {
@@ -302,7 +300,7 @@ export default function SubmissionsPage() {
         </div>
         <div className="bg-white p-4 rounded-xl border border-rose-100 shadow-sm">
           <span className="text-xs font-semibold text-rose-600 uppercase tracking-wider">Sync Alerts</span>
-          <p className="text-2xl font-bold text-rose-900 mt-1">{(counts.FAILED_SHEETS || 0) + (counts.FAILED_EMAILS || 0)}</p>
+          <p className="text-2xl font-bold text-rose-900 mt-1">{counts.FAILED_EMAILS || 0}</p>
         </div>
       </div>
 
@@ -368,10 +366,10 @@ export default function SubmissionsPage() {
               onChange={(e) => setSyncFilter(e.target.value)}
               className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand/20"
             >
-              <option value="ALL">All Sheet Status</option>
-              <option value="SYNCED">Sheet Synced</option>
-              <option value="PENDING">Sheet Pending</option>
-              <option value="FAILED">Sheet Failed</option>
+              <option value="ALL">All Email Status</option>
+              <option value="SYNCED">Email Sent</option>
+              <option value="PENDING">Email Pending</option>
+              <option value="FAILED">Email Failed</option>
             </select>
           </div>
         </div>
@@ -435,8 +433,8 @@ export default function SubmissionsPage() {
                       <td className="py-3 px-4">{getStatusBadge(sub.status)}</td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          {getSyncIndicator(sub.sheetSyncStatus, "Sheet")}
-                          {getSyncIndicator(sub.adminEmailStatus, "Email")}
+                          {getSyncIndicator(sub.adminEmailStatus, "Admin Alert")}
+                          {sub.email && getSyncIndicator(sub.customerEmailStatus, "Customer Email")}
                         </div>
                       </td>
                       <td className="py-3 px-4 text-xs text-gray-500 whitespace-nowrap">
@@ -634,36 +632,12 @@ export default function SubmissionsPage() {
                 </div>
               </div>
 
-              {/* Side-Effect Sync & Outbox Execution Status */}
+              {/* Notification & Email Delivery Status */}
               <div>
                 <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3">
-                  Side-Effect Delivery & Synchronization
+                  Email Notification & Delivery Status
                 </h3>
                 <div className="space-y-2.5">
-                  {/* Google Sheets Sync Card */}
-                  <div className="flex items-center justify-between p-3.5 bg-white border border-gray-200 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <TableIcon className="w-5 h-5 text-emerald-600" />
-                      <div>
-                        <div className="font-semibold text-gray-900 text-xs">Google Sheets Copy</div>
-                        <div className="text-[11px] text-gray-500">
-                          Status: {selectedSubmission.sheetSyncStatus}
-                          {selectedSubmission.sheetSyncedAt && ` • ${format(new Date(selectedSubmission.sheetSyncedAt), "p")}`}
-                          {selectedSubmission.sheetSyncError && ` • Error: ${selectedSubmission.sheetSyncError}`}
-                        </div>
-                      </div>
-                    </div>
-                    {selectedSubmission.sheetSyncStatus !== "SYNCED" && (
-                      <button
-                        onClick={() => retrySync("SHEET_SYNC")}
-                        disabled={actionLoading}
-                        className="px-2.5 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors"
-                      >
-                        Retry Sheet
-                      </button>
-                    )}
-                  </div>
-
                   {/* Customer Confirmation Email */}
                   <div className="flex items-center justify-between p-3.5 bg-white border border-gray-200 rounded-xl">
                     <div className="flex items-center gap-3">

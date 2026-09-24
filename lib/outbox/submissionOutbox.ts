@@ -1,14 +1,13 @@
 import prisma from "@/lib/prisma";
-import { syncSubmissionToSheet } from "@/lib/integrations/googleSheetsService";
 import { sendCustomerThankYouEmail, sendAdminNotificationEmail } from "@/lib/email/submissionEmails";
 
-export type OutboxEventType = "SHEET_SYNC" | "CUSTOMER_EMAIL" | "ADMIN_EMAIL";
+export type OutboxEventType = "CUSTOMER_EMAIL" | "ADMIN_EMAIL";
 
 /**
  * Initializes the authoritative outbox events inside or right alongside the creation transaction.
  */
 export async function initializeSubmissionEvents(submissionId: string) {
-  const events: OutboxEventType[] = ["SHEET_SYNC", "CUSTOMER_EMAIL", "ADMIN_EMAIL"];
+  const events: OutboxEventType[] = ["CUSTOMER_EMAIL", "ADMIN_EMAIL"];
 
   for (const eventType of events) {
     await prisma.submissionEvent.upsert({
@@ -99,11 +98,7 @@ export async function processSubmissionEvent(
   let errorMessage: string | undefined;
 
   try {
-    if (eventType === "SHEET_SYNC") {
-      const result = await syncSubmissionToSheet(submission);
-      success = result.success;
-      errorMessage = result.error;
-    } else if (eventType === "CUSTOMER_EMAIL") {
+    if (eventType === "CUSTOMER_EMAIL") {
       const result = await sendCustomerThankYouEmail(submission);
       success = result.success;
       errorMessage = result.error;
@@ -140,11 +135,7 @@ export async function processSubmissionEvent(
   const syncStatusVal = success ? "SYNCED" : "FAILED";
   const updateData: Record<string, any> = {};
 
-  if (eventType === "SHEET_SYNC") {
-    updateData.sheetSyncStatus = syncStatusVal;
-    updateData.sheetSyncedAt = success ? new Date() : null;
-    updateData.sheetSyncError = errorMessage || null;
-  } else if (eventType === "CUSTOMER_EMAIL") {
+  if (eventType === "CUSTOMER_EMAIL") {
     updateData.customerEmailStatus = syncStatusVal;
     updateData.customerEmailSentAt = success ? new Date() : null;
     updateData.customerEmailError = errorMessage || null;
@@ -169,9 +160,8 @@ export async function processSubmissionEvent(
 export async function processAllSubmissionSideEffects(submission: any) {
   await initializeSubmissionEvents(submission.id);
 
-  // Execute events in parallel or orderly fashion
+  // Execute email notification events in parallel
   const results = await Promise.allSettled([
-    processSubmissionEvent(submission, "SHEET_SYNC"),
     processSubmissionEvent(submission, "CUSTOMER_EMAIL"),
     processSubmissionEvent(submission, "ADMIN_EMAIL"),
   ]);
@@ -192,15 +182,21 @@ export async function retrySubmissionEvent(submissionId: string, eventType: Outb
     throw new Error("Submission not found");
   }
 
-  // Reset event status to PENDING so it can be claimed
-  await prisma.submissionEvent.update({
+  // Reset or initialize event status to PENDING so it can be claimed
+  await prisma.submissionEvent.upsert({
     where: {
       submissionId_eventType: {
         submissionId,
         eventType,
       },
     },
-    data: {
+    create: {
+      submissionId,
+      eventType,
+      status: "PENDING",
+      retryCount: 0,
+    },
+    update: {
       status: "PENDING",
       error: null,
     },

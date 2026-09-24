@@ -29,7 +29,7 @@ export async function POST(
       return NextResponse.json({ success: false, error: "Submission not found" }, { status: 404 });
     }
 
-    const validEventTypes: OutboxEventType[] = ["SHEET_SYNC", "CUSTOMER_EMAIL", "ADMIN_EMAIL"];
+    const validEventTypes: OutboxEventType[] = ["CUSTOMER_EMAIL", "ADMIN_EMAIL"];
 
     if (eventType) {
       if (!validEventTypes.includes(eventType)) {
@@ -43,6 +43,7 @@ export async function POST(
       return NextResponse.json({
         success: res.success,
         data: res,
+        error: res.error,
         message: res.success ? `Event ${eventType} retried successfully.` : `Event retry failed: ${res.error}`,
       });
     }

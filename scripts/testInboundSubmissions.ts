@@ -392,10 +392,10 @@ async function runInboundSubmissionTests() {
       include: { events: true },
     });
 
-    const hasEvents = subRecord && subRecord.events.length === 3;
+    const hasEvents = subRecord && subRecord.events.length === 2;
     const eventTypes = subRecord ? subRecord.events.map((e) => e.eventType).sort() : [];
-    const eventsMatch = JSON.stringify(eventTypes) === JSON.stringify(["ADMIN_EMAIL", "CUSTOMER_EMAIL", "SHEET_SYNC"]);
-    recordTest(11, "Authoritative Outbox Events Created (SHEET_SYNC, CUSTOMER_EMAIL, ADMIN_EMAIL)", Boolean(hasEvents && eventsMatch));
+    const eventsMatch = JSON.stringify(eventTypes) === JSON.stringify(["ADMIN_EMAIL", "CUSTOMER_EMAIL"]);
+    recordTest(11, "Authoritative Outbox Events Created (CUSTOMER_EMAIL, ADMIN_EMAIL)", Boolean(hasEvents && eventsMatch));
 
     // -------------------------------------------------------------
     // TEST 11B: Stale PROCESSING Outbox Event Lease Recovery

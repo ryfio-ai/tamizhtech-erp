@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const typeParam = searchParams.get("type");
     const statusParam = searchParams.get("status");
-    const syncStatusParam = searchParams.get("sheetSyncStatus");
+    const emailStatusParam = searchParams.get("emailStatus") || searchParams.get("sheetSyncStatus");
     const query = searchParams.get("search") || searchParams.get("q") || "";
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20", 10)));
@@ -31,8 +31,11 @@ export async function GET(req: NextRequest) {
       where.status = statusParam;
     }
 
-    if (syncStatusParam && syncStatusParam !== "ALL") {
-      where.sheetSyncStatus = syncStatusParam;
+    if (emailStatusParam && emailStatusParam !== "ALL") {
+      where.OR = [
+        { customerEmailStatus: emailStatusParam },
+        { adminEmailStatus: emailStatusParam },
+      ];
     }
 
     if (query.trim()) {
@@ -47,7 +50,7 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    const [submissions, total, countsByType, failedSheetsCount, failedEmailsCount] = await Promise.all([
+    const [submissions, total, countsByType, failedEmailsCount] = await Promise.all([
       prisma.inboundSubmission.findMany({
         where,
         orderBy: { createdAt: "desc" },
@@ -65,9 +68,6 @@ export async function GET(req: NextRequest) {
         _count: { _all: true },
       }),
       prisma.inboundSubmission.count({
-        where: { sheetSyncStatus: "FAILED" },
-      }),
-      prisma.inboundSubmission.count({
         where: {
           OR: [
             { customerEmailStatus: "FAILED" },
@@ -83,7 +83,6 @@ export async function GET(req: NextRequest) {
       CONTACT: 0,
       CAREER: 0,
       CLUB_REGISTRATION: 0,
-      FAILED_SHEETS: failedSheetsCount,
       FAILED_EMAILS: failedEmailsCount,
     };
 

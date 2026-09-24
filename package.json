@@ -15,7 +15,9 @@
     "test:customer": "ts-node -r tsconfig-paths/register -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/testAddCustomer.ts",
     "test:customer-integrity": "ts-node -r tsconfig-paths/register -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/testCustomerIntegrity.ts",
     "test:inventory": "ts-node -r tsconfig-paths/register -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/testInventoryArchitecture.ts",
-    "test:submissions": "ts-node -r tsconfig-paths/register -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/testInboundSubmissions.ts"
+    "test:submissions": "ts-node -r tsconfig-paths/register -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/testInboundSubmissions.ts",
+    "inspect:db": "ts-node -r tsconfig-paths/register -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/inspectDb.ts",
+    "reset:submissions": "ts-node -r tsconfig-paths/register -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/resetSubmissions.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

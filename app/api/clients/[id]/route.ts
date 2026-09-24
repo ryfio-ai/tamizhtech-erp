@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { UpdateClientInput } from "@/types";
 import { normalizeMobile, isValidMobile } from "@/lib/phone";
+import { fromPaise } from "@/lib/money";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -22,9 +23,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
     const formattedClient = {
       ...client,
-      totalInvoiced: client.invoices.reduce((sum, inv) => sum + inv.total, 0),
-      totalPaid: client.payments.reduce((sum, pay) => sum + pay.amount, 0),
-      outstandingBalance: client.invoices.reduce((sum, inv) => sum + inv.balance, 0),
+      totalInvoiced: fromPaise(client.invoices.reduce((sum, inv) => sum + inv.total, 0)),
+      totalPaid: fromPaise(client.payments.reduce((sum, pay) => sum + pay.amount, 0)),
+      outstandingBalance: fromPaise(client.invoices.reduce((sum, inv) => sum + inv.balance, 0)),
       createdAt: client.createdAt.toISOString()
     };
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { fromPaise } from "@/lib/money";
 
 export const revalidate = 0;
 
@@ -33,14 +34,14 @@ export async function GET(req: NextRequest) {
     // 1. Today's Bills
     const todayInvoices = invoices.filter(i => new Date(i.createdAt) >= startOfToday);
     const todayBillsCount = todayInvoices.length;
-    const todayBillsAmount = todayInvoices.reduce((sum, i) => sum + (Number(i.total) || 0), 0);
+    const todayBillsAmount = fromPaise(todayInvoices.reduce((sum, i) => sum + (Number(i.total) || 0), 0));
 
     // 2. Today's Payments
     const todayPaymentsList = payments.filter(p => new Date(p.createdAt) >= startOfToday);
-    const todayPaymentsAmount = todayPaymentsList.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    const todayPaymentsAmount = fromPaise(todayPaymentsList.reduce((sum, p) => sum + (Number(p.amount) || 0), 0));
 
     // 3. Outstanding Balance across all invoices
-    const totalOutstandingBalance = invoices.reduce((sum, i) => sum + (Number(i.balance) || 0), 0);
+    const totalOutstandingBalance = fromPaise(invoices.reduce((sum, i) => sum + (Number(i.balance) || 0), 0));
 
     // 4. Low Stock Products
     const physicalProducts = products.filter(p => p.type === "PHYSICAL_PRODUCT");
@@ -53,9 +54,9 @@ export async function GET(req: NextRequest) {
       invoiceNo: i.invoiceNo,
       clientName: i.client?.name || i.clientName || "Unknown",
       date: i.date.toISOString(),
-      total: i.total,
-      paidAmount: i.paidAmount,
-      balance: i.balance,
+      total: fromPaise(i.total),
+      paidAmount: fromPaise(i.paidAmount),
+      balance: fromPaise(i.balance),
       status: i.status,
     }));
 
@@ -67,7 +68,7 @@ export async function GET(req: NextRequest) {
       city: c.city,
       phone: c.phone,
       email: c.email,
-      outstandingBalance: c.invoices.reduce((sum, inv) => sum + (Number(inv.balance) || 0), 0),
+      outstandingBalance: fromPaise(c.invoices.reduce((sum, inv) => sum + (Number(inv.balance) || 0), 0)),
       status: c.status,
     }));
 

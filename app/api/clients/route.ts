@@ -4,6 +4,7 @@ import { ClientFormValues, clientSchema } from "@/lib/validations";
 import { ApiResponse } from "@/types";
 import { allocateClientCodeTx } from "@/lib/sequence";
 import { normalizeMobile } from "@/lib/phone";
+import { fromPaise } from "@/lib/money";
 import { z } from "zod";
 
 export const revalidate = 0; // Disable static caching for API
@@ -57,9 +58,9 @@ export async function GET(req: NextRequest) {
     // Map to the expected UI Client type
     const formattedClients = clients.map((c) => ({
       ...c,
-      totalInvoiced: c.invoices.reduce((sum, inv) => sum + inv.total, 0),
-      totalPaid: c.payments.reduce((sum, pay) => sum + pay.amount, 0),
-      outstandingBalance: c.invoices.reduce((sum, inv) => sum + inv.balance, 0),
+      totalInvoiced: fromPaise(c.invoices.reduce((sum, inv) => sum + inv.total, 0)),
+      totalPaid: fromPaise(c.payments.reduce((sum, pay) => sum + pay.amount, 0)),
+      outstandingBalance: fromPaise(c.invoices.reduce((sum, inv) => sum + inv.balance, 0)),
       createdAt: c.createdAt.toISOString(),
     }));
 

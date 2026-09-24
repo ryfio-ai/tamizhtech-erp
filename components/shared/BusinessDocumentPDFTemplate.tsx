@@ -312,31 +312,31 @@ const styles = StyleSheet.create({
     padding: 6,
     alignItems: "center",
     justifyContent: "space-between",
-    minHeight: 80,
+    minHeight: 90,
   },
   signatureCompanyText: {
-    fontSize: 7.2,
+    fontSize: 7.5,
     fontFamily: "Helvetica-Bold",
     color: "#1B2A4A",
     textAlign: "center",
     marginBottom: 2,
   },
   signatureImage: {
-    width: 80,
-    height: 45, // 16:9 aspect ratio
+    width: 135,
+    height: 60, // Increased signature size for clear, bold visibility
     objectFit: "contain",
   },
   signatureSpace: {
-    height: 35,
+    height: 45,
   },
   signatureLine: {
-    fontSize: 7,
+    fontSize: 7.2,
     fontFamily: "Helvetica",
     color: "#6B7280",
     borderTopWidth: 1,
     borderTopColor: "#9CA3AF",
     paddingTop: 3,
-    width: "80%",
+    width: "85%",
     textAlign: "center",
   },
 });

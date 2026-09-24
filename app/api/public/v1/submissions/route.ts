@@ -245,11 +245,12 @@ export async function POST(req: NextRequest) {
     await invalidateCachePrefix("submissions:");
     await invalidateCachePrefix("dashboard:");
 
-    // 8. Execute Side-Effects (Sheets sync & Emails)
-    // Await execution so that serverless runtimes (Vercel / AWS Lambda) do not terminate
-    // or freeze the process before Google Sheets sync and emails finish executing.
-    // Errors inside processAllSubmissionSideEffects are handled safely and will not rollback createdSubmission.
-    await processAllSubmissionSideEffects(createdSubmission).catch((sideEffectErr) => {
+    // 8. Execute Side-Effects (Emails)
+    // Bounded with a safe timeout so external network delays (e.g. Resend) never block or timeout user submissions.
+    await Promise.race([
+      processAllSubmissionSideEffects(createdSubmission),
+      new Promise((resolve) => setTimeout(resolve, 2500)),
+    ]).catch((sideEffectErr) => {
       console.error("[SIDE_EFFECTS_ORCHESTRATION_WARN]:", sideEffectErr);
     });
 

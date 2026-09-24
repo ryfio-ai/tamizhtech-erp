@@ -3,7 +3,7 @@ import { getCompanySettings, CompanySettings } from "@/lib/company";
 import { getCanonicalInvoiceFinancials } from "@/lib/invoiceService";
 import { fromPaise, roundMoney } from "@/lib/money";
 import { numberToWords } from "@/lib/numToWords";
-import { getServerLogoDataUri } from "@/lib/serverLogo";
+import { getServerLogoDataUri, getServerSignatureDataUri } from "@/lib/serverLogo";
 import {
   DocumentParty,
   DocumentItem,
@@ -199,6 +199,7 @@ export async function getNormalizedInvoiceData(invoiceId: string): Promise<Busin
   if (!invoice) return null;
 
   const logoSrc = getServerLogoDataUri();
+  const signatureSrc = getServerSignatureDataUri();
   const placeOfSupply = resolvePlaceOfSupply(invoice.client?.gstin, invoice.client?.state);
   const isIntraState = placeOfSupply.stateCode === "33"; // Tamil Nadu company base
 
@@ -312,6 +313,7 @@ export async function getNormalizedInvoiceData(invoiceId: string): Promise<Busin
     notes: invoice.notes,
     terms: parseTerms(invoice.terms || defaultTerms),
     logoSrc,
+    signatureSrc,
   };
 }
 
@@ -337,6 +339,7 @@ export async function getNormalizedQuotationData(quotationId: string): Promise<B
   if (!quotation) return null;
 
   const logoSrc = getServerLogoDataUri();
+  const signatureSrc = getServerSignatureDataUri();
   const placeOfSupply = resolvePlaceOfSupply(quotation.client?.gstin, quotation.client?.state);
   const isIntraState = placeOfSupply.stateCode === "33";
 
@@ -452,5 +455,6 @@ export async function getNormalizedQuotationData(quotationId: string): Promise<B
     notes: quotation.notes,
     terms: parseTerms(quotation.terms || defaultTerms),
     logoSrc,
+    signatureSrc,
   };
 }

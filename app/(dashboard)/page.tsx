@@ -43,26 +43,11 @@ export default function DashboardPage() {
     }
   };
 
+  const [liveTime, setLiveTime] = useState<string>("");
+
   useEffect(() => {
     fetchDashboardData();
   }, []);
-
-  const userName = session?.user?.name || "TamizhTech Team";
-  const todayFormatted = new Date().toLocaleDateString("en-IN", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-
-  if (loading && !stats) {
-    return <LoadingSkeleton type="page" />;
-  }
-
-  const todayBillsCount = stats?.todayBillsCount || 0;
-  const todayBillsAmount = stats?.todayBillsAmount || 0;
-  const todayPaymentsAmount = stats?.todayPaymentsAmount || 0;
-  const [liveTime, setLiveTime] = useState<string>("");
 
   useEffect(() => {
     const updateTime = () => {
@@ -80,6 +65,22 @@ export default function DashboardPage() {
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  const userName = session?.user?.name || "TamizhTech Team";
+  const todayFormatted = new Date().toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+  if (loading && !stats) {
+    return <LoadingSkeleton type="page" />;
+  }
+
+  const todayBillsCount = stats?.todayBillsCount || 0;
+  const todayBillsAmount = stats?.todayBillsAmount || 0;
+  const todayPaymentsAmount = stats?.todayPaymentsAmount || 0;
 
   const totalOutstanding = stats?.totalOutstandingBalance || 0;
   const lowStockCount = stats?.lowStockCount || 0;

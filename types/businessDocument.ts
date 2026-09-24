@@ -63,4 +63,5 @@ export interface BusinessDocumentModel {
   notes?: string | null;
   terms: string[];
   logoSrc: string;
+  signatureSrc?: string;
 }

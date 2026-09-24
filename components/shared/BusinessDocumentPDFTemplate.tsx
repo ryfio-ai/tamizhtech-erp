@@ -309,16 +309,22 @@ const styles = StyleSheet.create({
   },
 
   signatureContainer: {
-    padding: 8,
+    padding: 6,
     alignItems: "center",
     justifyContent: "space-between",
-    minHeight: 75,
+    minHeight: 80,
   },
   signatureCompanyText: {
     fontSize: 7.2,
     fontFamily: "Helvetica-Bold",
     color: "#1B2A4A",
     textAlign: "center",
+    marginBottom: 2,
+  },
+  signatureImage: {
+    width: 80,
+    height: 45, // 16:9 aspect ratio
+    objectFit: "contain",
   },
   signatureSpace: {
     height: 35,
@@ -360,6 +366,7 @@ export function BusinessDocumentPDFTemplate({ data }: BusinessDocumentPDFTemplat
     notes,
     terms,
     logoSrc,
+    signatureSrc,
   } = data;
 
   const isInvoice = data.docType === "INVOICE";
@@ -606,7 +613,11 @@ export function BusinessDocumentPDFTemplate({ data }: BusinessDocumentPDFTemplat
                 <Text style={styles.signatureCompanyText}>
                   For {company.companyName}
                 </Text>
-                <View style={styles.signatureSpace} />
+                {signatureSrc ? (
+                  <Image src={signatureSrc} style={styles.signatureImage} />
+                ) : (
+                  <View style={styles.signatureSpace} />
+                )}
                 <Text style={styles.signatureLine}>Authorized Signature</Text>
               </View>
             </View>

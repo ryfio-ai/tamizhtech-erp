@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { Plus, Users, FileText, CreditCard, Briefcase, Package, Calendar } from "lucide-react";
+import { Plus, Users, FileText, CreditCard, Briefcase, Package, Calendar, Banknote } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 
@@ -23,6 +23,7 @@ export function QuickActionMenu({ isMobileFloating = false }: QuickActionMenuPro
     { label: "Add Customer", href: "/clients?new=true", icon: Users, color: "text-blue-600" },
     { label: "Add Product", href: "/products", icon: Package, color: "text-amber-600" },
     { label: "Record Payment", href: "/payments/new", icon: CreditCard, color: "text-green-600" },
+    { label: "Record Expense", href: "/finance?new=true", icon: Banknote, color: "text-rose-600" },
     { label: "Schedule Follow-up", href: "/followups?new=true", icon: Calendar, color: "text-gray-600" },
     ...(isEngineeringAllowed
       ? [

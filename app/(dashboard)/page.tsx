@@ -12,7 +12,8 @@ import {
   Package, 
   CalendarClock, 
   ArrowRight,
-  ExternalLink
+  ExternalLink,
+  Banknote
 } from "lucide-react";
 import { StatCard } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -43,36 +44,11 @@ export default function DashboardPage() {
     }
   };
 
-  const [liveTime, setLiveTime] = useState<string>("");
-
   useEffect(() => {
     fetchDashboardData();
   }, []);
 
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      setLiveTime(
-        now.toLocaleTimeString("en-IN", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: true,
-        })
-      );
-    };
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   const userName = session?.user?.name || "TamizhTech Team";
-  const todayFormatted = new Date().toLocaleDateString("en-IN", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
 
   if (loading && !stats) {
     return <LoadingSkeleton type="page" />;
@@ -81,6 +57,8 @@ export default function DashboardPage() {
   const todayBillsCount = stats?.todayBillsCount || 0;
   const todayBillsAmount = stats?.todayBillsAmount || 0;
   const todayPaymentsAmount = stats?.todayPaymentsAmount || 0;
+  const todayExpensesAmount = stats?.todayExpensesAmount || 0;
+  const todayExpensesCount = stats?.todayExpensesCount || 0;
 
   const totalOutstanding = stats?.totalOutstandingBalance || 0;
   const lowStockCount = stats?.lowStockCount || 0;
@@ -97,18 +75,8 @@ export default function DashboardPage() {
           <h1 className="text-xl sm:text-2xl font-bold text-ink-primary tracking-tight">
             Hi Team!!!!!!!!
           </h1>
-          <p className="text-xs sm:text-sm text-ink-secondary mt-1 flex items-center gap-1.5 flex-wrap">
-            <span>{todayFormatted}</span>
-            {liveTime && (
-              <>
-                <span className="text-gray-300">•</span>
-                <span className="font-mono text-brand font-bold bg-brand/5 px-2 py-0.5 rounded border border-brand/20 text-xs">
-                  {liveTime}
-                </span>
-              </>
-            )}
-            <span className="text-gray-300">•</span>
-            <span>Tamizh Tech Robotics Company Operations Workspace</span>
+          <p className="text-xs sm:text-sm text-ink-secondary mt-1">
+            Tamizh Tech Robotics Company Operations Workspace
           </p>
         </div>
 
@@ -138,11 +106,17 @@ export default function DashboardPage() {
               <span>Record Payment</span>
             </Button>
           </Link>
+          <Link href="/finance?new=true">
+            <Button variant="outline" size="sm" className="gap-1.5 h-10 text-xs text-ink-primary hover:text-rose-600">
+              <Banknote className="w-3.5 h-3.5 text-rose-600" />
+              <span>Record Expense</span>
+            </Button>
+          </Link>
         </div>
       </div>
 
-      {/* 2. Four Core Operations Metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {/* 2. Operations Metrics Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <StatCard
           title="Today's Bills"
           value={todayBillsCount}
@@ -158,6 +132,14 @@ export default function DashboardPage() {
           subtitle="Payments received today"
           icon={IndianRupee}
           badgeVariant="success"
+        />
+
+        <StatCard
+          title="Today's Expenses"
+          value={`₹${todayExpensesAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
+          subtitle={`${todayExpensesCount} expense${todayExpensesCount === 1 ? "" : "s"} today`}
+          icon={Banknote}
+          badgeVariant={todayExpensesAmount > 0 ? "warning" : "default"}
         />
 
         <StatCard

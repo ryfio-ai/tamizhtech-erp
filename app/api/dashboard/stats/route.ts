@@ -6,7 +6,7 @@ export const revalidate = 0;
 
 export async function GET(req: NextRequest) {
   try {
-    const [clients, invoices, payments, followups, products] = await Promise.all([
+    const [clients, invoices, payments, followups, products, expenses] = await Promise.all([
       prisma.client.findMany({ 
         include: { invoices: true, payments: true },
         orderBy: { createdAt: "desc" }
@@ -26,6 +26,9 @@ export async function GET(req: NextRequest) {
       prisma.product.findMany({
         orderBy: { stockQuantity: "asc" }
       }),
+      prisma.expense.findMany({
+        orderBy: { createdAt: "desc" }
+      }),
     ]);
 
     const now = new Date();
@@ -39,6 +42,15 @@ export async function GET(req: NextRequest) {
     // 2. Today's Payments
     const todayPaymentsList = payments.filter(p => new Date(p.createdAt) >= startOfToday);
     const todayPaymentsAmount = fromPaise(todayPaymentsList.reduce((sum, p) => sum + (Number(p.amount) || 0), 0));
+
+    // 3. Today's Expenses
+    const todayExpensesList = expenses.filter(e => {
+      if (e.status === "REJECTED") return false;
+      const expDate = new Date(e.date || e.createdAt);
+      return expDate >= startOfToday;
+    });
+    const todayExpensesCount = todayExpensesList.length;
+    const todayExpensesAmount = fromPaise(todayExpensesList.reduce((sum, e) => sum + (Number(e.amount) || 0), 0));
 
     // 3. Outstanding Balance across all invoices
     const totalOutstandingBalance = fromPaise(invoices.reduce((sum, i) => sum + (Number(i.balance) || 0), 0));
@@ -91,6 +103,8 @@ export async function GET(req: NextRequest) {
         todayBillsAmount,
         todayPaymentsCount: todayPaymentsList.length,
         todayPaymentsAmount,
+        todayExpensesCount,
+        todayExpensesAmount,
         totalOutstandingBalance,
         lowStockCount,
         totalProducts: products.length,

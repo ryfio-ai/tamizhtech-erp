@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { formatCurrency } from "@/lib/utils";
@@ -53,10 +54,12 @@ const EXPENSE_CATEGORIES = [
   "OTHER"
 ];
 
-export default function FinancePage() {
+function FinanceContent() {
   const [data, setData] = useState<any>(null);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
@@ -101,7 +104,11 @@ export default function FinancePage() {
 
   useEffect(() => {
     fetchFinanceData();
-  }, []);
+    if (searchParams.get("new") === "true" || searchParams.get("action") === "new") {
+      setShowAddModal(true);
+      router.replace("/finance", { scroll: false });
+    }
+  }, [searchParams]);
 
   const handleCreateExpense = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -670,5 +677,13 @@ export default function FinancePage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function FinancePage() {
+  return (
+    <Suspense fallback={<LoadingSkeleton type="page" />}>
+      <FinanceContent />
+    </Suspense>
   );
 }

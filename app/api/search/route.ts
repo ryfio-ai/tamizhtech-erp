@@ -20,10 +20,10 @@ export async function GET(req: NextRequest) {
     const regex = { contains: q, mode: "insensitive" as const };
 
     // Search across core domains in parallel
-    const [clients, invoices, payments, products, projects] = await Promise.all([
+    const [clients, invoices, payments, products, projects, submissions, quotations] = await Promise.all([
       prisma.client.findMany({
         where: {
-          OR: [{ name: regex }, { clientCode: regex }, { city: regex }],
+          OR: [{ name: regex }, { clientCode: regex }, { city: regex }, { mobileNormalized: regex }],
         },
         take: 5,
         select: { id: true, name: true, clientCode: true, city: true },
@@ -56,6 +56,26 @@ export async function GET(req: NextRequest) {
         take: 5,
         select: { id: true, name: true, status: true },
       }),
+      prisma.inboundSubmission.findMany({
+        where: {
+          OR: [
+            { submissionNo: regex },
+            { name: regex },
+            { email: regex },
+            { mobile: regex },
+            { company: regex },
+          ],
+        },
+        take: 5,
+        select: { id: true, submissionNo: true, name: true, type: true, status: true },
+      }),
+      prisma.quotation.findMany({
+        where: {
+          OR: [{ quotationNo: regex }],
+        },
+        take: 5,
+        select: { id: true, quotationNo: true, status: true, total: true, client: { select: { name: true } } },
+      }),
     ]);
 
     const results = [
@@ -65,6 +85,20 @@ export async function GET(req: NextRequest) {
         subtitle: `${c.clientCode || "Customer"} • ${c.city || "Coimbatore"}`,
         category: "Customer" as const,
         href: `/clients/${c.id}`,
+      })),
+      ...submissions.map((s) => ({
+        id: `sub-${s.id}`,
+        title: s.submissionNo,
+        subtitle: `${s.name} • ${s.type} (${s.status})`,
+        category: "Submission" as const,
+        href: `/submissions?id=${s.id}`,
+      })),
+      ...quotations.map((q) => ({
+        id: `qtn-${q.id}`,
+        title: q.quotationNo,
+        subtitle: `${q.client?.name || "Client"} • ₹${Number(q.total || 0).toLocaleString("en-IN")}`,
+        category: "Quotation" as const,
+        href: `/quotations/${q.id}`,
       })),
       ...products.map((p) => ({
         id: `prod-${p.id}`,
@@ -95,6 +129,7 @@ export async function GET(req: NextRequest) {
         href: `/projects`,
       })),
     ];
+
 
     return NextResponse.json({ success: true, data: results });
   } catch (error: any) {

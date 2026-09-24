@@ -20,7 +20,8 @@ import {
   Plus,
   Trash2,
   RefreshCw,
-  Coins
+  Coins,
+  MoreHorizontal
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -29,6 +30,13 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { DataTable, ColumnDef } from "@/components/shared/DataTable";
 import { ResponsiveDrawer } from "@/components/shared/ResponsiveDrawer";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { SKU_CATEGORIES } from "@/lib/skuConfig";
 
 interface Product {
@@ -667,6 +675,7 @@ export default function ProductsPage() {
       header: "Item & Classification",
       accessorKey: "name",
       sortable: true,
+      className: "min-w-[220px]",
       cell: (row) => (
         <div>
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -681,8 +690,9 @@ export default function ProductsPage() {
       header: "SKU",
       accessorKey: "sku",
       sortable: true,
+      className: "whitespace-nowrap min-w-[120px]",
       cell: (row) => (
-        <span className="font-mono text-xs font-semibold px-2 py-0.5 bg-gray-100 rounded border border-border text-ink-primary">
+        <span className="font-mono text-xs font-semibold px-2 py-0.5 bg-gray-100 rounded border border-border text-ink-primary whitespace-nowrap inline-block">
           {row.sku || "-"}
         </span>
       ),
@@ -691,6 +701,7 @@ export default function ProductsPage() {
       header: "Category",
       accessorKey: "category",
       sortable: true,
+      className: "whitespace-nowrap min-w-[100px]",
       cell: (row) => (
         <span className="text-xs text-ink-secondary">
           {row.category || "General"}
@@ -701,6 +712,7 @@ export default function ProductsPage() {
       header: "Available Stock",
       accessorKey: "stockQuantity",
       sortable: true,
+      className: "whitespace-nowrap min-w-[110px]",
       cell: (row) => {
         if (row.type === "SERVICE") {
           return <span className="text-xs text-ink-secondary font-medium italic">N/A</span>;
@@ -718,6 +730,7 @@ export default function ProductsPage() {
       header: "Rolling WAC",
       accessorKey: "rollingWACRupees",
       sortable: true,
+      className: "whitespace-nowrap min-w-[100px]",
       cell: (row) => {
         if (row.type === "SERVICE") return <span className="text-xs text-ink-secondary italic">-</span>;
         const wac = row.rollingWACRupees ?? 0;
@@ -732,6 +745,7 @@ export default function ProductsPage() {
       header: "Inventory Value",
       accessorKey: "valuationRupees",
       sortable: true,
+      className: "whitespace-nowrap min-w-[110px]",
       cell: (row) => {
         if (row.type === "SERVICE") return <span className="text-xs text-ink-secondary italic">-</span>;
         const val = row.valuationRupees ?? 0;
@@ -746,6 +760,7 @@ export default function ProductsPage() {
       header: "Selling Price",
       accessorKey: "basePrice",
       sortable: true,
+      className: "whitespace-nowrap min-w-[110px]",
       cell: (row) => {
         if (!row.isSaleable && row.type !== "FINISHED_PRODUCT" && row.type !== "PHYSICAL_PRODUCT" && row.type !== "SERVICE") {
           return <span className="text-[11px] text-gray-400 italic">Internal use</span>;
@@ -768,20 +783,24 @@ export default function ProductsPage() {
       header: "Status",
       accessorKey: "status",
       sortable: true,
+      className: "whitespace-nowrap min-w-[90px]",
       cell: (row) => <StatusBadge status={getStockStatus(row)} />,
     },
     {
       header: "Actions",
       accessorKey: "id",
-      className: "text-right",
+      className: "text-right whitespace-nowrap min-w-[190px]",
       cell: (row) => (
-        <div className="flex items-center justify-end gap-1 flex-wrap">
+        <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
           {/* Produce Button (Enabled for Finished Products) */}
           {(row.type === "FINISHED_PRODUCT" || row.type === "PHYSICAL_PRODUCT") && (
             <Button
               variant="outline"
               size="sm"
-              onClick={() => openProductionModal(row)}
+              onClick={(e) => {
+                e.stopPropagation();
+                openProductionModal(row);
+              }}
               className="h-7 px-2 text-xs font-semibold text-indigo-700 border-indigo-200 hover:bg-indigo-50"
               title="Manufacture in-house (Consume materials & create finished product)"
             >
@@ -790,26 +809,13 @@ export default function ProductsPage() {
             </Button>
           )}
 
-          {/* Quick Bill Button (for saleable items) */}
-          {(row.isSaleable || row.type === "FINISHED_PRODUCT" || row.type === "PHYSICAL_PRODUCT") && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push("/invoices")}
-              className="h-7 px-2 text-xs text-purple-700 border-purple-200 hover:bg-purple-50"
-              title="Issue customer bill"
-            >
-              <ReceiptText className="w-3.5 h-3.5 mr-1" />
-              Bill
-            </Button>
-          )}
-
           {/* Add Stock / Source Button (for all physical items) */}
           {row.type !== "SERVICE" && (
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setSourcingProduct(row);
                 setSourcingData({
                   quantity: "1",
@@ -822,62 +828,90 @@ export default function ProductsPage() {
                   notes: "",
                 });
               }}
-              className="h-7 px-2 text-xs text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+              className="h-7 px-2 text-xs font-medium text-emerald-700 border-emerald-300 hover:bg-emerald-50"
               title="Inbound Sourcing & Rolling WAC"
             >
               <PackagePlus className="w-3.5 h-3.5 mr-1" />
-              Add Stock
+              Stock
             </Button>
           )}
 
-          {/* Adjust Stock */}
-          {row.type !== "SERVICE" && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setAdjustingProduct(row);
-                setAdjustData({ type: "ADJUSTMENT", quantityChange: "", notes: "" });
-              }}
-              className="h-7 px-2 text-xs text-brand hover:bg-brand-50"
-              title="Manual Stock Adjustment"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-            </Button>
-          )}
-
-          {/* History */}
-          {row.type !== "SERVICE" && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => openHistory(row)}
-              className="h-7 px-2 text-xs text-ink-secondary hover:text-ink-primary"
-              title="View Stock Movement Ledger"
-            >
-              <History className="w-3.5 h-3.5" />
-            </Button>
-          )}
-
+          {/* Quick Edit */}
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => openEdit(row)}
-            className="h-7 px-2 text-xs text-ink-secondary hover:text-brand"
+            onClick={(e) => {
+              e.stopPropagation();
+              openEdit(row);
+            }}
+            className="h-7 w-7 p-0 text-ink-secondary hover:text-brand"
             title="Edit Details"
           >
             <Edit3 className="w-3.5 h-3.5" />
           </Button>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setArchiveData({ open: true, product: row, loading: false })}
-            className="h-7 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-            title="Archive Product"
-          >
-            <Archive className="w-3.5 h-3.5" />
-          </Button>
+          {/* More Actions Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 text-ink-secondary hover:text-ink-primary hover:bg-gray-100"
+                title="More Actions"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreHorizontal className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 bg-white shadow-lg border border-border">
+              {/* Quick Bill */}
+              {(row.isSaleable || row.type === "FINISHED_PRODUCT" || row.type === "PHYSICAL_PRODUCT") && (
+                <DropdownMenuItem
+                  onClick={() => router.push("/invoices")}
+                  className="cursor-pointer text-xs flex items-center gap-2"
+                >
+                  <ReceiptText className="w-3.5 h-3.5 text-purple-600" />
+                  <span>Issue Bill</span>
+                </DropdownMenuItem>
+              )}
+
+              {/* Adjust Stock */}
+              {row.type !== "SERVICE" && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    setAdjustingProduct(row);
+                    setAdjustData({ type: "ADJUSTMENT", quantityChange: "", notes: "" });
+                  }}
+                  className="cursor-pointer text-xs flex items-center gap-2"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-brand" />
+                  <span>Adjust Stock</span>
+                </DropdownMenuItem>
+              )}
+
+              {/* History */}
+              {row.type !== "SERVICE" && (
+                <DropdownMenuItem
+                  onClick={() => openHistory(row)}
+                  className="cursor-pointer text-xs flex items-center gap-2"
+                >
+                  <History className="w-3.5 h-3.5 text-ink-secondary" />
+                  <span>Movement Ledger</span>
+                </DropdownMenuItem>
+              )}
+
+              <DropdownMenuSeparator />
+
+              {/* Archive */}
+              <DropdownMenuItem
+                onClick={() => setArchiveData({ open: true, product: row, loading: false })}
+                className="cursor-pointer text-xs text-red-600 focus:text-red-700 focus:bg-red-50 flex items-center gap-2"
+              >
+                <Archive className="w-3.5 h-3.5" />
+                <span>Archive Item</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       ),
     },
@@ -1051,7 +1085,7 @@ export default function ProductsPage() {
       </div>
 
       {/* 3. Classification Filter Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-border">
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 border-b border-border">
         {[
           { id: "ALL", label: "All Items", count: products.length },
           { id: "FINISHED_PRODUCT", label: "Finished Products (Sale Stock)", count: finishedGoods.length },
@@ -1091,6 +1125,7 @@ export default function ProductsPage() {
         emptyTitle="No inventory items found"
         emptyDesc="No items match the current classification filter. Click 'Add Item' to record one."
         renderMobileCard={renderMobileCard}
+        tableClassName="min-w-[1100px]"
       />
 
       {/* 5. Add Item / Product Drawer */}

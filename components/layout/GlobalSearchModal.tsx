@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Search, X, Users, FileText, CreditCard, Package, Briefcase, CalendarClock, ArrowRight } from "lucide-react";
+import { Search, X, Users, FileText, CreditCard, Package, Briefcase, CalendarClock, ArrowRight, Inbox, FileCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +15,7 @@ interface SearchResultItem {
   id: string;
   title: string;
   subtitle: string;
-  category: "Customer" | "Invoice" | "Payment" | "Product" | "Project" | "Follow-up";
+  category: "Customer" | "Invoice" | "Payment" | "Product" | "Project" | "Follow-up" | "Submission" | "Quotation";
   href: string;
 }
 
@@ -90,6 +90,10 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
     switch (category) {
       case "Customer":
         return <Users className="w-4 h-4 text-blue-600" />;
+      case "Submission":
+        return <Inbox className="w-4 h-4 text-indigo-600" />;
+      case "Quotation":
+        return <FileCheck className="w-4 h-4 text-teal-600" />;
       case "Invoice":
         return <FileText className="w-4 h-4 text-brand" />;
       case "Payment":

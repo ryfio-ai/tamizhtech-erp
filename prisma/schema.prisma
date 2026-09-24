@@ -132,6 +132,7 @@ model User {
   createdSourcingPayments InventorySourcingPayment[] @relation("CreatedBySourcingPayment")
   createdExpensePayments  ExpensePayment[]  @relation("CreatedByExpensePayment")
   createdProductions      ProductionRecord[] @relation("CreatedByProduction")
+  assignedSubmissions     InboundSubmission[] @relation("AssignedToSubmission")
 
   @@index([role])
 }
@@ -190,6 +191,7 @@ model Client {
   projects            Project[]       @relation("ClientProjects")
   quotations          Quotation[]
   orders              SalesOrder[]
+  submissions         InboundSubmission[] @relation("ClientSubmissions")
   assignedTo          User?           @relation("AssignedToClient", fields: [assignedToId], references: [id])
 
   @@index([assignedToId])
@@ -227,6 +229,7 @@ model Lead {
 
   assignedTo       User?        @relation("AssignedToLead", fields: [assignedToId], references: [id])
   followUps        FollowUp[]
+  submissions      InboundSubmission[] @relation("LeadSubmissions")
 
   @@index([assignedToId])
   @@index([status])
@@ -1020,4 +1023,149 @@ model SystemSetting {
   isPublic    Boolean  @default(false)
   updatedAt   DateTime @updatedAt
 }
+
+// ─── Website Inbound Submissions & Outbox Event State ─────
+
+enum SubmissionType {
+  RFQ
+  CONTACT
+  CAREER
+  CLUB_REGISTRATION
+}
+
+enum SyncStatus {
+  PENDING
+  SYNCED
+  FAILED
+  SKIPPED
+}
+
+enum EventStatus {
+  PENDING
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
+model InboundSubmission {
+  id                  String             @id @default(auto()) @map("_id") @db.ObjectId
+  submissionNo        String             @unique
+  type                SubmissionType
+  status              String             @default("NEW")
+  source              String             @default("WEBSITE")
+  idempotencyKey      String             @unique
+  payloadHash         String?
+
+  // Person / Contact Fields
+  name                String
+  mobile              String?
+  mobileNormalized    String?
+  email               String?
+  company             String?
+  city                String?
+  state               String?
+  country             String?            @default("India")
+
+  // Subject / Message
+  subject             String?
+  message             String?
+
+  // Domain-specific flexible structured payload
+  payload             Json?
+  attachmentMetadata  Json?
+
+  // ERP Linkages
+  clientId            String?            @db.ObjectId
+  client              Client?            @relation("ClientSubmissions", fields: [clientId], references: [id])
+  leadId              String?            @db.ObjectId
+  lead                Lead?              @relation("LeadSubmissions", fields: [leadId], references: [id])
+  assignedToId        String?            @db.ObjectId
+  assignedTo          User?              @relation("AssignedToSubmission", fields: [assignedToId], references: [id])
+
+  // Fast UI Projection Counters / Statuses (SubmissionEvent is authoritative execution history)
+  sheetSyncStatus     SyncStatus         @default(PENDING)
+  sheetSyncedAt       DateTime?
+  sheetSyncError      String?
+
+  customerEmailStatus SyncStatus         @default(PENDING)
+  customerEmailSentAt DateTime?
+  customerEmailError  String?
+
+  adminEmailStatus    SyncStatus         @default(PENDING)
+  adminEmailSentAt    DateTime?
+  adminEmailError     String?
+
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  events              SubmissionEvent[]
+  auditLogs           SubmissionAuditLog[]
+
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  @@index([mobileNormalized])
+  @@index([email])
+  @@index([source])
+  @@index([sheetSyncStatus])
+  @@index([assignedToId])
+}
+
+model SubmissionEvent {
+  id            String             @id @default(auto()) @map("_id") @db.ObjectId
+  submissionId  String             @db.ObjectId
+  eventType     String             // SHEET_SYNC | CUSTOMER_EMAIL | ADMIN_EMAIL
+  status        EventStatus        @default(PENDING)
+  payload       Json?
+  error         String?
+  retryCount    Int                @default(0)
+  lastAttemptAt DateTime?
+  processedAt   DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  submission    InboundSubmission  @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@unique([submissionId, eventType])
+  @@index([status])
+  @@index([eventType])
+  @@index([createdAt])
+}
+
+model SubmissionAuditLog {
+  id                 String             @id @default(auto()) @map("_id") @db.ObjectId
+  submissionId       String             @db.ObjectId
+  action             String             // SUBMISSION_CREATED, STATUS_CHANGED, ASSIGNED, CONVERTED_TO_CUSTOMER, QUOTATION_CREATED, EVENT_RETRIED, etc.
+  actorType          String             @default("SYSTEM") // SYSTEM | PUBLIC | ADMIN
+  performedByUserId  String?            @db.ObjectId
+  performedByName    String?
+  details            Json?
+  createdAt          DateTime           @default(now())
+
+  submission         InboundSubmission  @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model PendingAttachment {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  storageKey     String   @unique
+  idempotencyKey String
+  fileName       String
+  mimeType       String
+  size           Int
+  checksum       String?
+  status         String   @default("PENDING") // PENDING | ATTACHED | EXPIRED
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([idempotencyKey])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+
 

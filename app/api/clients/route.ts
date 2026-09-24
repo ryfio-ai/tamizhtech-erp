@@ -146,29 +146,33 @@ export async function POST(req: NextRequest) {
         { status: 201 }
       );
     } catch (createErr: any) {
-      // 4. Handle concurrent duplicate-key race condition (MongoDB E11000 / Prisma P2002)
+      // 4. Handle concurrent duplicate-key race condition (MongoDB E11000 / Prisma P2002 / P2034 write conflict)
       if (
         createErr.code === "P2002" ||
         createErr.code === 11000 ||
+        createErr.code === "P2034" ||
         String(createErr.message).includes("mobileNormalized")
       ) {
-        const raceExisting = await prisma.client.findUnique({ where: { mobileNormalized } });
-        return NextResponse.json(
-          {
-            success: false,
-            error: "Customer already exists with this mobile number.",
-            code: "DUPLICATE_MOBILE",
-            existingClient: raceExisting
-              ? {
+        for (let attempt = 0; attempt < 5; attempt++) {
+          await new Promise((r) => setTimeout(r, 80 * (attempt + 1)));
+          const raceExisting = await prisma.client.findUnique({ where: { mobileNormalized } });
+          if (raceExisting) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: "Customer already exists with this mobile number.",
+                code: "DUPLICATE_MOBILE",
+                existingClient: {
                   id: raceExisting.id,
                   clientCode: raceExisting.clientCode,
                   name: raceExisting.name,
                   phone: raceExisting.phone,
-                }
-              : null,
-          },
-          { status: 409 }
-        );
+                },
+              },
+              { status: 409 }
+            );
+          }
+        }
       }
       throw createErr;
     }

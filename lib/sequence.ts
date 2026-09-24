@@ -231,3 +231,40 @@ export async function generateProductionNo(): Promise<string> {
   const number = await getNextSequenceNumber(seqName, prefix, year);
   return `${prefix}-${String(number).padStart(4, "0")}`;
 }
+
+/**
+ * Transaction-safe official Inbound Website Submission Number allocation.
+ * Concurrency-safe atomic generation backed by BusinessSequence.
+ * Formats:
+ * - RFQ: TTRC-RFQ-YYYY-XXXX
+ * - CONTACT: TTRC-CON-YYYY-XXXX
+ * - CAREER: TTRC-CAR-YYYY-XXXX
+ * - CLUB_REGISTRATION: TTRC-CLUB-YYYY-XXXX
+ */
+export async function allocateSubmissionNoTx(
+  tx: any,
+  type: "RFQ" | "CONTACT" | "CAREER" | "CLUB_REGISTRATION",
+  year?: number
+): Promise<string> {
+  const currentYear = year ?? new Date().getFullYear();
+  let typeCode = "REQ";
+  if (type === "RFQ") typeCode = "RFQ";
+  else if (type === "CONTACT") typeCode = "CON";
+  else if (type === "CAREER") typeCode = "CAR";
+  else if (type === "CLUB_REGISTRATION") typeCode = "CLUB";
+
+  const prefix = `TTRC-${typeCode}-${currentYear}`;
+  const seqName = `SUBMISSION_${typeCode}_${currentYear}`;
+  const number = await allocateSequentialNumberTx(tx, seqName, prefix, currentYear);
+  return `${prefix}-${String(number).padStart(4, "0")}`;
+}
+
+export async function allocateSubmissionNo(
+  type: "RFQ" | "CONTACT" | "CAREER" | "CLUB_REGISTRATION",
+  year?: number
+): Promise<string> {
+  return prisma.$transaction(async (tx) => {
+    return allocateSubmissionNoTx(tx, type, year);
+  });
+}
+

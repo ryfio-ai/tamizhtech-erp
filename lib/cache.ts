@@ -145,3 +145,9 @@ export async function invalidateStockCache(productId?: string): Promise<void> {
   await invalidateCachePrefix("dashboard:stats");
   await invalidateCachePrefix("reports:");
 }
+
+export async function invalidateSubmissionsCache(): Promise<void> {
+  await invalidateCachePrefix("submissions:");
+  await invalidateCachePrefix("dashboard:stats");
+}
+

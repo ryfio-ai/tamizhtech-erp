@@ -20,7 +20,8 @@ import {
   ChevronRight,
   ShieldCheck,
   FileCheck,
-  BarChart3
+  BarChart3,
+  Inbox
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -54,6 +55,7 @@ export function Sidebar({
     {
       title: "BUSINESS",
       items: [
+        { name: "Website Leads", href: "/submissions", icon: Inbox },
         { name: "Customers", href: "/clients", icon: Users },
         { name: "Quotations", href: "/quotations", icon: FileCheck },
         { name: "Products & Stock", href: "/products", icon: Package },

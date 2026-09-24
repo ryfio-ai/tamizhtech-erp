@@ -30,6 +30,7 @@ interface DataTableProps<T> {
   emptyActionLabel?: string;
   renderMobileCard?: (item: T, index: number) => React.ReactNode;
   className?: string;
+  tableClassName?: string;
 }
 
 export function DataTable<T extends Record<string, any>>({
@@ -47,6 +48,7 @@ export function DataTable<T extends Record<string, any>>({
   emptyActionLabel,
   renderMobileCard,
   className,
+  tableClassName,
 }: DataTableProps<T>) {
   const [search, setSearch] = useState("");
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
@@ -175,7 +177,7 @@ export function DataTable<T extends Record<string, any>>({
       {/* DESKTOP VIEW (>= 768px): Structured Table with Controlled Internal Scroll */}
       <div className="hidden md:block bg-white border border-border rounded-xl shadow-sm overflow-hidden">
         <div className="w-full overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
+          <table className={cn("w-full text-left border-collapse text-sm", tableClassName || "min-w-[1000px]")}>
             <thead>
               <tr className="bg-surface border-b border-border text-xs font-semibold text-ink-secondary uppercase tracking-wider">
                 {columns.map((col, idx) => (

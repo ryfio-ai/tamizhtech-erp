@@ -257,14 +257,14 @@ export default function FinancePage() {
           value={formatCurrency(summary.totalReceived)}
           icon={TrendingUp}
           iconClassName="bg-green-50 text-green-600"
-          description={`₹${summary.totalReceivedThisMonth.toLocaleString()} this month`}
+          description={`₹${Number(summary.totalReceivedThisMonth || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })} this month`}
         />
         <StatsCard 
           title="Total Expenses"
           value={formatCurrency(summary.totalExpenses)}
           icon={TrendingDown}
           iconClassName="bg-red-50 text-red-600"
-          description={`₹${summary.totalExpensesThisMonth.toLocaleString()} this month`}
+          description={`₹${Number(summary.totalExpensesThisMonth || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })} this month`}
         />
         <StatsCard 
           title="Net Cash Profit"

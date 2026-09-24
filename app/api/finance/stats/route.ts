@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { fromPaise } from "@/lib/money";
 
 export const revalidate = 0;
 
@@ -9,7 +10,7 @@ export async function GET(req: NextRequest) {
       prisma.invoice.findMany(),
       prisma.payment.findMany(),
       prisma.expense.findMany(),
-      prisma.chartOfAccount.findMany()
+      prisma.chartOfAccount.findMany(),
     ]);
 
     const today = new Date();
@@ -20,45 +21,51 @@ export async function GET(req: NextRequest) {
       return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     };
 
-    // 1. Revenue & Payment Analysis
-    let totalInvoicedAllTime = 0;
-    let totalInvoicedThisMonth = 0;
-    let totalReceivedAllTime = 0;
-    let totalReceivedThisMonth = 0;
+    // 1. Revenue & Payment Analysis (ledger stores in exact paise)
+    let totalInvoicedAllTimePaise = 0;
+    let totalInvoicedThisMonthPaise = 0;
+    let totalReceivedAllTimePaise = 0;
+    let totalReceivedThisMonthPaise = 0;
 
-    invoices.forEach(inv => {
-      totalInvoicedAllTime += inv.total;
-      if (isThisMonth(inv.date)) {
-        totalInvoicedThisMonth += inv.total;
-      }
-    });
-
-    payments.forEach(p => {
-      totalReceivedAllTime += p.amount;
-      if (isThisMonth(p.date)) {
-        totalReceivedThisMonth += p.amount;
-      }
-    });
-
-    // 2. Expense Analysis
-    let totalExpensesAllTime = 0;
-    let totalExpensesThisMonth = 0;
-    const expenseByCategory: Record<string, number> = {};
-
-    expenses.forEach(exp => {
-      if (exp.status === "APPROVED") {
-        totalExpensesAllTime += exp.amount;
-        if (isThisMonth(exp.date)) {
-          totalExpensesThisMonth += exp.amount;
+    invoices.forEach((inv) => {
+      // Exclude cancelled invoices from total billed
+      if (inv.status !== "CANCELLED") {
+        totalInvoicedAllTimePaise += inv.total;
+        if (isThisMonth(inv.date)) {
+          totalInvoicedThisMonthPaise += inv.total;
         }
-        
-        expenseByCategory[exp.category] = (expenseByCategory[exp.category] || 0) + exp.amount;
       }
     });
 
-    // 3. Profit/Loss Analysis (Simplified)
-    const netProfitThisMonth = totalReceivedThisMonth - totalExpensesThisMonth;
-    const netProfitAllTime = totalReceivedAllTime - totalExpensesAllTime;
+    payments.forEach((p) => {
+      if (p.status === "COMPLETED") {
+        totalReceivedAllTimePaise += p.amount;
+        if (isThisMonth(p.date)) {
+          totalReceivedThisMonthPaise += p.amount;
+        }
+      }
+    });
+
+    // 2. Expense Analysis (stored in paise)
+    let totalExpensesAllTimePaise = 0;
+    let totalExpensesThisMonthPaise = 0;
+    const expenseByCategoryPaise: Record<string, number> = {};
+
+    expenses.forEach((exp) => {
+      if (exp.status === "APPROVED") {
+        totalExpensesAllTimePaise += exp.amount;
+        if (isThisMonth(exp.date)) {
+          totalExpensesThisMonthPaise += exp.amount;
+        }
+
+        expenseByCategoryPaise[exp.category] =
+          (expenseByCategoryPaise[exp.category] || 0) + exp.amount;
+      }
+    });
+
+    // 3. Profit/Loss Analysis
+    const netProfitThisMonthPaise = totalReceivedThisMonthPaise - totalExpensesThisMonthPaise;
+    const netProfitAllTimePaise = totalReceivedAllTimePaise - totalExpensesAllTimePaise;
 
     // 4. Monthly Trend (Last 6 months)
     const monthlyTrend = [];
@@ -67,50 +74,67 @@ export async function GET(req: NextRequest) {
       d.setMonth(d.getMonth() - i);
       const m = d.getMonth();
       const y = d.getFullYear();
-      
-      const monthName = d.toLocaleString('default', { month: 'short' });
-      
-      const monthInvoiced = invoices
-        .filter(inv => inv.date.getMonth() === m && inv.date.getFullYear() === y)
+
+      const monthName = d.toLocaleString("default", { month: "short" });
+
+      const monthInvoicedPaise = invoices
+        .filter(
+          (inv) =>
+            inv.status !== "CANCELLED" &&
+            inv.date.getMonth() === m &&
+            inv.date.getFullYear() === y
+        )
         .reduce((sum, inv) => sum + inv.total, 0);
-        
-      const monthExpenses = expenses
-        .filter(exp => exp.status === "APPROVED" && exp.date.getMonth() === m && exp.date.getFullYear() === y)
+
+      const monthExpensesPaise = expenses
+        .filter(
+          (exp) =>
+            exp.status === "APPROVED" &&
+            exp.date.getMonth() === m &&
+            exp.date.getFullYear() === y
+        )
         .reduce((sum, exp) => sum + exp.amount, 0);
 
       monthlyTrend.push({
         month: monthName,
-        revenue: monthInvoiced,
-        expenses: monthExpenses,
-        profit: monthInvoiced - monthExpenses
+        revenue: fromPaise(monthInvoicedPaise),
+        expenses: fromPaise(monthExpensesPaise),
+        profit: fromPaise(monthInvoicedPaise - monthExpensesPaise),
       });
     }
 
     const stats = {
       summary: {
-        totalInvoiced: totalInvoicedAllTime,
-        totalInvoicedThisMonth,
-        totalReceived: totalReceivedAllTime,
-        totalReceivedThisMonth,
-        totalExpenses: totalExpensesAllTime,
-        totalExpensesThisMonth,
-        netProfitThisMonth,
-        netProfitAllTime,
+        totalInvoiced: fromPaise(totalInvoicedAllTimePaise),
+        totalInvoicedThisMonth: fromPaise(totalInvoicedThisMonthPaise),
+        totalReceived: fromPaise(totalReceivedAllTimePaise),
+        totalReceivedThisMonth: fromPaise(totalReceivedThisMonthPaise),
+        totalExpenses: fromPaise(totalExpensesAllTimePaise),
+        totalExpensesThisMonth: fromPaise(totalExpensesThisMonthPaise),
+        netProfitThisMonth: fromPaise(netProfitThisMonthPaise),
+        netProfitAllTime: fromPaise(netProfitAllTimePaise),
+        totalReceivedThisMonthRaw: fromPaise(totalReceivedThisMonthPaise),
+        totalExpensesThisMonthRaw: fromPaise(totalExpensesThisMonthPaise),
       },
-      expenseByCategory: Object.entries(expenseByCategory).map(([name, value]) => ({ name, value })),
+      expenseByCategory: Object.entries(expenseByCategoryPaise).map(([name, valPaise]) => ({
+        name,
+        value: fromPaise(valPaise),
+      })),
       monthlyTrend,
       recentExpenses: expenses
-        .sort((a,b) => b.date.getTime() - a.date.getTime())
+        .sort((a, b) => b.date.getTime() - a.date.getTime())
         .slice(0, 5)
-        .map(e => ({
-           ...e,
-           date: e.date.toISOString()
+        .map((e) => ({
+          ...e,
+          amount: fromPaise(e.amount),
+          paidAmount: fromPaise(e.paidAmount),
+          date: e.date.toISOString(),
         })),
-      chartOfAccounts: accounts.map(a => ({
+      chartOfAccounts: accounts.map((a) => ({
         name: a.name,
         code: a.code,
-        balance: a.balance
-      }))
+        balance: fromPaise(a.balance),
+      })),
     };
 
     return NextResponse.json({ success: true, data: stats });

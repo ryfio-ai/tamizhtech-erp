@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { ApiResponse } from "@/types";
+import { fromPaise } from "@/lib/money";
 
 export const revalidate = 0;
 
@@ -15,8 +16,21 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json<ApiResponse>({ 
       success: true, 
       data: {
-        invoices: invoices.map(i => ({ ...i, createdAt: i.createdAt.toISOString() })),
-        payments: payments.map(p => ({ ...p, createdAt: p.createdAt.toISOString() })),
+        invoices: invoices.map(i => ({ 
+          ...i, 
+          subtotal: fromPaise(i.subtotal),
+          gstAmount: fromPaise(i.gstAmount),
+          discountAmount: fromPaise(i.discountAmount),
+          total: fromPaise(i.total),
+          paidAmount: fromPaise(i.paidAmount),
+          balance: fromPaise(i.balance),
+          createdAt: i.createdAt.toISOString() 
+        })),
+        payments: payments.map(p => ({ 
+          ...p, 
+          amount: fromPaise(p.amount),
+          createdAt: p.createdAt.toISOString() 
+        })),
         followUps: followUps.map(f => ({ ...f, date: f.date.toISOString() }))
       } 
     });

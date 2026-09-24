@@ -18,10 +18,14 @@ interface InvoiceFormProps {
   onCancel: () => void;
   isLoading: boolean;
   preselectedClient?: string;
+  isEditing?: boolean;
+  invoiceNo?: string;
 }
 
-export function InvoiceForm({ initialData, clients, onSubmit, onCancel, isLoading, preselectedClient }: InvoiceFormProps) {
-  const [submitMode, setSubmitMode] = useState<"DRAFT" | "ISSUED">("ISSUED");
+export function InvoiceForm({ initialData, clients, onSubmit, onCancel, isLoading, preselectedClient, isEditing, invoiceNo }: InvoiceFormProps) {
+  const [submitMode, setSubmitMode] = useState<"DRAFT" | "ISSUED">(
+    initialData?.status === "DRAFT" ? "DRAFT" : "ISSUED"
+  );
 
   const { register, control, watch, setValue, handleSubmit, formState: { errors } } = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceSchema),
@@ -60,6 +64,20 @@ export function InvoiceForm({ initialData, clients, onSubmit, onCancel, isLoadin
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8 pb-12">
+      {/* Edit Mode Notice Banner */}
+      {isEditing && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-amber-900 shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <span className="font-bold text-navy text-sm">Editing Bill: {invoiceNo}</span>
+            <span className="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded text-[11px] border border-amber-300">
+              Same Bill No Preserved
+            </span>
+          </div>
+          <p className="text-[11px] text-amber-700">
+            Saving will update {invoiceNo} directly without generating a new bill number.
+          </p>
+        </div>
+      )}
       
       {/* 1. Basic Details */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -241,30 +259,62 @@ export function InvoiceForm({ initialData, clients, onSubmit, onCancel, isLoadin
 
       </div>
 
-      {/* Actions: Save Draft vs Issue Bill (Lock 1) */}
+      {/* Actions: Save Draft vs Issue Bill or Save Changes */}
       <div className="flex flex-wrap items-center gap-3 justify-end pt-4">
         <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading} className="bg-white">
           Cancel
         </Button>
-        <Button 
-          type="submit" 
-          variant="outline" 
-          disabled={isLoading} 
-          onClick={() => setSubmitMode("DRAFT")}
-          className="border-border text-ink-primary hover:bg-gray-50"
-        >
-          {isLoading && submitMode === "DRAFT" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-          Save as Draft
-        </Button>
-        <Button 
-          type="submit" 
-          disabled={isLoading} 
-          onClick={() => setSubmitMode("ISSUED")}
-          className="bg-brand hover:bg-brand-dark min-w-[150px] shadow-sm font-semibold"
-        >
-          {isLoading && submitMode === "ISSUED" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-1.5" />}
-          Issue Bill
-        </Button>
+        {isEditing ? (
+          <>
+            {initialData?.status === "DRAFT" && (
+              <Button 
+                type="submit" 
+                variant="outline" 
+                disabled={isLoading} 
+                onClick={() => setSubmitMode("DRAFT")}
+                className="border-border text-ink-primary hover:bg-gray-50"
+              >
+                {isLoading && submitMode === "DRAFT" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Update Draft
+              </Button>
+            )}
+            <Button 
+              type="submit" 
+              disabled={isLoading} 
+              onClick={() => setSubmitMode("ISSUED")}
+              className="bg-brand hover:bg-brand-dark min-w-[160px] shadow-sm font-semibold text-white"
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 mr-1.5" />
+              )}
+              {initialData?.status === "DRAFT" ? "Issue Bill Now" : "Save Changes to Bill"}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button 
+              type="submit" 
+              variant="outline" 
+              disabled={isLoading} 
+              onClick={() => setSubmitMode("DRAFT")}
+              className="border-border text-ink-primary hover:bg-gray-50"
+            >
+              {isLoading && submitMode === "DRAFT" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Save as Draft
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={isLoading} 
+              onClick={() => setSubmitMode("ISSUED")}
+              className="bg-brand hover:bg-brand-dark min-w-[150px] shadow-sm font-semibold"
+            >
+              {isLoading && submitMode === "ISSUED" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-1.5" />}
+              Issue Bill
+            </Button>
+          </>
+        )}
       </div>
 
     </form>

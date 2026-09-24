@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Download, Printer, Send, CreditCard, AlertCircle } from "lucide-react";
+import { ArrowLeft, Download, Printer, Send, CreditCard, AlertCircle, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
@@ -175,6 +175,15 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
             <Send className="w-4 h-4" />
             <span>{sendingEmail ? "Sending..." : "Send Email"}</span>
           </Button>
+
+          {invoice.status !== "CANCELLED" && (
+            <Link href={`/invoices/${invoice.id}/edit`} className="flex-1 sm:flex-initial">
+              <Button variant="outline" className="gap-1.5 w-full border-brand/40 text-brand hover:bg-brand/5 hover:text-brand-dark font-semibold">
+                <Edit className="w-4 h-4" />
+                <span>Edit Bill</span>
+              </Button>
+            </Link>
+          )}
 
           {balance > 0 && invoice.status !== "CANCELLED" && invoice.status !== "DRAFT" && (
             <Link href={`/payments/new?invoiceId=${invoice.id}`} className="flex-1 sm:flex-initial">

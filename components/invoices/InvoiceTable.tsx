@@ -5,7 +5,7 @@ import { Invoice } from "@/types";
 import { DataTable, ColumnDef } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { FileText, Download, CreditCard, ChevronRight } from "lucide-react";
+import { FileText, Download, CreditCard, ChevronRight, Edit } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -89,6 +89,12 @@ export function InvoiceTable({ data = [], loading }: InvoiceTableProps) {
               View
             </Button>
           </Link>
+          <Link href={`/invoices/${row.id}/edit`}>
+            <Button variant="ghost" size="sm" className="h-8 px-2 text-xs text-brand hover:text-brand-dark hover:bg-brand/5 gap-1 font-medium">
+              <Edit className="w-3 h-3" />
+              Edit
+            </Button>
+          </Link>
           <a href={`/api/invoices/${row.id}/pdf`} target="_blank" rel="noreferrer">
             <Button variant="outline" size="sm" className="h-8 px-2 text-xs gap-1">
               <Download className="w-3 h-3 text-ink-secondary" />
@@ -137,6 +143,13 @@ export function InvoiceTable({ data = [], loading }: InvoiceTableProps) {
         </div>
 
         <div className="pt-1 flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
+          <Link href={`/invoices/${inv.id}/edit`} className="flex-1">
+            <Button variant="outline" size="sm" className="w-full h-10 text-xs gap-1.5 min-h-[44px] text-brand border-brand/30 hover:bg-brand/5 font-semibold">
+              <Edit className="w-3.5 h-3.5" />
+              <span>Edit</span>
+            </Button>
+          </Link>
+
           <a href={`/api/invoices/${inv.id}/pdf`} target="_blank" rel="noreferrer" className="flex-1">
             <Button variant="outline" size="sm" className="w-full h-10 text-xs gap-1.5 min-h-[44px]">
               <Download className="w-3.5 h-3.5" />

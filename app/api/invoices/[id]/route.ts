@@ -3,6 +3,9 @@ import prisma from "@/lib/prisma";
 import { toPaise, fromPaise, roundToPaise } from "@/lib/money";
 import { getAuthoritativeInvoiceFinancials } from "@/lib/invoiceService";
 import { getNormalizedInvoiceData } from "@/lib/businessDocumentData";
+import { reconcileStockForUpdatedInvoice, reverseStockForCancelledInvoice, deductStockForIssuedInvoice } from "@/lib/stockService";
+
+export const revalidate = 0;
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -11,8 +14,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       include: {
         client: true,
         payments: true,
-        items: true
-      }
+        items: true,
+      },
     });
 
     if (!invoice) return NextResponse.json({ success: false, error: "Not found" }, { status: 404 });
@@ -34,14 +37,14 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       clientPhone: invoice.client.phone,
       clientEmail: invoice.client.email,
       clientCity: invoice.client.city,
-      items: invoice.items.map(it => ({
+      items: invoice.items.map((it) => ({
         ...it,
         unitPrice: fromPaise(it.unitPrice),
         amount: fromPaise(it.amount),
       })),
       financials,
       documentData,
-      createdAt: invoice.createdAt.toISOString()
+      createdAt: invoice.createdAt.toISOString(),
     };
 
     return NextResponse.json({ success: true, data: formatted, documentData });
@@ -52,60 +55,152 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const current = await prisma.invoice.findUnique({ where: { id: params.id } });
+    const current = await prisma.invoice.findUnique({
+      where: { id: params.id },
+      include: { payments: true, items: true },
+    });
+
     if (!current) {
       return NextResponse.json({ success: false, error: "Invoice not found" }, { status: 404 });
     }
 
     const body = await req.json();
 
-    // If invoice is already ISSUED/PAID, line items cannot be mutated directly because stock was already committed
-    if (current.status !== "DRAFT" && body.items) {
-      return NextResponse.json(
-        { success: false, error: "Only DRAFT invoices can be directly edited. Please cancel and re-issue if items changed." },
-        { status: 400 }
-      );
+    // Verify client if changed
+    let clientId = current.clientId;
+    let clientName = current.clientName;
+    if (body.clientId && body.clientId !== current.clientId) {
+      const client = await prisma.client.findUnique({ where: { id: body.clientId } });
+      if (client) {
+        clientId = client.id;
+        clientName = client.name;
+      }
     }
 
-    let updates: any = { ...body };
+    const hadItems = Array.isArray(body.items) && body.items.length > 0;
+    let subtotalPaise = current.subtotal;
+    let discountAmountPaise = current.discountAmount;
+    let gstAmountPaise = current.gstAmount;
+    let totalPaise = current.total;
 
-    if (body.items) {
-      await prisma.invoiceItem.deleteMany({ where: { invoiceId: params.id } });
-      updates.items = {
-        create: body.items.map((item: any) => {
-          const qty = Math.max(1, Math.round(Number(item.qty) || 1));
-          const unitPricePaise = toPaise(Number(item.unitPrice) || 0);
-          const amountPaise = roundToPaise(qty * unitPricePaise);
-          return {
-            productId: item.productId || null,
-            description: item.description,
-            qty,
-            unitPrice: unitPricePaise,
-            amount: amountPaise,
-            configurationNotes: item.configurationNotes || null,
-          };
-        }),
-      };
-    } else {
-      delete updates.items;
+    const gstPercent =
+      body.gstPercent !== undefined && body.gstPercent !== null && String(body.gstPercent).trim() !== ""
+        ? Number(body.gstPercent)
+        : typeof current.gstPercent === "number"
+        ? current.gstPercent
+        : 18;
+
+    const discountPercent =
+      body.discountPercent !== undefined && body.discountPercent !== null && String(body.discountPercent).trim() !== ""
+        ? Number(body.discountPercent)
+        : 0;
+
+    let processedItems: any[] = [];
+    if (hadItems) {
+      processedItems = body.items.map((item: any) => {
+        const qty = Math.max(1, Math.round(Number(item.qty) || 1));
+        const unitPricePaise = toPaise(Number(item.unitPrice) || 0);
+        const amountPaise = roundToPaise(qty * unitPricePaise);
+        return {
+          invoiceId: params.id,
+          productId: item.productId || null,
+          description: item.description || "Line Item",
+          qty,
+          unitPrice: unitPricePaise,
+          amount: amountPaise,
+          configurationNotes: item.configurationNotes?.trim() || null,
+        };
+      });
+
+      subtotalPaise = processedItems.reduce((sum: number, it: any) => sum + it.amount, 0);
+      discountAmountPaise = roundToPaise(subtotalPaise * (discountPercent / 100));
+      const taxablePaise = Math.max(0, subtotalPaise - discountAmountPaise);
+      gstAmountPaise = roundToPaise(taxablePaise * (gstPercent / 100));
+      totalPaise = Math.max(0, taxablePaise + gstAmountPaise);
     }
 
-    if (updates.status === "CANCELLED" && current.status !== "CANCELLED") {
-      updates.cancelledAt = new Date();
-      const { reverseStockForCancelledInvoice } = await import("@/lib/stockService");
+    // Ledger payment reconciliation
+    let netPaidAmountPaise = 0;
+    if (current.payments && current.payments.length > 0) {
+      for (const p of current.payments) {
+        if (p.status === "COMPLETED") {
+          if (p.type === "PAYMENT" || p.type === "ADJUSTMENT") {
+            netPaidAmountPaise += p.amount;
+          } else if (p.type === "REVERSAL") {
+            netPaidAmountPaise -= p.amount;
+          }
+        }
+      }
+    }
+    netPaidAmountPaise = Math.max(0, netPaidAmountPaise);
+    const balancePaise = Math.max(0, totalPaise - netPaidAmountPaise);
+
+    let nextStatus = body.status || current.status;
+    if (nextStatus !== "CANCELLED") {
+      if (balancePaise <= 0 && totalPaise > 0) {
+        nextStatus = "PAID";
+      } else if (netPaidAmountPaise > 0 && balancePaise > 0) {
+        nextStatus = "PARTIALLY_PAID";
+      }
+    }
+
+    // Atomic update of line items & invoice
+    await prisma.$transaction(async (tx) => {
+      if (hadItems) {
+        await tx.invoiceItem.deleteMany({ where: { invoiceId: params.id } });
+        await tx.invoiceItem.createMany({ data: processedItems });
+      }
+
+      await tx.invoice.update({
+        where: { id: params.id },
+        data: {
+          clientId,
+          clientName,
+          date: body.date ? new Date(body.date) : current.date,
+          dueDate: body.dueDate ? new Date(body.dueDate) : current.dueDate,
+          notes: body.notes !== undefined ? body.notes : current.notes,
+          subtotal: subtotalPaise,
+          gstPercent,
+          gstAmount: gstAmountPaise,
+          discountAmount: discountAmountPaise,
+          total: totalPaise,
+          paidAmount: netPaidAmountPaise,
+          balance: balancePaise,
+          status: nextStatus,
+          issuedAt:
+            nextStatus === "ISSUED" && !current.issuedAt
+              ? new Date()
+              : current.issuedAt,
+          cancelledAt:
+            nextStatus === "CANCELLED" && !current.cancelledAt
+              ? new Date()
+              : current.cancelledAt,
+        },
+      });
+    });
+
+    // Stock adjustment and reconciliation
+    if (nextStatus === "CANCELLED" && current.status !== "CANCELLED") {
       await reverseStockForCancelledInvoice(params.id);
-    } else if (updates.status === "ISSUED" && current.status === "DRAFT") {
-      updates.issuedAt = new Date();
-      const { deductStockForIssuedInvoice } = await import("@/lib/stockService");
+    } else if (current.status === "ISSUED" && nextStatus === "ISSUED") {
+      // Reconcile stock for modified line items
+      if (hadItems) {
+        await reconcileStockForUpdatedInvoice(params.id);
+      }
+    } else if (current.status === "DRAFT" && nextStatus === "ISSUED") {
       await deductStockForIssuedInvoice(params.id);
     }
 
-    const updated = await prisma.invoice.update({
+    const financials = await getAuthoritativeInvoiceFinancials(params.id);
+
+    const updated = await prisma.invoice.findUnique({
       where: { id: params.id },
-      data: updates,
+      include: { client: true, items: true, payments: true },
     });
 
-    const financials = await getAuthoritativeInvoiceFinancials(params.id);
+    if (!updated) {
+      return NextResponse.json({ success: false, error: "Failed to reload updated invoice" }, { status: 500 });
+    }
 
     return NextResponse.json({
       success: true,
@@ -117,6 +212,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         total: fromPaise(updated.total),
         paidAmount: fromPaise(updated.paidAmount),
         balance: fromPaise(updated.balance),
+        items: updated.items.map((it) => ({
+          ...it,
+          unitPrice: fromPaise(it.unitPrice),
+          amount: fromPaise(it.amount),
+        })),
         financials,
       },
     });
@@ -141,7 +241,6 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       );
     }
 
-    // Protection: Issued bills cannot be hard-deleted because stock was deducted and sequential number committed
     if (invoice.status !== "DRAFT") {
       return NextResponse.json(
         { success: false, error: "Issued invoices cannot be deleted. Please Cancel the invoice to safely restore inventory." },

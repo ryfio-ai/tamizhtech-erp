@@ -470,6 +470,53 @@ export async function reverseStockForCancelledInvoice(invoiceId: string, userId?
 }
 
 /**
+ * Reconciles stock deductions when an ISSUED invoice is edited with updated line items:
+ * - Restores prior stock decremented by the invoice's old SALE ledger entries.
+ * - Removes old SALE entries.
+ * - Re-deducts stock for the updated line items.
+ */
+export async function reconcileStockForUpdatedInvoice(invoiceId: string, userId?: string) {
+  const existingSales = await prisma.stockLedgerEntry.findMany({
+    where: {
+      referenceType: "INVOICE",
+      referenceId: invoiceId,
+      type: "SALE",
+    },
+  });
+
+  if (existingSales.length > 0) {
+    await prisma.$transaction(async (tx) => {
+      for (const entry of existingSales) {
+        const qtyToRestore = Math.abs(entry.quantitySigned);
+        const minorToRestore = entry.quantitySignedMinor ? Math.abs(entry.quantitySignedMinor) : qtyToRestore;
+        await tx.product.update({
+          where: { id: entry.productId },
+          data: {
+            stockQuantity: { increment: qtyToRestore },
+            stockQuantityMinor: { increment: minorToRestore },
+          },
+        });
+      }
+
+      await tx.stockLedgerEntry.deleteMany({
+        where: {
+          referenceType: "INVOICE",
+          referenceId: invoiceId,
+          type: "SALE",
+        },
+      });
+    });
+
+    for (const entry of existingSales) {
+      await invalidateStockCache(entry.productId);
+    }
+  }
+
+  // Deduct stock for the new/updated items
+  await deductStockForIssuedInvoice(invoiceId, userId);
+}
+
+/**
  * Safely voids an active InventorySourcing record:
  * - Strictly rejects void if remaining available stock < sourced quantity (preventing negative inventory).
  * - Creates PURCHASE_REVERSAL stock movement with atomic conditional decrement.

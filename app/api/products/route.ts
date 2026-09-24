@@ -27,8 +27,16 @@ export async function GET(req: NextRequest) {
       where.type = { in: types };
     }
 
+    const andConditions: any[] = [];
+
     if (saleableOnly) {
-      where.isSaleable = true;
+      andConditions.push({
+        OR: [
+          { isSaleable: true },
+          { type: "FINISHED_PRODUCT" },
+          { type: "SERVICE" },
+        ],
+      });
     }
 
     if (category && category !== "ALL") {
@@ -36,11 +44,17 @@ export async function GET(req: NextRequest) {
     }
 
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { sku: { contains: search, mode: "insensitive" } },
-        { category: { contains: search, mode: "insensitive" } },
-      ];
+      andConditions.push({
+        OR: [
+          { name: { contains: search, mode: "insensitive" } },
+          { sku: { contains: search, mode: "insensitive" } },
+          { category: { contains: search, mode: "insensitive" } },
+        ],
+      });
+    }
+
+    if (andConditions.length > 0) {
+      where.AND = andConditions;
     }
 
     const products = await prisma.product.findMany({

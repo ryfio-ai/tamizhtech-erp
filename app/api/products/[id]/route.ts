@@ -39,6 +39,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const {
       name,
       category,
+      type,
+      isSaleable,
+      taxRate,
+      unit,
       description,
       minStock,
       basePrice,
@@ -52,6 +56,25 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (name !== undefined) {
       dataToUpdate.name = name.trim();
       dataToUpdate.normalizedName = normalizeProductName(name.trim());
+    }
+
+    if (type !== undefined) {
+      dataToUpdate.type = type;
+      if (type === "FINISHED_PRODUCT" && isSaleable === undefined) {
+        dataToUpdate.isSaleable = true;
+      }
+    }
+
+    if (isSaleable !== undefined) {
+      dataToUpdate.isSaleable = Boolean(isSaleable);
+    }
+
+    if (taxRate !== undefined) {
+      dataToUpdate.taxRate = Number(taxRate) || 0;
+    }
+
+    if (unit !== undefined) {
+      dataToUpdate.unit = unit;
     }
 
     if (category !== undefined) dataToUpdate.category = category;

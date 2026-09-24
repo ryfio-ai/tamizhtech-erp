@@ -21,12 +21,26 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ success: false, error: "Client not found" }, { status: 404 });
     }
 
+    const formattedInvoices = client.invoices.map((inv) => ({
+      ...inv,
+      total: fromPaise(inv.total),
+      paidAmount: fromPaise(inv.paidAmount),
+      balance: fromPaise(inv.balance),
+    }));
+
+    const formattedPayments = client.payments.map((pay) => ({
+      ...pay,
+      amount: fromPaise(pay.amount),
+    }));
+
     const formattedClient = {
       ...client,
+      invoices: formattedInvoices,
+      payments: formattedPayments,
       totalInvoiced: fromPaise(client.invoices.reduce((sum, inv) => sum + inv.total, 0)),
       totalPaid: fromPaise(client.payments.reduce((sum, pay) => sum + pay.amount, 0)),
       outstandingBalance: fromPaise(client.invoices.reduce((sum, inv) => sum + inv.balance, 0)),
-      createdAt: client.createdAt.toISOString()
+      createdAt: client.createdAt.toISOString(),
     };
 
     return NextResponse.json({ success: true, data: formattedClient });

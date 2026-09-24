@@ -18,12 +18,15 @@ export default withAuth(
       authorized: ({ token, req }) => {
         const { pathname } = req.nextUrl;
         
-        // Allow access to login and auth API without a token
+        // Allow access to login, auth API, static files, and public image assets without a token
         if (
           pathname.startsWith("/login") || 
           pathname.startsWith("/api/auth") ||
           pathname.includes("_next") ||
-          pathname === "/favicon.ico"
+          pathname === "/favicon.ico" ||
+          pathname.startsWith("/assets") ||
+          pathname === "/logo.png" ||
+          /\.(png|jpg|jpeg|svg|webp|ico|gif)$/i.test(pathname)
         ) {
           return true;
         }
@@ -43,7 +46,8 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - static image and media assets
      */
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|assets|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

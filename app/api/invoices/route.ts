@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
     });
 
     const subtotalPaise = processedItems.reduce((sum, it) => sum + it.amount, 0);
-    const gstPercent = Number(validated.gstPercent) || 18;
+    const gstPercent = validated.gstPercent !== undefined && validated.gstPercent !== null && String(validated.gstPercent).trim() !== "" ? Number(validated.gstPercent) : 18;
     const discountPercent = Number(validated.discountPercent) || 0;
     const discountAmountPaise = roundToPaise(subtotalPaise * (discountPercent / 100));
     const taxablePaise = Math.max(0, subtotalPaise - discountAmountPaise);

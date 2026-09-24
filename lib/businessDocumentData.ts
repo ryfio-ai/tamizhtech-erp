@@ -202,7 +202,7 @@ export async function getNormalizedInvoiceData(invoiceId: string): Promise<Busin
   const placeOfSupply = resolvePlaceOfSupply(invoice.client?.gstin, invoice.client?.state);
   const isIntraState = placeOfSupply.stateCode === "33"; // Tamil Nadu company base
 
-  const gstPercent = invoice.gstPercent || 18;
+  const gstPercent = typeof invoice.gstPercent === "number" ? invoice.gstPercent : (invoice.gstPercent !== undefined && invoice.gstPercent !== null && invoice.gstPercent !== "" ? Number(invoice.gstPercent) : 18);
 
   // Items formatting
   const items: DocumentItem[] = (invoice.items || []).map((item, index) => {
@@ -345,7 +345,7 @@ export async function getNormalizedQuotationData(quotationId: string): Promise<B
     const qty = item.qty;
     const rate = fromPaise(item.unitPrice);
     const taxableAmount = roundMoney(qty * rate);
-    const taxRate = item.taxRate || 18;
+    const taxRate = typeof item.taxRate === "number" ? item.taxRate : (item.taxRate !== undefined && item.taxRate !== null && item.taxRate !== "" ? Number(item.taxRate) : 18);
     const taxAmount = roundMoney(taxableAmount * (taxRate / 100));
     const amount = roundMoney(taxableAmount + taxAmount);
     const hsnSac = item.product?.sku?.startsWith("HSN")

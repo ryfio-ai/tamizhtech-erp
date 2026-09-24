@@ -106,7 +106,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
 
   const subtotal = invoice.subtotal || 0;
   const discountAmount = invoice.discountAmount || 0;
-  const gstPercent = invoice.gstPercent || 18;
+  const gstPercent = typeof invoice.gstPercent === "number" ? invoice.gstPercent : (invoice.gstPercent !== undefined && invoice.gstPercent !== null && invoice.gstPercent !== "" ? Number(invoice.gstPercent) : 18);
   const totalGst = invoice.gstAmount || 0;
   const cgst = totalGst / 2;
   const sgst = totalGst / 2;

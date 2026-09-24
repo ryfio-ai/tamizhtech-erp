@@ -42,7 +42,7 @@ export function InvoicePDFTemplate({
 
   const placeOfSupply = resolvePlaceOfSupply(client?.gstin || invoice.client?.gstin, client?.state || invoice.client?.state);
   const isIntraState = placeOfSupply.stateCode === "33";
-  const gstPercent = invoice.gstPercent || 18;
+  const gstPercent = typeof invoice.gstPercent === "number" ? invoice.gstPercent : (invoice.gstPercent !== undefined && invoice.gstPercent !== null && invoice.gstPercent !== "" ? Number(invoice.gstPercent) : 18);
 
   const items: DocumentItem[] = (invoice.items || []).map((item: any, index: number) => {
     const qty = item.qty;

@@ -43,7 +43,7 @@ export const QuotationPDFTemplate: React.FC<QuotationPDFTemplateProps> = ({
     const qty = item.qty;
     const rate = fromPaise(item.unitPrice);
     const taxableAmount = roundMoney(qty * rate);
-    const taxRate = item.taxRate || 18;
+    const taxRate = typeof item.taxRate === "number" ? item.taxRate : (item.taxRate !== undefined && item.taxRate !== null && item.taxRate !== "" ? Number(item.taxRate) : 18);
     const taxAmount = roundMoney(taxableAmount * (taxRate / 100));
     const amount = roundMoney(taxableAmount + taxAmount);
     const hsnSac = item.product?.sku?.startsWith("HSN")

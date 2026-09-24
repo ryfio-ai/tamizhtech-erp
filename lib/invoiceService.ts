@@ -40,7 +40,7 @@ export async function getCanonicalInvoiceFinancials(
   const taxableAmountPaise = Math.max(0, subtotalPaise - discountAmountPaise);
 
   // 3. GST Calculation in paise (Split equally between CGST and SGST for intra-state)
-  const gstPercent = invoice.gstPercent || 18;
+  const gstPercent = typeof invoice.gstPercent === "number" ? invoice.gstPercent : (invoice.gstPercent !== undefined && invoice.gstPercent !== null && invoice.gstPercent !== "" ? Number(invoice.gstPercent) : 18);
   const totalGstPaise = roundToPaise(taxableAmountPaise * (gstPercent / 100));
   const cgstAmountPaise = roundToPaise(totalGstPaise / 2);
   const sgstAmountPaise = totalGstPaise - cgstAmountPaise;

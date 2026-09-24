@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { Bell, Search, Menu } from "lucide-react";
+import { Bell, Search, Menu, Calendar, Clock } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { QuickActionMenu } from "./QuickActionMenu";
 import { GlobalSearchModal } from "./GlobalSearchModal";
@@ -35,6 +35,33 @@ export function TopBar({ onMobileMenuClick, overdueCount = 0 }: TopBarProps) {
   const { title, section } = getPageContext(pathname);
   const { data: session } = useSession();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [liveDateTime, setLiveDateTime] = useState<{ date: string; time: string }>({
+    date: "",
+    time: "",
+  });
+
+  useEffect(() => {
+    const update = () => {
+      const now = new Date();
+      setLiveDateTime({
+        date: now.toLocaleDateString("en-IN", {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        }),
+        time: now.toLocaleTimeString("en-IN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: true,
+        }),
+      });
+    };
+    update();
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Global Ctrl + K listener
   React.useEffect(() => {
@@ -73,8 +100,31 @@ export function TopBar({ onMobileMenuClick, overdueCount = 0 }: TopBarProps) {
           </div>
         </div>
 
-        {/* Right Side: Global Search, Quick Action, Notifications, Profile */}
+        {/* Center: Live Date & Clock Widget */}
+        {liveDateTime.time && (
+          <div className="hidden lg:flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-200/80 text-xs shadow-2xs">
+            <div className="flex items-center gap-1.5 font-medium text-gray-700">
+              <Calendar className="w-3.5 h-3.5 text-brand" />
+              <span>{liveDateTime.date}</span>
+            </div>
+            <span className="text-gray-300 font-light">|</span>
+            <div className="flex items-center gap-1.5 font-mono font-bold text-brand">
+              <Clock className="w-3.5 h-3.5 text-brand" />
+              <span>{liveDateTime.time}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Right Side: Live Clock (compact), Global Search, Quick Action, Notifications, Profile */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Compact Live Clock for tablets & mobile */}
+          {liveDateTime.time && (
+            <div className="lg:hidden flex items-center gap-1 font-mono text-[11px] font-bold text-brand bg-brand/5 px-2 py-1 rounded-lg border border-brand/20">
+              <Clock className="w-3 h-3 text-brand" />
+              <span>{liveDateTime.time}</span>
+            </div>
+          )}
+
           {/* Global Search Button */}
           <button
             onClick={() => setSearchOpen(true)}

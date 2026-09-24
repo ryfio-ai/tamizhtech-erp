@@ -62,6 +62,25 @@ export default function DashboardPage() {
   const todayBillsCount = stats?.todayBillsCount || 0;
   const todayBillsAmount = stats?.todayBillsAmount || 0;
   const todayPaymentsAmount = stats?.todayPaymentsAmount || 0;
+  const [liveTime, setLiveTime] = useState<string>("");
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      setLiveTime(
+        now.toLocaleTimeString("en-IN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: true,
+        })
+      );
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   const totalOutstanding = stats?.totalOutstandingBalance || 0;
   const lowStockCount = stats?.lowStockCount || 0;
   const recentBills = stats?.recentBills || [];
@@ -75,10 +94,20 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-2xl border border-border shadow-sm">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-ink-primary tracking-tight">
-            Good morning, {userName}
+            Hi Team!!!!!!!!
           </h1>
-          <p className="text-xs sm:text-sm text-ink-secondary mt-0.5">
-            {todayFormatted} • Tamizh Tech Robotics Company Operations Workspace
+          <p className="text-xs sm:text-sm text-ink-secondary mt-1 flex items-center gap-1.5 flex-wrap">
+            <span>{todayFormatted}</span>
+            {liveTime && (
+              <>
+                <span className="text-gray-300">•</span>
+                <span className="font-mono text-brand font-bold bg-brand/5 px-2 py-0.5 rounded border border-brand/20 text-xs">
+                  {liveTime}
+                </span>
+              </>
+            )}
+            <span className="text-gray-300">•</span>
+            <span>Tamizh Tech Robotics Company Operations Workspace</span>
           </p>
         </div>
 

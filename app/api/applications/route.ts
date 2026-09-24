@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { CreateApplicationInput } from "@/types";
-import { generateId } from "@/lib/utils";
 import { normalizeMobile } from "@/lib/phone";
 
 export const revalidate = 0;
@@ -26,7 +25,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body: CreateApplicationInput = await req.json();
-    const newId = generateId();
 
     const count = await prisma.application.count();
     const appNo = `APP-${String(count + 1).padStart(6, '0')}`;

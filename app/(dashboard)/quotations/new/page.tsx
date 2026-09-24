@@ -315,11 +315,23 @@ export default function NewQuotationPage() {
                         className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs"
                       >
                         <option value="">Custom Item / Service</option>
-                        {products.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            [{p.type === "SERVICE" ? "SVC" : "PRD"}] {p.name} {p.basePrice ? `(₹${p.basePrice})` : ""}
-                          </option>
-                        ))}
+                        {products.map((p) => {
+                          const tag =
+                            p.type === "SERVICE"
+                              ? "SERVICE"
+                              : p.type === "RAW_MATERIAL"
+                              ? "RAW MAT"
+                              : p.type === "COMPONENT"
+                              ? "COMPONENT"
+                              : p.type === "CONSUMABLE"
+                              ? "CONSUMABLE"
+                              : "FINISHED";
+                          return (
+                            <option key={p.id} value={p.id}>
+                              [{tag}] {p.name} {p.sku ? `(${p.sku})` : ""} {p.basePrice ? `— ₹${p.basePrice}` : ""}
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
 

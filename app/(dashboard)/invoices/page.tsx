@@ -70,7 +70,7 @@ function InvoicesContent() {
       </div>
 
       {/* 3. Invoices Table & Mobile Cards */}
-      <InvoiceTable data={filteredInvoices} loading={loading} />
+      <InvoiceTable data={filteredInvoices} loading={loading} onDelete={fetchInvoices} />
     </div>
   );
 }

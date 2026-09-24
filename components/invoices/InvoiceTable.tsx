@@ -1,13 +1,15 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Invoice } from "@/types";
 import { DataTable, ColumnDef } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { FileText, Download, CreditCard, ChevronRight, Edit } from "lucide-react";
+import { FileText, Download, CreditCard, ChevronRight, Edit, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { toast } from "sonner";
 
 interface InvoiceTableProps {
   data: Invoice[];
@@ -15,8 +17,34 @@ interface InvoiceTableProps {
   onDelete?: (invoice: Invoice) => void;
 }
 
-export function InvoiceTable({ data = [], loading }: InvoiceTableProps) {
+export function InvoiceTable({ data = [], loading, onDelete }: InvoiceTableProps) {
   const router = useRouter();
+  const [deletingInvoice, setDeletingInvoice] = useState<Invoice | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    if (!deletingInvoice) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/invoices/${deletingInvoice.id}`, { method: "DELETE" });
+      const json = await res.json();
+      if (json.success) {
+        toast.success(json.message || `Bill ${deletingInvoice.invoiceNo} deleted successfully.`);
+        if (onDelete) {
+          onDelete(deletingInvoice);
+        } else {
+          router.refresh();
+        }
+      } else {
+        toast.error(json.error || "Failed to delete bill");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete bill");
+    } finally {
+      setIsDeleting(false);
+      setDeletingInvoice(null);
+    }
+  };
 
   const columns: ColumnDef<Invoice>[] = [
     {
@@ -83,7 +111,7 @@ export function InvoiceTable({ data = [], loading }: InvoiceTableProps) {
       accessorKey: "id",
       className: "text-right",
       cell: (row) => (
-        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
           <Link href={`/invoices/${row.id}`}>
             <Button variant="ghost" size="sm" className="h-8 px-2 text-xs text-ink-secondary hover:text-brand">
               View
@@ -101,6 +129,16 @@ export function InvoiceTable({ data = [], loading }: InvoiceTableProps) {
               PDF
             </Button>
           </a>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setDeletingInvoice(row)}
+            className="h-8 px-2 text-xs text-gray-400 hover:text-red-600 hover:bg-red-50 gap-1 font-medium"
+            title="Delete Bill"
+          >
+            <Trash2 className="w-3 h-3 text-gray-400 hover:text-red-600" />
+            Delete
+          </Button>
         </div>
       ),
     },
@@ -142,32 +180,36 @@ export function InvoiceTable({ data = [], loading }: InvoiceTableProps) {
           </div>
         </div>
 
-        <div className="pt-1 flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
+        <div className="pt-1 flex flex-wrap items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
           <Link href={`/invoices/${inv.id}/edit`} className="flex-1">
-            <Button variant="outline" size="sm" className="w-full h-10 text-xs gap-1.5 min-h-[44px] text-brand border-brand/30 hover:bg-brand/5 font-semibold">
+            <Button variant="outline" size="sm" className="w-full h-9 text-xs gap-1.5 text-brand border-brand/30 hover:bg-brand/5 font-semibold">
               <Edit className="w-3.5 h-3.5" />
               <span>Edit</span>
             </Button>
           </Link>
 
           <a href={`/api/invoices/${inv.id}/pdf`} target="_blank" rel="noreferrer" className="flex-1">
-            <Button variant="outline" size="sm" className="w-full h-10 text-xs gap-1.5 min-h-[44px]">
+            <Button variant="outline" size="sm" className="w-full h-9 text-xs gap-1.5">
               <Download className="w-3.5 h-3.5" />
               <span>PDF</span>
             </Button>
           </a>
 
-          {bal > 0 ? (
-            <Link href={`/payments/new?invoiceId=${inv.id}`} className="flex-1">
-              <Button size="sm" className="w-full h-10 text-xs gap-1.5 min-h-[44px] bg-green-600 hover:bg-green-700 text-white">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setDeletingInvoice(inv)}
+            className="flex-1 h-9 text-xs gap-1.5 text-red-600 border-red-200 hover:bg-red-50 font-semibold"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Delete</span>
+          </Button>
+
+          {bal > 0 && (
+            <Link href={`/payments/new?invoiceId=${inv.id}`} className="w-full">
+              <Button size="sm" className="w-full h-9 text-xs gap-1.5 bg-green-600 hover:bg-green-700 text-white font-semibold">
                 <CreditCard className="w-3.5 h-3.5" />
-                <span>Pay</span>
-              </Button>
-            </Link>
-          ) : (
-            <Link href={`/invoices/${inv.id}`} className="flex-1">
-              <Button variant="outline" size="sm" className="w-full h-10 text-xs min-h-[44px]">
-                Details
+                <span>Record Payment</span>
               </Button>
             </Link>
           )}
@@ -177,17 +219,28 @@ export function InvoiceTable({ data = [], loading }: InvoiceTableProps) {
   };
 
   return (
-    <DataTable
-      data={data}
-      columns={columns}
-      searchKey="invoiceNo,clientName"
-      searchPlaceholder="Search invoices by number or customer..."
-      loading={loading}
-      emptyTitle="No invoices yet"
-      emptyDesc="Create your first invoice for robotics equipment or services."
-      emptyActionLabel="Create Invoice"
-      emptyAction={() => router.push("/invoices/new")}
-      renderMobileCard={renderMobileCard}
-    />
+    <>
+      <DataTable
+        data={data}
+        columns={columns}
+        searchKey="invoiceNo,clientName"
+        searchPlaceholder="Search invoices by number or customer..."
+        loading={loading}
+        emptyTitle="No invoices yet"
+        emptyDesc="Create your first invoice for robotics equipment or services."
+        emptyActionLabel="Create Invoice"
+        emptyAction={() => router.push("/invoices/new")}
+        renderMobileCard={renderMobileCard}
+      />
+
+      <ConfirmDialog
+        open={!!deletingInvoice}
+        onOpenChange={(open) => !open && setDeletingInvoice(null)}
+        title={`Delete Bill ${deletingInvoice?.invoiceNo}?`}
+        description={`Are you sure you want to permanently delete bill ${deletingInvoice?.invoiceNo}? This action is irreversible. If stock was deducted, it will be automatically restored to your inventory.`}
+        onConfirm={handleConfirmDelete}
+        loading={isDeleting}
+      />
+    </>
   );
 }

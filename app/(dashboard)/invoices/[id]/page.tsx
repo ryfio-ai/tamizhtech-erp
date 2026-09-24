@@ -2,11 +2,12 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Download, Printer, Send, CreditCard, AlertCircle, Edit } from "lucide-react";
+import { ArrowLeft, Download, Printer, Send, CreditCard, AlertCircle, Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { toast } from "sonner";
 import Link from "next/link";
 import { DEFAULT_COMPANY_SETTINGS } from "@/lib/companyProfile";
@@ -21,6 +22,8 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
   const [documentData, setDocumentData] = useState<BusinessDocumentModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadData = async () => {
     try {
@@ -46,6 +49,25 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
 
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+
+  const handleDeleteInvoice = async () => {
+    try {
+      setIsDeleting(true);
+      const res = await fetch(`/api/invoices/${params.id}`, { method: "DELETE" });
+      const json = await res.json();
+      if (json.success) {
+        toast.success(json.message || "Bill permanently deleted from database");
+        router.push("/invoices");
+      } else {
+        toast.error(json.error || "Failed to delete bill");
+      }
+    } catch {
+      toast.error("Network error while deleting bill");
+    } finally {
+      setIsDeleting(false);
+      setDeleteConfirmOpen(false);
+    }
+  };
 
   const handleStatusChange = async (newStatus: string) => {
     try {
@@ -199,11 +221,21 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
               variant="outline"
               onClick={() => setCancelConfirmOpen(true)}
               disabled={updatingStatus}
-              className="text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200 flex-1 sm:flex-initial text-xs"
+              className="text-amber-600 hover:bg-amber-50 hover:text-amber-700 border-amber-200 flex-1 sm:flex-initial text-xs"
             >
               Cancel Invoice
             </Button>
           )}
+
+          <Button
+            variant="outline"
+            onClick={() => setDeleteConfirmOpen(true)}
+            disabled={isDeleting}
+            className="text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200 flex-1 sm:flex-initial text-xs gap-1"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Delete Bill</span>
+          </Button>
         </div>
       </div>
 
@@ -226,7 +258,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
               <Button
                 disabled={updatingStatus}
                 onClick={() => handleStatusChange("CANCELLED")}
-                className="bg-red-600 hover:bg-red-700 text-white font-semibold"
+                className="bg-amber-600 hover:bg-amber-700 text-white font-semibold"
               >
                 {updatingStatus ? "Cancelling..." : "Confirm Cancellation"}
               </Button>
@@ -234,6 +266,16 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
           </div>
         </div>
       )}
+
+      {/* Permanent Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        title={`Permanently Delete Bill ${invoice.invoiceNo}?`}
+        description={`Are you sure you want to permanently delete bill ${invoice.invoiceNo}? This removes it from the database. Any deducted inventory stock will be automatically restored. This action cannot be undone.`}
+        onConfirm={handleDeleteInvoice}
+        loading={isDeleting}
+      />
 
       {/* Authoritative Standard Tax Invoice Container */}
       <div className="w-full overflow-x-auto pb-4">

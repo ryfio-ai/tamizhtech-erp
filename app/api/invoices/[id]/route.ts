@@ -230,30 +230,52 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   try {
     const invoice = await prisma.invoice.findUnique({
       where: { id: params.id },
-      include: { payments: true },
+      include: { payments: true, items: true },
     });
     if (!invoice) return NextResponse.json({ success: false, error: "Invoice not found" }, { status: 404 });
 
-    if (invoice.payments.length > 0) {
-      return NextResponse.json(
-        { success: false, error: "Cannot delete invoice with associated payments. Reverse payments first." },
-        { status: 400 }
-      );
+    // 1. If stock was deducted (ISSUED invoice), safely restore physical inventory
+    const sales = await prisma.stockLedgerEntry.findMany({
+      where: { referenceType: "INVOICE", referenceId: params.id, type: "SALE" },
+    });
+
+    if (sales.length > 0) {
+      for (const entry of sales) {
+        const qtyToRestore = Math.abs(entry.quantitySigned);
+        const minorToRestore = entry.quantitySignedMinor
+          ? Math.abs(entry.quantitySignedMinor)
+          : qtyToRestore;
+        await prisma.product.update({
+          where: { id: entry.productId },
+          data: {
+            stockQuantity: { increment: qtyToRestore },
+            stockQuantityMinor: { increment: minorToRestore },
+          },
+        });
+      }
     }
 
-    if (invoice.status !== "DRAFT") {
-      return NextResponse.json(
-        { success: false, error: "Issued invoices cannot be deleted. Please Cancel the invoice to safely restore inventory." },
-        { status: 400 }
-      );
-    }
-
+    // 2. Cascade delete all linked records inside atomic transaction
     await prisma.$transaction([
-      prisma.invoiceItem.deleteMany({ where: { invoiceId: params.id } }),
-      prisma.invoice.delete({ where: { id: params.id } }),
+      prisma.stockLedgerEntry.deleteMany({
+        where: { referenceType: "INVOICE", referenceId: params.id },
+      }),
+      prisma.payment.deleteMany({
+        where: { invoiceId: params.id },
+      }),
+      prisma.invoiceItem.deleteMany({
+        where: { invoiceId: params.id },
+      }),
+      prisma.invoice.delete({
+        where: { id: params.id },
+      }),
     ]);
 
-    return NextResponse.json({ success: true, data: null, message: "Draft invoice deleted successfully" });
+    return NextResponse.json({
+      success: true,
+      data: null,
+      message: `Bill ${invoice.invoiceNo} removed from database successfully`,
+    });
   } catch (error: any) {
     console.error("DELETE Invoice Error:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

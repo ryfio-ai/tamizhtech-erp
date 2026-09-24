@@ -348,6 +348,7 @@ model Invoice {
   balance          Int             @default(0)
   issuedAt         DateTime?
   cancelledAt      DateTime?
+  sentAt           DateTime?
   notes            String?
   terms            String?
   createdAt        DateTime        @default(now())

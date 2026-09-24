@@ -42,6 +42,9 @@ export interface Invoice {
   total: number
   paidAmount: number
   balance: number
+  issuedAt?: string | null
+  cancelledAt?: string | null
+  sentAt?: string | null
   createdAt: string
   updatedAt: string
   items?: LineItem[]

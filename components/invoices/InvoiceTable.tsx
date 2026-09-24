@@ -5,7 +5,7 @@ import { Invoice } from "@/types";
 import { DataTable, ColumnDef } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { FileText, Download, CreditCard, ChevronRight, Edit, Trash2 } from "lucide-react";
+import { FileText, Download, CreditCard, ChevronRight, Edit, Trash2, Mail, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -105,6 +105,27 @@ export function InvoiceTable({ data = [], loading, onDelete }: InvoiceTableProps
       accessorKey: "status",
       sortable: true,
       cell: (row) => <StatusBadge status={row.status || (row as any).paymentStatus} />,
+    },
+    {
+      header: "Email",
+      accessorKey: "sentAt",
+      sortable: true,
+      cell: (row) => {
+        if (row.sentAt) {
+          return (
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+              Sent
+            </span>
+          );
+        }
+        return (
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+            <Mail className="w-3 h-3 text-slate-400" />
+            Not Sent
+          </span>
+        );
+      },
     },
     {
       header: "Actions",

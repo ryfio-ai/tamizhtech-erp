@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
-import { InvoicePDFTemplate } from "@/components/invoices/InvoicePDFTemplate";
-import { getCanonicalInvoiceFinancials } from "@/lib/invoiceService";
-import { getCompanySettings } from "@/lib/company";
-import { resend } from "@/lib/mail";
+import { BusinessDocumentPDFTemplate } from "@/components/shared/BusinessDocumentPDFTemplate";
+import { getNormalizedInvoiceData } from "@/lib/businessDocumentData";
+import { COMPANY_EMAIL_FOOTER_HTML, resend, SendEmailAttachment } from "@/lib/mail";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import React from "react";
+import fs from "fs";
+import path from "path";
+import { fromPaise } from "@/lib/money";
 
 export async function POST(
   req: NextRequest,
@@ -19,99 +21,116 @@ export async function POST(
   }
 
   try {
-    const [invoice, financials, company] = await Promise.all([
-      prisma.invoice.findUnique({
-        where: { id: params.id },
-        include: {
-          client: true,
-          items: true,
-        },
-      }),
-      getCanonicalInvoiceFinancials(params.id),
-      getCompanySettings(),
-    ]);
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: params.id },
+      include: {
+        client: true,
+        items: true,
+      },
+    });
 
     if (!invoice) {
       return NextResponse.json({ success: false, error: "Invoice not found" }, { status: 404 });
     }
 
-    const recipientEmail = invoice.client?.email;
-    const recipientName = invoice.client?.name || invoice.clientName || "Valued Customer";
-    if (!recipientEmail) {
-      return NextResponse.json(
-        { success: false, error: "Customer does not have a registered email address." },
-        { status: 400 }
-      );
+    const documentData = await getNormalizedInvoiceData(params.id);
+    if (!documentData) {
+      return NextResponse.json({ success: false, error: "Unable to prepare invoice data for PDF" }, { status: 500 });
     }
 
-    // 1. Generate PDF Buffer
+    // Determine recipient email: client email, fallback to ryfioai@gmail.com if missing
+    const recipientEmail = invoice.client?.email?.trim() || "ryfioai@gmail.com";
+    const recipientName = invoice.client?.name || invoice.clientName || "Valued Customer";
+
+    // 1. Generate Authoritative PDF Buffer
     const pdfBuffer = await renderToBuffer(
-      React.createElement(InvoicePDFTemplate, {
-        invoice,
-        client: invoice.client,
-        financials: financials || undefined,
-        company,
+      React.createElement(BusinessDocumentPDFTemplate, {
+        data: documentData,
       }) as any
     );
 
-    // 2. Dispatch via Resend
+    // 2. Prepare Attachments (Only Bill PDF)
+    const attachments: SendEmailAttachment[] = [
+      {
+        filename: `Tax_Invoice_${invoice.invoiceNo}.pdf`,
+        content: Buffer.from(pdfBuffer),
+        contentType: "application/pdf",
+      },
+    ];
+
+    // 3. Dispatch via Resend
     if (!resend) {
       throw new Error("Resend API key is not configured.");
     }
 
+    const fromAddress = process.env.EMAIL_FROM || "TamizhTech ERP <contact@tamizhtech.in>";
+    const totalFormatted = fromPaise(invoice.total).toLocaleString("en-IN", { minimumFractionDigits: 2 });
+    const balanceFormatted = fromPaise(invoice.balance).toLocaleString("en-IN", { minimumFractionDigits: 2 });
+
     const { data: resendResult, error: resendError } = await resend.emails.send({
-      from: `Tamizh Tech Robotics <${company.email}>`,
+      from: fromAddress,
       to: [recipientEmail],
-      subject: `Tax Invoice ${invoice.invoiceNo} - Tamizh Tech Robotics Company`,
+      replyTo: "contact@tamizhtech.in",
+      subject: `Tax Invoice #${invoice.invoiceNo} - Tamizh Tech Robotics Company`,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1B2A4A;">
-          <h2 style="color: #FF6B00; border-bottom: 2px solid #FF6B00; padding-bottom: 8px;">Tamizh Tech Robotics Company</h2>
-          <p>Dear <strong>${recipientName}</strong>,</p>
-          <p>Thank you for choosing Tamizh Tech Robotics Company. Please find attached the official Tax Invoice <strong>${invoice.invoiceNo}</strong> for your records.</p>
-          
-          <div style="background-color: #FAFAFA; border: 1px solid #E5E5E5; padding: 15px; border-radius: 6px; margin: 20px 0;">
-            <table style="width: 100%; font-size: 14px;">
-              <tr>
-                <td style="color: #666666;">Invoice Number:</td>
-                <td style="font-weight: bold; text-align: right;">${invoice.invoiceNo}</td>
-              </tr>
-              <tr>
-                <td style="color: #666666;">Invoice Date:</td>
-                <td style="font-weight: bold; text-align: right;">${new Date(invoice.date).toLocaleDateString("en-IN")}</td>
-              </tr>
-              <tr>
-                <td style="color: #666666;">Total Amount:</td>
-                <td style="font-weight: bold; text-align: right; color: #FF6B00;">₹${Number(invoice.total).toLocaleString("en-IN")}</td>
-              </tr>
-              <tr>
-                <td style="color: #666666;">Balance Due:</td>
-                <td style="font-weight: bold; text-align: right; color: ${invoice.balance > 0 ? "#DC2626" : "#16A34A"};">₹${Number(invoice.balance).toLocaleString("en-IN")}</td>
-              </tr>
-            </table>
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+          <!-- Top Header with Brand Logo -->
+          <div style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); padding: 28px 24px; text-align: center;">
+            <img src="https://www.tamizhtech.in/logo/TTRC%20LOGO.png" alt="Tamizh Tech Robotics Company" style="height: 52px; width: auto; max-width: 220px; object-fit: contain; margin-bottom: 12px; display: inline-block;" />
+            <h1 style="margin: 0; font-size: 20px; font-weight: 700; color: #FFFFFF; letter-spacing: 0.5px;">TAMIZH TECH ROBOTICS COMPANY</h1>
+            <p style="margin: 6px 0 0 0; color: #94A3B8; font-size: 13px;">Official Tax Invoice & Billing Statement</p>
           </div>
 
-          <p style="font-size: 13px; color: #555555;">If you have any questions concerning this invoice, please do not hesitate to contact us at <strong>${company.phone}</strong> or <strong>${company.email}</strong>.</p>
-          
-          <br/>
-          <p style="font-size: 12px; color: #888888; border-top: 1px solid #EEEEEE; padding-top: 12px;">
-            Tamizh Tech Robotics Company<br/>
-            ${company.addressLine1}, ${company.addressLine2}, ${company.city}, ${company.state} - ${company.pincode}<br/>
-            <a href="${company.website}" style="color: #FF6B00;">${company.website}</a>
-          </p>
+          <div style="padding: 28px 24px; color: #1E293B;">
+            <p style="font-size: 16px; margin: 0 0 12px 0;">Dear <strong>${recipientName}</strong>,</p>
+            <p style="font-size: 14.5px; line-height: 1.6; color: #334155; margin: 0 0 18px 0;">
+              Thank you for partnering with Tamizh Tech Robotics Company. Please find attached the official Tax Invoice <strong>#${invoice.invoiceNo}</strong> for your review and accounting records.
+            </p>
+            
+            <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 18px; margin: 20px 0;">
+              <h3 style="margin: 0 0 12px 0; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #0F172A; border-bottom: 1px solid #E2E8F0; padding-bottom: 8px;">
+                Invoice Summary
+              </h3>
+              <table style="width: 100%; border-collapse: collapse; font-size: 13.5px;">
+                <tr>
+                  <td style="padding: 7px 0; color: #64748B;">Invoice Number:</td>
+                  <td style="padding: 7px 0; font-weight: 600; text-align: right; color: #0F172A;">${invoice.invoiceNo}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 7px 0; color: #64748B;">Invoice Date:</td>
+                  <td style="padding: 7px 0; font-weight: 600; text-align: right; color: #0F172A;">${new Date(invoice.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 7px 0; color: #64748B;">Total Amount:</td>
+                  <td style="padding: 7px 0; font-weight: 700; text-align: right; color: #FF6B00; font-size: 15px;">₹${totalFormatted}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 7px 0; color: #64748B;">Balance Due:</td>
+                  <td style="padding: 7px 0; font-weight: 700; text-align: right; color: ${invoice.balance > 0 ? "#DC2626" : "#16A34A"};">
+                    ₹${balanceFormatted} ${invoice.balance <= 0 ? "(Paid ✓)" : ""}
+                  </td>
+                </tr>
+              </table>
+            </div>
+
+            <!-- Attachment Notice -->
+            <div style="background-color: #F1F5F9; border-left: 4px solid #FF6B00; border-radius: 4px; padding: 12px 16px; margin: 20px 0;">
+              <p style="margin: 0; font-size: 13px; color: #334155; line-height: 1.5;">
+                📎 <strong>Attached:</strong> The official Tax Invoice PDF with complete line-item specifications, tax breakdown, bank details, and digital authorization is attached.
+              </p>
+            </div>
+
+            <!-- User Required Standard Closing & Footer -->
+            ${COMPANY_EMAIL_FOOTER_HTML}
+          </div>
         </div>
       `,
-      attachments: [
-        {
-          filename: `Tax_Invoice_${invoice.invoiceNo}.pdf`,
-          content: pdfBuffer,
-        },
-      ],
+      attachments,
     });
 
     if (resendError) {
       console.error("[Resend API Error]:", resendError);
 
-      // Record failed integration log
       await prisma.integrationLog.create({
         data: {
           provider: "RESEND",
@@ -124,6 +143,15 @@ export async function POST(
 
       return NextResponse.json({ success: false, error: resendError.message }, { status: 500 });
     }
+
+    // 4. Update Invoice sentAt timestamp
+    const updatedSentAt = new Date();
+    await prisma.invoice.update({
+      where: { id: invoice.id },
+      data: {
+        sentAt: updatedSentAt,
+      } as any,
+    });
 
     // Record success in IntegrationLog and AuditLog
     await prisma.integrationLog.create({
@@ -143,7 +171,7 @@ export async function POST(
           module: "INVOICES",
           entityId: invoice.id,
           userId: (session.user as any).id,
-          newData: JSON.stringify({ recipientEmail, invoiceNo: invoice.invoiceNo }),
+          newData: JSON.stringify({ recipientEmail, invoiceNo: invoice.invoiceNo, sentAt: updatedSentAt }),
         },
       });
     }
@@ -152,6 +180,7 @@ export async function POST(
       success: true,
       message: `Invoice sent successfully to ${recipientEmail}`,
       messageId: resendResult?.id,
+      sentAt: updatedSentAt.toISOString(),
     });
   } catch (error: any) {
     console.error("Send Invoice Error:", error);

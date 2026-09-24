@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Download, Printer, Send, CreditCard, AlertCircle, Edit, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, Printer, Send, CreditCard, AlertCircle, Edit, Trash2, Mail, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
@@ -113,6 +113,10 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
       const data = await res.json();
       if (data.success) {
         toast.success(data.message || "Invoice sent successfully!");
+        setInvoice((prev: any) => ({
+          ...prev,
+          sentAt: data.sentAt || new Date().toISOString(),
+        }));
       } else {
         toast.error(data.error || "Failed to dispatch email");
       }
@@ -156,11 +160,22 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
       {/* Top Action Bar (hidden in print) */}
       <div className="no-print bg-white p-4 sm:p-5 rounded-xl border border-border shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="text-xl sm:text-2xl font-bold text-ink-primary tracking-tight">
               {invoice.invoiceNo}
             </h1>
             <StatusBadge status={invoice.status || "DRAFT"} />
+            {invoice.sentAt ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                Email Sent ({new Date(invoice.sentAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })})
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                <Mail className="w-3.5 h-3.5 text-slate-400" />
+                Email Not Sent
+              </span>
+            )}
           </div>
           <p className="text-xs text-ink-secondary mt-0.5">
             Issued to {client?.name || invoice.clientName} • Issued on {issueDateTimeStr}
@@ -192,10 +207,14 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
             variant="outline"
             onClick={handleSendEmail}
             disabled={sendingEmail}
-            className="gap-2 flex-1 sm:flex-initial text-brand hover:text-brand-dark"
+            className={`gap-2 flex-1 sm:flex-initial ${
+              invoice.sentAt
+                ? "border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                : "text-brand hover:text-brand-dark"
+            }`}
           >
-            <Send className="w-4 h-4" />
-            <span>{sendingEmail ? "Sending..." : "Send Email"}</span>
+            {invoice.sentAt ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <Send className="w-4 h-4" />}
+            <span>{sendingEmail ? "Sending..." : invoice.sentAt ? "Resend Email" : "Send Email"}</span>
           </Button>
 
           {invoice.status !== "CANCELLED" && (

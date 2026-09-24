@@ -3,6 +3,11 @@ import prisma from "@/lib/prisma";
 import { CreatePaymentInput } from "@/types";
 import { generatePaymentNo } from "@/lib/sequence";
 import { toPaise, fromPaise } from "@/lib/money";
+import React from "react";
+import { renderToBuffer } from "@react-pdf/renderer";
+import { BusinessDocumentPDFTemplate } from "@/components/shared/BusinessDocumentPDFTemplate";
+import { getNormalizedInvoiceData } from "@/lib/businessDocumentData";
+import { sendPaymentReceiptEmail } from "@/lib/mail";
 
 export const revalidate = 0;
 
@@ -108,9 +113,43 @@ export async function POST(req: NextRequest) {
       include: { client: true, invoice: true },
     });
 
+    // Automated Thank You Email with Bill PDF on Payment Success
+    let emailSent = false;
+    let emailRecipient: string | null = null;
+    try {
+      const recipient = finalPayment?.client?.email?.trim();
+      const targetEmail = recipient || "ryfioai@gmail.com";
+      if (targetEmail && invoice.id) {
+        emailRecipient = targetEmail;
+        const normalizedData = await getNormalizedInvoiceData(invoice.id);
+        if (normalizedData) {
+          const pdfBuffer = await renderToBuffer(
+            React.createElement(BusinessDocumentPDFTemplate, { data: normalizedData }) as any
+          );
+          await sendPaymentReceiptEmail({
+            recipientEmail: targetEmail,
+            clientName: finalPayment?.client?.name || invoice.clientName || "Valued Customer",
+            amount: fromPaise(finalPayment?.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 }),
+            paymentNo: finalPayment?.paymentNo || paymentId,
+            invoiceNo: invoice.invoiceNo,
+            paymentDate: new Date(finalPayment?.date || Date.now()).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
+            paymentMode: finalPayment?.mode || "UPI",
+            referenceNo: finalPayment?.referenceNo || "",
+            balance: `₹${fromPaise(Math.max(0, invoice.balance - amountInPaise)).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+            pdfBuffer: Buffer.from(pdfBuffer),
+          });
+          emailSent = true;
+        }
+      }
+    } catch (emailErr) {
+      console.error("[Automated Payment Receipt Email Error]:", emailErr);
+    }
+
     return NextResponse.json(
       {
         success: true,
+        emailSent,
+        emailRecipient,
         data: {
           ...finalPayment,
           amount: fromPaise(finalPayment?.amount || 0),

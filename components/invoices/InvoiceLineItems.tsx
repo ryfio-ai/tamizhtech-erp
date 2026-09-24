@@ -107,10 +107,27 @@ export function InvoiceLineItems({ control, register, watch, setValue, errors }:
               <th className="py-3 px-3 w-24 text-right">Qty</th>
               <th className="py-3 px-3 w-32 text-right">Rate (₹)</th>
               <th className="py-3 px-3 w-32 text-right">Amount (₹)</th>
-              <th className="py-3 px-2 w-10 text-center"></th>
+              <th className="py-3 px-3 w-24 text-center">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-xs">
+            {fields.length === 0 && (
+              <tr>
+                <td colSpan={7} className="py-10 text-center bg-gray-50/50">
+                  <Package className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                  <p className="font-semibold text-xs text-navy">No line items added</p>
+                  <p className="text-[11px] text-gray-500 mt-0.5 mb-3">Add at least one item or service to create this bill.</p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => append({ description: "", qty: 1, unitPrice: 0, productId: "", configurationNotes: "" })}
+                    className="gap-1.5 bg-brand hover:bg-brand-dark text-white text-xs font-semibold h-8 shadow-xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Line Item
+                  </Button>
+                </td>
+              </tr>
+            )}
             {fields.map((field, index) => {
               const currentItem = watchItems[index];
               const qty = Number(currentItem?.qty) || 0;
@@ -270,16 +287,17 @@ export function InvoiceLineItems({ control, register, watch, setValue, errors }:
                   </td>
 
                   {/* Action / Delete */}
-                  <td className="py-3 px-2 text-center pt-3.5">
+                  <td className="py-3 px-3 text-center pt-3">
                     <Button
                       type="button"
-                      variant="ghost"
-                      size="icon"
+                      variant="outline"
+                      size="sm"
                       onClick={() => remove(index)}
-                      disabled={fields.length === 1}
-                      className="h-7 w-7 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                      className="h-8 px-2.5 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300 rounded-lg gap-1.5 font-medium shadow-2xs transition-colors cursor-pointer"
+                      title="Remove this item"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                      <span>Delete</span>
                     </Button>
                   </td>
                 </tr>
@@ -288,6 +306,13 @@ export function InvoiceLineItems({ control, register, watch, setValue, errors }:
           </tbody>
         </table>
       </div>
+
+      {/* Global Line Item Error Notice */}
+      {errors?.items?.message && (
+        <div className="p-3 bg-red-50 border-t border-red-200 text-red-600 text-xs font-medium flex items-center gap-2">
+          <span>⚠️ {errors.items.message}</span>
+        </div>
+      )}
 
       {/* Footer Add Row Action */}
       <div className="p-3 bg-gray-50/60 border-t border-gray-100 flex items-center justify-between">

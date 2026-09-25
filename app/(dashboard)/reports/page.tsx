@@ -19,6 +19,7 @@ import {
   FileSpreadsheet,
 } from "lucide-react";
 import { formatINR } from "@/lib/money";
+import { Gstr1ExportCard } from "@/components/reports/Gstr1ExportCard";
 
 export default function ReportsPage() {
   const [data, setData] = useState<any>(null);
@@ -441,6 +442,11 @@ export default function ReportsPage() {
               </div>
             </div>
           </div>
+
+          {/* ─────────────────────────────────────────────────────────────
+              GST REPORTS: GSTR-1 OUTWARD SALES TAX EXPORT
+             ───────────────────────────────────────────────────────────── */}
+          <Gstr1ExportCard />
         </div>
       ) : null}
     </div>

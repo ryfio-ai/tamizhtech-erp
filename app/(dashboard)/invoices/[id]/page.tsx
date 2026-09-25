@@ -16,6 +16,8 @@ import { BusinessDocumentView } from "@/components/shared/BusinessDocumentView";
 import type { BusinessDocumentModel } from "@/types/businessDocument";
 import { buildInvoiceWhatsAppMessage } from "@/lib/whatsapp";
 import { WhatsAppShareButton } from "@/components/shared/WhatsAppShareButton";
+import { InvoiceReminderButton } from "@/components/invoices/InvoiceReminderButton";
+import { InvoiceReminderHistory } from "@/components/invoices/InvoiceReminderHistory";
 
 export default function InvoiceDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -26,6 +28,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
   const [sendingEmail, setSendingEmail] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [reminderTrigger, setReminderTrigger] = useState(0);
 
   const loadData = async () => {
     try {
@@ -239,6 +242,21 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
             <span>{sendingEmail ? "Sending..." : invoice.sentAt ? "Resend Email" : "Send Email"}</span>
           </Button>
 
+          {/* Payment Reminder Action */}
+          {balance > 0 && invoice.status !== "CANCELLED" && invoice.status !== "DRAFT" && (
+            <InvoiceReminderButton
+              invoiceId={invoice.id}
+              invoiceNo={invoice.invoiceNo}
+              customerName={invoice.clientName || client?.name}
+              customerEmail={client?.email}
+              balance={balance}
+              dueDate={invoice.dueDate}
+              status={invoice.status}
+              onReminderSent={() => setReminderTrigger((t) => t + 1)}
+              className="flex-1 sm:flex-initial"
+            />
+          )}
+
           {invoice.status !== "CANCELLED" && (
             <Link href={`/invoices/${invoice.id}/edit`} className="flex-1 sm:flex-initial">
               <Button variant="outline" className="gap-1.5 w-full border-brand/40 text-brand hover:bg-brand/5 hover:text-brand-dark font-semibold">
@@ -355,6 +373,12 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
           ) : null}
         </div>
       </div>
+
+      {/* Payment Reminder History Timeline */}
+      <InvoiceReminderHistory
+        invoiceId={invoice.id}
+        refreshTrigger={reminderTrigger}
+      />
 
       {/* Cancel Confirmation Dialog */}
       {cancelConfirmOpen && (

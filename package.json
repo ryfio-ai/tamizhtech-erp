@@ -18,7 +18,8 @@
     "test:submissions": "ts-node -r tsconfig-paths/register -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/testInboundSubmissions.ts",
     "inspect:db": "ts-node -r tsconfig-paths/register -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/inspectDb.ts",
     "reset:submissions": "ts-node -r tsconfig-paths/register -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/resetSubmissions.ts",
-    "test:phase1": "ts-node -r tsconfig-paths/register -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/testPhase1Features.ts"
+    "test:phase1": "ts-node -r tsconfig-paths/register -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/testPhase1Features.ts",
+    "test:phase2": "ts-node -r tsconfig-paths/register -O \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/testPhase2Features.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     padding: 6,
     alignItems: "center",
     justifyContent: "space-between",
-    minHeight: 105,
+    minHeight: 130,
   },
   signatureCompanyText: {
     fontSize: 7.8,
@@ -359,12 +359,12 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   signatureImage: {
-    width: 175,
-    height: 75, // Significantly increased signature size for bold visibility
+    width: 250,
+    height: 100, // 250 x 100 exact size requested
     objectFit: "contain",
   },
   signatureSpace: {
-    height: 55,
+    height: 70,
   },
   signatureLine: {
     fontSize: 7.2,
@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#9CA3AF",
     paddingTop: 3,
-    width: "88%",
+    width: "92%",
     textAlign: "center",
   },
 });

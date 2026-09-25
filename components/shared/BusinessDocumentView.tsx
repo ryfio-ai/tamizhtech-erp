@@ -450,12 +450,12 @@ export function BusinessDocumentView({
             </div>
 
             {/* Authorized Signature Box */}
-            <div className="p-3 text-center flex flex-col justify-between min-h-[160px]">
+            <div className="p-3 text-center flex flex-col justify-between min-h-[175px]">
               <p className="text-[11px] font-bold text-[#1B2A4A]">
                 For {company.companyName}
               </p>
               <div className="flex flex-col items-center justify-end flex-1 pt-1">
-                <div className="w-64 h-24 flex items-center justify-center my-0.5">
+                <div className="w-[250px] h-[100px] flex items-center justify-center my-0.5">
                   <img
                     src={data.signatureSrc || "/signature.png"}
                     alt="Authorized Signature"
@@ -465,7 +465,7 @@ export function BusinessDocumentView({
                     }}
                   />
                 </div>
-                <div className="w-60 mx-auto border-t border-slate-400 pt-1 text-[10px] text-slate-500 font-medium">
+                <div className="w-[240px] mx-auto border-t border-slate-400 pt-1 text-[10px] text-slate-500 font-medium">
                   Authorized Signature
                 </div>
               </div>

@@ -80,21 +80,21 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-3.5 sm:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-navy flex items-center gap-2.5">
-            <BarChart3 className="w-7 h-7 text-primary" />
+          <h1 className="text-xl sm:text-2xl font-bold text-navy flex items-center gap-2.5">
+            <BarChart3 className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
             Financial & Operations Reports
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">
             Authoritative 3-Pillar reconciliation: Accrual Sales vs Actual Cash Flow vs Rolling WAC Inventory.
           </p>
         </div>
         <button
           onClick={fetchReport}
-          className="inline-flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-3.5 py-2 rounded-lg text-xs font-medium shadow-sm transition-colors"
+          className="inline-flex items-center justify-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-3.5 py-2 rounded-lg text-xs font-medium shadow-sm transition-colors min-h-[40px] w-full sm:w-auto"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-primary" : ""}`} />
           Refresh Report
@@ -102,39 +102,39 @@ export default function ReportsPage() {
       </div>
 
       {/* Date Filter Controls */}
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2 w-full lg:w-auto">
+      <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
           <button
             onClick={() => setPeriodShortcut("THIS_MONTH")}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 hover:bg-gray-100"
+            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 hover:bg-gray-100 whitespace-nowrap min-h-[36px]"
           >
             This Month
           </button>
           <button
             onClick={() => setPeriodShortcut("LAST_MONTH")}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 hover:bg-gray-100"
+            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 hover:bg-gray-100 whitespace-nowrap min-h-[36px]"
           >
             Last Month
           </button>
           <button
             onClick={() => setPeriodShortcut("THIS_QUARTER")}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 hover:bg-gray-100"
+            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 hover:bg-gray-100 whitespace-nowrap min-h-[36px]"
           >
             This Quarter
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 text-xs w-full lg:w-auto justify-end">
-          <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 text-xs w-full lg:w-auto">
+          <div className="flex items-center gap-1.5 flex-1 sm:flex-none min-w-[130px]">
             <span className="text-gray-500 font-medium">From:</span>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs"
+              className="px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs w-full min-h-[36px]"
             />
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-1 sm:flex-none min-w-[130px]">
             <span className="text-gray-500 font-medium">To:</span>
             <input
               type="date"
@@ -143,16 +143,16 @@ export default function ReportsPage() {
                 setEndDate(e.target.value);
                 setAsOfDate(e.target.value);
               }}
-              className="px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs"
+              className="px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs w-full min-h-[36px]"
             />
           </div>
-          <div className="flex items-center gap-1.5 pl-2 border-l border-gray-200">
-            <span className="text-navy font-semibold">As-Of Date:</span>
+          <div className="flex items-center gap-1.5 w-full sm:w-auto pt-1 sm:pt-0 sm:pl-2 sm:border-l border-gray-200">
+            <span className="text-navy font-semibold whitespace-nowrap">As-Of Date:</span>
             <input
               type="date"
               value={asOfDate}
               onChange={(e) => setAsOfDate(e.target.value)}
-              className="px-2.5 py-1.5 border border-primary/40 bg-primary/5 rounded-lg text-xs font-semibold text-navy"
+              className="px-2.5 py-1.5 border border-primary/40 bg-primary/5 rounded-lg text-xs font-semibold text-navy w-full sm:w-auto min-h-[36px]"
             />
           </div>
         </div>

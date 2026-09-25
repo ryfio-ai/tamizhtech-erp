@@ -40,18 +40,18 @@ export function PageHeader({
         )}
       </div>
 
-      <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+      <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 flex-wrap w-full sm:w-auto">
         {secondaryAction}
         {actionLabel && actionHref && (
-          <Link href={actionHref}>
-            <Button size="default" className="min-h-[44px] sm:min-h-[48px] px-5 shadow-sm">
+          <Link href={actionHref} className="w-full sm:w-auto">
+            <Button size="default" className="w-full sm:w-auto min-h-[44px] sm:min-h-[48px] px-5 shadow-sm">
               {actionIcon}
               <span>{actionLabel}</span>
             </Button>
           </Link>
         )}
         {actionLabel && onAction && !actionHref && (
-          <Button onClick={onAction} size="default" className="min-h-[44px] sm:min-h-[48px] px-5 shadow-sm">
+          <Button onClick={onAction} size="default" className="w-full sm:w-auto min-h-[44px] sm:min-h-[48px] px-5 shadow-sm">
             {actionIcon}
             <span>{actionLabel}</span>
           </Button>

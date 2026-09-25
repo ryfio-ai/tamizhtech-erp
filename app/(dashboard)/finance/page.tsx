@@ -227,23 +227,23 @@ function FinanceContent() {
           </p>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
            <button
              onClick={fetchFinanceData}
-             className="p-2 text-gray-500 hover:text-navy hover:bg-gray-100 rounded-lg"
+             className="p-2 text-gray-500 hover:text-navy hover:bg-gray-100 rounded-lg min-h-[40px] min-w-[40px] flex items-center justify-center"
              title="Refresh"
            >
              <RefreshCw className="w-5 h-5" />
            </button>
-           <Link href="/invoices/new">
-             <Button size="sm" variant="outline" className="gap-2">
+           <Link href="/invoices/new" className="flex-1 sm:flex-none">
+             <Button size="sm" variant="outline" className="w-full gap-2 min-h-[40px]">
                 <Receipt className="w-4 h-4" /> New Invoice
              </Button>
            </Link>
            <Button
              size="sm"
              onClick={() => setShowAddModal(true)}
-             className="bg-primary text-white hover:bg-primary/90 gap-2 font-medium"
+             className="flex-1 sm:flex-none bg-primary text-white hover:bg-primary/90 gap-2 font-medium min-h-[40px]"
            >
               <Plus className="w-4 h-4" /> Add Expense
            </Button>
@@ -358,7 +358,107 @@ function FinanceContent() {
           </button>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* MOBILE CARD VIEW (< 768px) */}
+        <div className="md:hidden p-3 space-y-3">
+          {expenses.map((exp) => {
+            const isVoided = exp.status === "VOIDED";
+            const isPaid = exp.paymentStatus === "PAID";
+            return (
+              <div
+                key={exp.id}
+                className={`bg-white border border-gray-200 rounded-xl p-4 shadow-2xs space-y-3 ${
+                  isVoided ? "opacity-60 bg-gray-50" : ""
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="font-mono text-xs font-bold text-navy block">{exp.expenseNo}</span>
+                    <span className="text-xs font-medium text-gray-700 capitalize mt-0.5 block">
+                      {exp.category.replace(/_/g, " ").toLowerCase()}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                        exp.paymentStatus === "PAID"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          : exp.paymentStatus === "PARTIAL"
+                          ? "bg-blue-50 text-blue-700 border border-blue-200"
+                          : "bg-amber-50 text-amber-700 border border-amber-200"
+                      }`}
+                    >
+                      {exp.paymentStatus || "UNPAID"}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                        exp.status === "APPROVED"
+                          ? "bg-gray-100 text-gray-800"
+                          : exp.status === "VOIDED"
+                          ? "bg-red-50 text-red-700 border border-red-200"
+                          : "bg-gray-50 text-gray-600"
+                      }`}
+                    >
+                      {exp.status}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-xs text-gray-600">
+                  <div className="font-medium text-gray-900">{exp.paidTo || "Payee not specified"}</div>
+                  {(exp.description || exp.notes) && (
+                    <div className="text-gray-500 text-[11px] mt-0.5">{exp.description || exp.notes}</div>
+                  )}
+                  <div className="text-gray-400 text-[10px] mt-1">
+                    {new Date(exp.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-gray-500 block text-[10px] uppercase">Incurred</span>
+                    <span className="font-bold text-gray-900 text-sm">{formatINR(exp.amount)}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-gray-500 block text-[10px] uppercase">Paid</span>
+                    <span className="font-bold text-emerald-700 text-sm">{formatINR(exp.paidAmount || 0)}</span>
+                  </div>
+                </div>
+
+                {(!isVoided && !isPaid || !isVoided) && (
+                  <div className="pt-2 border-t border-gray-100 flex items-center gap-2">
+                    {!isVoided && !isPaid && (
+                      <button
+                        onClick={() => {
+                          setShowPaymentModal(exp);
+                          setPayAmount(String(exp.amount - (exp.paidAmount || 0)));
+                        }}
+                        className="flex-1 min-h-[40px] px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5"
+                      >
+                        <CreditCard className="w-3.5 h-3.5" /> Record Payment
+                      </button>
+                    )}
+                    {!isVoided && (
+                      <button
+                        onClick={() => handleVoidExpense(exp.id)}
+                        className="min-h-[40px] px-3 py-2 text-red-600 hover:bg-red-50 border border-red-100 rounded-lg text-xs font-medium"
+                      >
+                        Void
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {expenses.length === 0 && (
+            <div className="py-8 text-center text-gray-400 italic text-xs">
+              No expense records found.
+            </div>
+          )}
+        </div>
+
+        {/* DESKTOP TABLE VIEW (>= 768px) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-200 uppercase">
@@ -459,8 +559,8 @@ function FinanceContent() {
 
       {/* Modal: Add Expense */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 space-y-4">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <h3 className="text-base font-bold text-navy flex items-center gap-2">
                 <Plus className="w-5 h-5 text-primary" /> Record Operating Expense
@@ -594,8 +694,8 @@ function FinanceContent() {
 
       {/* Modal: Record Payment against Unpaid Expense */}
       {showPaymentModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4 text-xs">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 space-y-4 text-xs">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <h3 className="text-base font-bold text-navy flex items-center gap-2">
                 <CreditCard className="w-5 h-5 text-emerald-600" /> Record Expense Payment

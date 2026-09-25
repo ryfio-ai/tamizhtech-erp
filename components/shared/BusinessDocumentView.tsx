@@ -44,25 +44,25 @@ export function BusinessDocumentView({
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 py-6 px-4 sm:px-6 lg:px-8 print:p-0 print:bg-white text-slate-900">
+    <div className="min-h-screen bg-slate-100 py-4 sm:py-6 px-3 sm:px-6 lg:px-8 print:p-0 print:bg-white text-slate-900">
       {/* Top Action Toolbar (Hidden during Print) */}
       {showToolbar && (
-        <div className="max-w-4xl mx-auto mb-4 flex flex-wrap items-center justify-between gap-3 no-print">
+        <div className="max-w-4xl mx-auto mb-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 no-print">
           {backUrl ? (
             <Link
               href={backUrl}
-              className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-slate-900 transition-colors py-1.5"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to list
             </Link>
           ) : <div />}
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {extraActions}
             <button
               onClick={handlePrint}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded-md shadow-sm hover:bg-slate-50 transition-colors"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[42px] text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg shadow-sm hover:bg-slate-50 transition-colors"
               id="btn-print-document"
             >
               <Printer className="w-4 h-4 text-slate-500" />
@@ -73,7 +73,7 @@ export function BusinessDocumentView({
                 href={pdfDownloadUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-[#1B2A4A] hover:bg-[#131E35] rounded-md shadow-sm transition-colors"
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[42px] text-sm font-semibold text-white bg-[#1B2A4A] hover:bg-[#131E35] rounded-lg shadow-sm transition-colors"
                 id="btn-download-pdf"
               >
                 <Download className="w-4 h-4 text-orange-400" />
@@ -84,15 +84,21 @@ export function BusinessDocumentView({
         </div>
       )}
 
+      {/* Mobile view guide */}
+      <p className="text-[11px] text-slate-500 text-center sm:hidden mb-2.5 no-print">
+        Tip: Scroll horizontally on document below or download official PDF
+      </p>
+
       {/* Authoritative A4 Document Container */}
-      <div
-        className="max-w-4xl mx-auto bg-white border border-slate-300 shadow-md print:shadow-none print:border print:border-slate-400 text-[11px] leading-tight select-text"
-        id="business-document-container"
-        style={{
-          fontFamily:
-            '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-        }}
-      >
+      <div className="w-full overflow-x-auto pb-8">
+        <div
+          className="min-w-[680px] sm:min-w-0 max-w-4xl mx-auto bg-white border border-slate-300 shadow-md print:shadow-none print:border print:border-slate-400 print:min-w-0 text-[11px] leading-tight select-text"
+          id="business-document-container"
+          style={{
+            fontFamily:
+              '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+          }}
+        >
         {/* 1. Header: Logo, Company Info, and Large Document Title */}
         <div className="flex justify-between items-start p-4 border-b border-slate-300">
           <div className="flex items-start gap-4 w-[68%]">
@@ -498,6 +504,7 @@ export function BusinessDocumentView({
           </div>
         </div>
       </div>
+    </div>
 
       {/* Global CSS for Strict Print Layout & Colors */}
       <style jsx global>{`

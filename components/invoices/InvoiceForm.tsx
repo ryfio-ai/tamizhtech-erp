@@ -260,8 +260,8 @@ export function InvoiceForm({ initialData, clients, onSubmit, onCancel, isLoadin
       </div>
 
       {/* Actions: Save Draft vs Issue Bill or Save Changes */}
-      <div className="flex flex-wrap items-center gap-3 justify-end pt-4">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading} className="bg-white">
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 sm:gap-3 justify-end pt-4 w-full">
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading} className="w-full sm:w-auto bg-white min-h-[44px]">
           Cancel
         </Button>
         {isEditing ? (
@@ -272,7 +272,7 @@ export function InvoiceForm({ initialData, clients, onSubmit, onCancel, isLoadin
                 variant="outline" 
                 disabled={isLoading} 
                 onClick={() => setSubmitMode("DRAFT")}
-                className="border-border text-ink-primary hover:bg-gray-50"
+                className="w-full sm:w-auto border-border text-ink-primary hover:bg-gray-50 min-h-[44px]"
               >
                 {isLoading && submitMode === "DRAFT" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                 Update Draft
@@ -282,7 +282,7 @@ export function InvoiceForm({ initialData, clients, onSubmit, onCancel, isLoadin
               type="submit" 
               disabled={isLoading} 
               onClick={() => setSubmitMode("ISSUED")}
-              className="bg-brand hover:bg-brand-dark min-w-[160px] shadow-sm font-semibold text-white"
+              className="w-full sm:w-auto bg-brand hover:bg-brand-dark min-w-[160px] shadow-sm font-semibold text-white min-h-[44px]"
             >
               {isLoading ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -299,7 +299,7 @@ export function InvoiceForm({ initialData, clients, onSubmit, onCancel, isLoadin
               variant="outline" 
               disabled={isLoading} 
               onClick={() => setSubmitMode("DRAFT")}
-              className="border-border text-ink-primary hover:bg-gray-50"
+              className="w-full sm:w-auto border-border text-ink-primary hover:bg-gray-50 min-h-[44px]"
             >
               {isLoading && submitMode === "DRAFT" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               Save as Draft
@@ -308,7 +308,7 @@ export function InvoiceForm({ initialData, clients, onSubmit, onCancel, isLoadin
               type="submit" 
               disabled={isLoading} 
               onClick={() => setSubmitMode("ISSUED")}
-              className="bg-brand hover:bg-brand-dark min-w-[150px] shadow-sm font-semibold"
+              className="w-full sm:w-auto bg-brand hover:bg-brand-dark min-w-[150px] shadow-sm font-semibold min-h-[44px]"
             >
               {isLoading && submitMode === "ISSUED" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-1.5" />}
               Issue Bill

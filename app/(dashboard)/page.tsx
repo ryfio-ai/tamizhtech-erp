@@ -70,44 +70,44 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 w-full max-w-7xl mx-auto pb-10">
       {/* 1. Operations Header & Fast Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-2xl border border-border shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-6 rounded-2xl border border-border shadow-sm">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-ink-primary tracking-tight">
-            Hi Team!!!!!!!!
+          <h1 className="text-lg sm:text-2xl font-bold text-ink-primary tracking-tight">
+            Welcome, {session?.user?.name?.split(" ")[0] || "Team"}
           </h1>
-          <p className="text-xs sm:text-sm text-ink-secondary mt-1">
-            Tamizh Tech Robotics Company Operations Workspace
+          <p className="text-xs sm:text-sm text-ink-secondary mt-0.5">
+            TamizhTech Robotics Operations Workspace
           </p>
         </div>
 
         {/* Core Quick Actions */}
-        <div className="flex flex-wrap items-center gap-2">
-          <Link href="/invoices/new">
-            <Button size="sm" className="gap-1.5 h-10 text-xs bg-brand hover:bg-brand-dark shadow-sm font-semibold">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
+          <Link href="/invoices/new" className="w-full sm:w-auto">
+            <Button size="sm" className="w-full gap-1.5 h-11 sm:h-10 text-xs bg-brand hover:bg-brand-dark shadow-sm font-semibold justify-center min-h-[44px]">
               <Plus className="w-3.5 h-3.5" />
               <span>New Bill</span>
             </Button>
           </Link>
-          <Link href="/clients?new=true">
-            <Button variant="outline" size="sm" className="gap-1.5 h-10 text-xs text-ink-primary hover:text-brand">
+          <Link href="/clients?new=true" className="w-full sm:w-auto">
+            <Button variant="outline" size="sm" className="w-full gap-1.5 h-11 sm:h-10 text-xs text-ink-primary hover:text-brand justify-center min-h-[44px]">
               <Users className="w-3.5 h-3.5 text-brand" />
               <span>New Customer</span>
             </Button>
           </Link>
-          <Link href="/products">
-            <Button variant="outline" size="sm" className="gap-1.5 h-10 text-xs text-ink-primary hover:text-brand">
+          <Link href="/products" className="w-full sm:w-auto">
+            <Button variant="outline" size="sm" className="w-full gap-1.5 h-11 sm:h-10 text-xs text-ink-primary hover:text-brand justify-center min-h-[44px]">
               <Package className="w-3.5 h-3.5 text-brand" />
               <span>Add Product</span>
             </Button>
           </Link>
-          <Link href="/payments/new">
-            <Button variant="outline" size="sm" className="gap-1.5 h-10 text-xs text-ink-primary hover:text-green-600">
+          <Link href="/payments/new" className="w-full sm:w-auto">
+            <Button variant="outline" size="sm" className="w-full gap-1.5 h-11 sm:h-10 text-xs text-ink-primary hover:text-green-600 justify-center min-h-[44px]">
               <CreditCard className="w-3.5 h-3.5 text-green-600" />
               <span>Record Payment</span>
             </Button>
           </Link>
-          <Link href="/finance?new=true">
-            <Button variant="outline" size="sm" className="gap-1.5 h-10 text-xs text-ink-primary hover:text-rose-600">
+          <Link href="/finance?new=true" className="col-span-2 sm:col-span-1 w-full sm:w-auto">
+            <Button variant="outline" size="sm" className="w-full gap-1.5 h-11 sm:h-10 text-xs text-ink-primary hover:text-rose-600 justify-center min-h-[44px]">
               <Banknote className="w-3.5 h-3.5 text-rose-600" />
               <span>Record Expense</span>
             </Button>
@@ -158,6 +158,7 @@ export default function DashboardPage() {
           icon={AlertTriangle}
           badge={lowStockCount > 0 ? "Replenish" : "Stock Healthy"}
           badgeVariant={lowStockCount > 0 ? "warning" : "default"}
+          className="col-span-2 sm:col-span-1"
         />
       </div>
 

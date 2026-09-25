@@ -117,9 +117,9 @@ export function TopBar({ onMobileMenuClick, overdueCount = 0 }: TopBarProps) {
 
         {/* Right Side: Live Clock (compact), Global Search, Quick Action, Notifications, Profile */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Compact Live Clock for tablets & mobile */}
+          {/* Compact Live Clock for tablets (hidden on phones to prevent crowding) */}
           {liveDateTime.time && (
-            <div className="lg:hidden flex items-center gap-1 font-mono text-[11px] font-bold text-brand bg-brand/5 px-2 py-1 rounded-lg border border-brand/20">
+            <div className="hidden sm:flex lg:hidden items-center gap-1 font-mono text-[11px] font-bold text-brand bg-brand/5 px-2 py-1 rounded-lg border border-brand/20">
               <Clock className="w-3 h-3 text-brand" />
               <span>{liveDateTime.time}</span>
             </div>

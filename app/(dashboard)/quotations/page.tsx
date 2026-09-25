@@ -134,29 +134,29 @@ export default function QuotationsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-3.5 sm:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-navy flex items-center gap-2.5">
-            <FileCheck className="w-7 h-7 text-primary" />
+          <h1 className="text-xl sm:text-2xl font-bold text-navy flex items-center gap-2.5">
+            <FileCheck className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
             Quotations & Estimates
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">
             Create commercial proposals with line-rate freedom and custom requirements. Zero stock impact.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap w-full sm:w-auto">
           <button
             onClick={fetchQuotations}
-            className="p-2 text-gray-500 hover:text-navy hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 text-gray-500 hover:text-navy hover:bg-gray-100 rounded-lg transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
             title="Refresh"
           >
             <RefreshCw className="w-5 h-5" />
           </button>
           <Link
             href="/quotations/new"
-            className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-all text-sm"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-all text-sm min-h-[40px]"
           >
             <Plus className="w-4 h-4" />
             Create Quotation
@@ -165,7 +165,7 @@ export default function QuotationsPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4">
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
           <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Proposals</span>
           <p className="text-2xl font-bold text-navy mt-1">{totalCount}</p>
@@ -241,92 +241,174 @@ export default function QuotationsPage() {
             </Link>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-50/75 border-b border-gray-200 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Quotation No</th>
-                  <th className="py-3.5 px-4">Customer</th>
-                  <th className="py-3.5 px-4">Date</th>
-                  <th className="py-3.5 px-4">Valid Until</th>
-                  <th className="py-3.5 px-4">Items</th>
-                  <th className="py-3.5 px-4 text-right">Total Amount</th>
-                  <th className="py-3.5 px-4 text-center">Status</th>
-                  <th className="py-3.5 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 text-sm">
-                {filteredQuotations.map((q) => (
-                  <tr key={q.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="py-3.5 px-4 font-semibold text-navy">
-                      <Link href={`/quotations/${q.id}`} className="hover:text-primary transition-colors">
-                        {q.quotationNo}
-                      </Link>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="font-medium text-gray-900">{q.client?.name || "Client"}</div>
-                      <div className="text-xs text-gray-500">{q.client?.phone || q.client?.company || "-"}</div>
-                    </td>
-                    <td className="py-3.5 px-4 text-gray-600 text-xs">
-                      {formatISTDate(q.createdAt)}
-                    </td>
-                    <td className="py-3.5 px-4 text-gray-600 text-xs">
-                      {formatISTDate(q.validUntil)}
-                    </td>
-                    <td className="py-3.5 px-4 text-gray-600 text-xs">
-                      <span className="font-medium text-gray-900">{q.items?.length || 0}</span> items
-                    </td>
-                    <td className="py-3.5 px-4 text-right font-semibold text-navy">
-                      {formatINR(q.total)}
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      {getStatusBadge(q.status)}
-                    </td>
-                    <td className="py-3.5 px-4 text-right space-x-1.5">
-                      <a
-                        href={`/api/quotations/${q.id}/pdf`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-navy px-2 py-1 rounded border border-gray-200 hover:bg-gray-50 transition-colors"
-                        title="Download A4 PDF"
-                      >
-                        <Download className="w-3.5 h-3.5" /> PDF
-                      </a>
-
-                      {q.status !== "ACCEPTED" && q.status !== "CANCELLED" && (
-                        <button
-                          onClick={() => handleConvertToInvoice(q.id)}
-                          disabled={convertingId === q.id}
-                          className="inline-flex items-center gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded font-medium transition-colors disabled:opacity-50"
-                          title="Convert to Invoice"
-                        >
-                          <FileText className="w-3.5 h-3.5" />
-                          {convertingId === q.id ? "Converting..." : "Invoice"}
-                        </button>
-                      )}
-
+          <>
+            {/* Mobile View (< 768px): Touch-Friendly Quotation Cards */}
+            <div className="md:hidden divide-y divide-gray-100 p-3 space-y-3">
+              {filteredQuotations.map((q) => (
+                <div
+                  key={q.id}
+                  className="bg-white border border-gray-200 rounded-xl p-4 shadow-2xs space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
                       <Link
                         href={`/quotations/${q.id}`}
-                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline px-1.5 py-1 font-medium"
+                        className="font-bold text-sm text-navy hover:text-primary transition-colors block"
                       >
-                        View &rarr;
+                        {q.quotationNo}
                       </Link>
+                      <h4 className="font-semibold text-gray-900 text-sm mt-0.5">{q.client?.name || "Client"}</h4>
+                    </div>
+                    {getStatusBadge(q.status)}
+                  </div>
 
+                  <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 pt-2 border-t border-gray-100">
+                    <div>
+                      <span className="text-[10px] uppercase font-semibold text-gray-400 block">Date</span>
+                      <span>{formatISTDate(q.createdAt)}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-semibold text-gray-400 block">Valid Until</span>
+                      <span>{formatISTDate(q.validUntil)}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs">
+                    <span className="text-gray-500">{q.items?.length || 0} items</span>
+                    <div className="text-right">
+                      <span className="text-gray-400 text-[10px] uppercase block font-semibold">Total Quoted</span>
+                      <span className="font-bold text-navy text-sm">{formatINR(q.total)}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-gray-100 flex items-center gap-2 flex-wrap">
+                    <a
+                      href={`/api/quotations/${q.id}/pdf`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 min-h-[38px] inline-flex items-center justify-center gap-1 text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 font-medium"
+                    >
+                      <Download className="w-3.5 h-3.5" /> PDF
+                    </a>
+
+                    {q.status !== "ACCEPTED" && q.status !== "CANCELLED" && (
                       <button
-                        onClick={() => handleDeleteQuotation(q.id, q.quotationNo)}
-                        disabled={deletingId === q.id}
-                        className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 p-1.5 rounded border border-transparent hover:border-red-200 transition-colors disabled:opacity-50"
-                        title="Delete Quotation from ERP"
+                        onClick={() => handleConvertToInvoice(q.id)}
+                        disabled={convertingId === q.id}
+                        className="flex-1 min-h-[38px] inline-flex items-center justify-center gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium disabled:opacity-50"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <FileText className="w-3.5 h-3.5" />
+                        {convertingId === q.id ? "Converting..." : "Invoice"}
                       </button>
-                    </td>
+                    )}
 
+                    <Link
+                      href={`/quotations/${q.id}`}
+                      className="flex-1 min-h-[38px] inline-flex items-center justify-center gap-1 text-xs text-primary bg-primary/5 hover:bg-primary/10 border border-primary/20 rounded-lg font-semibold"
+                    >
+                      View &rarr;
+                    </Link>
+
+                    <button
+                      onClick={() => handleDeleteQuotation(q.id, q.quotationNo)}
+                      disabled={deletingId === q.id}
+                      className="min-h-[38px] px-3 text-red-600 hover:bg-red-50 border border-red-200 rounded-lg text-xs"
+                      title="Delete Quotation"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop View (>= 768px): Quotations Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50/75 border-b border-gray-200 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    <th className="py-3.5 px-4">Quotation No</th>
+                    <th className="py-3.5 px-4">Customer</th>
+                    <th className="py-3.5 px-4">Date</th>
+                    <th className="py-3.5 px-4">Valid Until</th>
+                    <th className="py-3.5 px-4">Items</th>
+                    <th className="py-3.5 px-4 text-right">Total Amount</th>
+                    <th className="py-3.5 px-4 text-center">Status</th>
+                    <th className="py-3.5 px-4 text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-200 text-sm">
+                  {filteredQuotations.map((q) => (
+                    <tr key={q.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="py-3.5 px-4 font-semibold text-navy">
+                        <Link href={`/quotations/${q.id}`} className="hover:text-primary transition-colors">
+                          {q.quotationNo}
+                        </Link>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="font-medium text-gray-900">{q.client?.name || "Client"}</div>
+                        <div className="text-xs text-gray-500">{q.client?.phone || q.client?.company || "-"}</div>
+                      </td>
+                      <td className="py-3.5 px-4 text-gray-600 text-xs">
+                        {formatISTDate(q.createdAt)}
+                      </td>
+                      <td className="py-3.5 px-4 text-gray-600 text-xs">
+                        {formatISTDate(q.validUntil)}
+                      </td>
+                      <td className="py-3.5 px-4 text-gray-600 text-xs">
+                        <span className="font-medium text-gray-900">{q.items?.length || 0}</span> items
+                      </td>
+                      <td className="py-3.5 px-4 text-right font-semibold text-navy">
+                        {formatINR(q.total)}
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        {getStatusBadge(q.status)}
+                      </td>
+                      <td className="py-3.5 px-4 text-right space-x-1.5">
+                        <a
+                          href={`/api/quotations/${q.id}/pdf`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-navy px-2 py-1 rounded border border-gray-200 hover:bg-gray-50 transition-colors"
+                          title="Download A4 PDF"
+                        >
+                          <Download className="w-3.5 h-3.5" /> PDF
+                        </a>
+
+                        {q.status !== "ACCEPTED" && q.status !== "CANCELLED" && (
+                          <button
+                            onClick={() => handleConvertToInvoice(q.id)}
+                            disabled={convertingId === q.id}
+                            className="inline-flex items-center gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded font-medium transition-colors disabled:opacity-50"
+                            title="Convert to Invoice"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            {convertingId === q.id ? "Converting..." : "Invoice"}
+                          </button>
+                        )}
+
+                        <Link
+                          href={`/quotations/${q.id}`}
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline px-1.5 py-1 font-medium"
+                        >
+                          View &rarr;
+                        </Link>
+
+                        <button
+                          onClick={() => handleDeleteQuotation(q.id, q.quotationNo)}
+                          disabled={deletingId === q.id}
+                          className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 p-1.5 rounded border border-transparent hover:border-red-200 transition-colors disabled:opacity-50"
+                          title="Delete Quotation from ERP"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

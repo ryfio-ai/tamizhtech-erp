@@ -43,29 +43,29 @@ export function StatCard({
     <div
       onClick={onClick}
       className={cn(
-        "bg-white rounded-xl p-5 border border-border transition-all duration-150 relative overflow-hidden",
+        "bg-white rounded-xl p-3.5 sm:p-5 border border-border transition-all duration-150 relative overflow-hidden",
         onClick && "cursor-pointer hover:border-brand/40 active:scale-[0.99]",
         className
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1">
-          <p className="text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+      <div className="flex items-start justify-between gap-1.5 sm:gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1 truncate">
             {title}
           </p>
-          <p className="text-2xl sm:text-3xl font-bold text-ink-primary tracking-tight">
+          <p className="text-lg sm:text-2xl lg:text-3xl font-bold text-ink-primary tracking-tight truncate">
             {value}
           </p>
           {subtitle && (
-            <p className="text-xs text-ink-secondary mt-1 font-normal">
+            <p className="text-[11px] sm:text-xs text-ink-secondary mt-1 font-normal line-clamp-1">
               {subtitle}
             </p>
           )}
         </div>
 
         {Icon && (
-          <div className="p-2.5 rounded-xl bg-surface border border-border shrink-0 text-brand">
-            <Icon className="w-5 h-5" />
+          <div className="p-2 sm:p-2.5 rounded-xl bg-surface border border-border shrink-0 text-brand">
+            <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         )}
       </div>

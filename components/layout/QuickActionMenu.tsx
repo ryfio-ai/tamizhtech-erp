@@ -38,9 +38,9 @@ export function QuickActionMenu({ isMobileFloating = false }: QuickActionMenuPro
         {isMobileFloating ? (
           <button
             aria-label="Quick Actions"
-            className="md:hidden fixed right-4 bottom-20 z-40 h-14 w-14 rounded-full bg-brand text-white shadow-xl flex items-center justify-center active:scale-95 transition-transform border border-white/20 focus:outline-none"
+            className="md:hidden fixed right-3.5 bottom-[70px] z-40 h-12 w-12 rounded-full bg-brand text-white shadow-lg shadow-brand/30 flex items-center justify-center active:scale-90 transition-transform border border-white/30 focus:outline-none"
           >
-            <Plus className="w-6 h-6" />
+            <Plus className="w-5 h-5 stroke-[2.5]" />
           </button>
         ) : (
           <button

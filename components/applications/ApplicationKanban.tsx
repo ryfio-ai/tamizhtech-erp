@@ -5,6 +5,15 @@ import { useState } from "react";
 import { MoreHorizontal, UserCheck, CheckCircle2, XCircle, Trash2, Mail, Phone, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+import { 
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+
 interface ApplicationKanbanProps {
   data: Application[];
   onStatusChange: (id: string, newStatus: string) => Promise<any>;
@@ -37,7 +46,7 @@ export function ApplicationKanban({ data, onStatusChange, onDelete, onConvertToC
         const columnData = data.filter(d => d.status === col.id);
         
         return (
-          <div key={col.id} className="min-w-[300px] w-[300px] shrink-0 bg-gray-50/50 rounded-xl border border-gray-200 shadow-sm flex flex-col max-h-[75vh] snap-center">
+          <div key={col.id} className="min-w-[280px] sm:min-w-[300px] w-[280px] sm:w-[300px] shrink-0 bg-gray-50/50 rounded-xl border border-gray-200 shadow-sm flex flex-col max-h-[75vh] snap-center">
             
             <div className={`px-4 py-3 border-b flex justify-between items-center rounded-t-xl ${col.color}`}>
               <h3 className="font-bold text-sm tracking-wide uppercase">{col.title}</h3>
@@ -51,27 +60,39 @@ export function ApplicationKanban({ data, onStatusChange, onDelete, onConvertToC
                     <div className="flex justify-between items-start mb-2">
                        <h4 className="font-bold text-navy truncate pr-6" title={app.name}>{app.name}</h4>
                        
-                       {/* Dropdown menu for status change - simulated with hover group for now */}
-                       <div className="absolute top-3 right-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                         <div className="relative group/menu">
-                           <MoreHorizontal className="w-5 h-5 cursor-pointer hover:text-navy" />
-                           <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-gray-200 shadow-xl rounded-md py-1 z-10 hidden group-hover/menu:block">
-                             <div className="px-3 py-1 text-xs font-bold text-gray-400 uppercase tracking-wider">Move to</div>
+                       {/* Touch-Friendly Dropdown Menu */}
+                       <div className="absolute top-2.5 right-2.5">
+                         <DropdownMenu>
+                           <DropdownMenuTrigger asChild>
+                             <button
+                               className="p-1.5 text-gray-400 hover:text-navy rounded-md min-h-[36px] min-w-[36px] flex items-center justify-center"
+                               title="Manage lead"
+                             >
+                               <MoreHorizontal className="w-5 h-5" />
+                             </button>
+                           </DropdownMenuTrigger>
+                           <DropdownMenuContent align="end" className="w-44 bg-white shadow-xl border border-gray-200">
+                             <DropdownMenuLabel className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                               Move Stage
+                             </DropdownMenuLabel>
                              {KANBAN_COLUMNS.filter(c => c.id !== app.status).map(c => (
-                               <button 
-                                 key={c.id} 
+                               <DropdownMenuItem
+                                 key={c.id}
                                  onClick={() => handleStatusChange(app.id, c.id)}
-                                 className="w-full text-left px-4 py-1.5 text-sm hover:bg-gray-50 text-gray-700"
+                                 className="text-xs cursor-pointer text-gray-700"
                                >
                                  {c.title}
-                               </button>
+                               </DropdownMenuItem>
                              ))}
-                             <div className="h-px bg-gray-100 my-1"></div>
-                             <button onClick={() => onDelete(app)} className="w-full text-left px-4 py-1.5 text-sm hover:bg-red-50 text-red-600 flex items-center gap-2">
-                               <Trash2 className="w-3.5 h-3.5" /> Delete
-                             </button>
-                           </div>
-                         </div>
+                             <DropdownMenuSeparator />
+                             <DropdownMenuItem
+                               onClick={() => onDelete(app)}
+                               className="text-xs text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer flex items-center gap-1.5"
+                             >
+                               <Trash2 className="w-3.5 h-3.5" /> Delete Lead
+                             </DropdownMenuItem>
+                           </DropdownMenuContent>
+                         </DropdownMenu>
                        </div>
                     </div>
 

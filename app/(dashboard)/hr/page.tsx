@@ -116,18 +116,61 @@ export default function HRPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input 
               placeholder="Search employees..." 
-              className="pl-9"
+              className="pl-9 min-h-[40px]"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">Filter</Button>
-            <Button variant="outline" size="sm">Export</Button>
+            <Button variant="outline" size="sm" className="min-h-[40px] flex-1 sm:flex-none">Filter</Button>
+            <Button variant="outline" size="sm" className="min-h-[40px] flex-1 sm:flex-none">Export</Button>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile View (< 768px): Touch-Friendly Employee Cards */}
+        <div className="md:hidden p-3 space-y-3">
+          {filtered.map((e) => (
+            <div
+              key={e.id}
+              className="bg-white border border-gray-200 rounded-xl p-4 shadow-2xs space-y-2.5"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h4 className="font-bold text-navy text-sm">{e.firstName} {e.lastName}</h4>
+                  <span className="font-mono text-xs text-gray-500 font-semibold">{e.employeeId}</span>
+                </div>
+                <Badge variant={e.status === "ACTIVE" ? "success" : "secondary"}>
+                  {e.status}
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-gray-100 text-gray-600">
+                <div>
+                  <span className="text-gray-400 block text-[10px] uppercase font-semibold">Designation</span>
+                  <span className="font-medium text-navy">{e.designation || "-"}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400 block text-[10px] uppercase font-semibold">Department</span>
+                  <span className="font-medium text-navy">{e.department || "-"}</span>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-gray-100 flex justify-end">
+                <Button variant="outline" size="sm" className="min-h-[38px] w-full text-xs">
+                  Edit Details
+                </Button>
+              </div>
+            </div>
+          ))}
+          {filtered.length === 0 && (
+            <div className="py-12 text-center text-gray-500 text-xs">
+              No employees found matching your search.
+            </div>
+          )}
+        </div>
+
+        {/* Desktop View (>= 768px): Structured Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="bg-gray-50 text-gray-500 text-xs font-semibold uppercase tracking-wider">

@@ -64,55 +64,55 @@ export default function AuditPage() {
   );
 
   return (
-    <div className="p-8 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="p-3.5 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 animate-in fade-in duration-500 max-w-7xl mx-auto">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
-            <History className="w-8 h-8 text-indigo-600" />
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
+            <History className="w-7 h-7 sm:w-8 sm:h-8 text-indigo-600" />
             System Audit Logs
           </h1>
-          <p className="text-slate-500 mt-1">Track all system activities and data modifications.</p>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">Track all system activities and data modifications.</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
         <Card className="border-none shadow-sm bg-gradient-to-br from-indigo-50 to-white">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-indigo-100 rounded-xl">
-                <Activity className="w-6 h-6 text-indigo-600" />
+          <CardContent className="p-4 sm:pt-6">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="p-2.5 sm:p-3 bg-indigo-100 rounded-xl">
+                <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-500">Total Activities</p>
-                <p className="text-2xl font-bold text-slate-900">{activeTab === 'activity' ? logs.length : '-'}</p>
+                <p className="text-xs sm:text-sm font-medium text-slate-500">Total Activities</p>
+                <p className="text-xl sm:text-2xl font-bold text-slate-900">{activeTab === 'activity' ? logs.length : '-'}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-none shadow-sm bg-gradient-to-br from-emerald-50 to-white">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-emerald-100 rounded-xl">
-                <ShieldCheck className="w-6 h-6 text-emerald-600" />
+          <CardContent className="p-4 sm:pt-6">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="p-2.5 sm:p-3 bg-emerald-100 rounded-xl">
+                <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-500">Data Audits</p>
-                <p className="text-2xl font-bold text-slate-900">{activeTab === 'audit' ? logs.length : '-'}</p>
+                <p className="text-xs sm:text-sm font-medium text-slate-500">Data Audits</p>
+                <p className="text-xl sm:text-2xl font-bold text-slate-900">{activeTab === 'audit' ? logs.length : '-'}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-none shadow-sm bg-gradient-to-br from-amber-50 to-white">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-amber-100 rounded-xl">
-                <Clock className="w-6 h-6 text-amber-600" />
+          <CardContent className="p-4 sm:pt-6">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="p-2.5 sm:p-3 bg-amber-100 rounded-xl">
+                <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-500">Last Action</p>
-                <p className="text-sm font-bold text-slate-900">
+                <p className="text-xs sm:text-sm font-medium text-slate-500">Last Action</p>
+                <p className="text-xs sm:text-sm font-bold text-slate-900">
                   {logs[0] ? format(new Date(logs[0].createdAt), 'MMM d, h:mm a') : 'No logs'}
                 </p>
               </div>
@@ -122,16 +122,16 @@ export default function AuditPage() {
       </div>
 
       <Card className="border-none shadow-sm overflow-hidden">
-        <CardHeader className="bg-slate-50/50 border-b pb-8">
-          <div className="flex flex-col md:flex-row justify-between gap-4">
+        <CardHeader className="bg-slate-50/50 border-b p-4 sm:p-6 pb-4 sm:pb-6">
+          <div className="flex flex-col md:flex-row justify-between gap-3 sm:gap-4">
             <Tabs 
               defaultValue="activity" 
               className="w-full md:w-auto"
               onValueChange={setActiveTab}
             >
-              <TabsList className="bg-slate-100">
-                <TabsTrigger value="activity" className="data-[state=active]:bg-white">Activity Logs</TabsTrigger>
-                <TabsTrigger value="audit" className="data-[state=active]:bg-white">Data Changes</TabsTrigger>
+              <TabsList className="bg-slate-100 w-full sm:w-auto grid grid-cols-2 sm:inline-flex">
+                <TabsTrigger value="activity" className="data-[state=active]:bg-white text-xs sm:text-sm">Activity Logs</TabsTrigger>
+                <TabsTrigger value="audit" className="data-[state=active]:bg-white text-xs sm:text-sm">Data Changes</TabsTrigger>
               </TabsList>
             </Tabs>
 
@@ -139,7 +139,7 @@ export default function AuditPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <Input 
                 placeholder="Search logs..." 
-                className="pl-10 h-10 border-slate-200 focus:ring-indigo-500"
+                className="pl-10 h-10 border-slate-200 focus:ring-indigo-500 text-sm"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -147,7 +147,58 @@ export default function AuditPage() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          {/* Mobile Card List (< 768px) */}
+          <div className="md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            {loading ? (
+              <div className="py-8 text-center text-xs text-slate-400">Loading logs...</div>
+            ) : filteredLogs.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-400">No logs found.</div>
+            ) : (
+              filteredLogs.map((log) => (
+                <div key={log.id} className="bg-white border border-slate-200/80 rounded-xl p-3.5 shadow-sm space-y-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200 overflow-hidden shrink-0">
+                        {log.user?.image ? (
+                          <img src={log.user.image} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <UserIcon className="w-3.5 h-3.5 text-slate-400" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 leading-tight">{log.user?.name || "System"}</p>
+                        <p className="text-[10px] text-slate-500">{log.user?.email || "automated"}</p>
+                      </div>
+                    </div>
+                    <Badge variant="secondary" className="bg-slate-100 text-slate-700 border-none font-medium text-[10px]">
+                      {log.module}
+                    </Badge>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`w-2 h-2 rounded-full ${getActionColor(log.action)}`} />
+                      <span className="font-semibold text-slate-700 capitalize text-xs">
+                        {log.action.toLowerCase().replace('_', ' ')}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-slate-400">
+                      {format(new Date(log.createdAt), "MMM d, h:mm a")}
+                    </span>
+                  </div>
+
+                  {(log.details || log.newData) && (
+                    <p className="text-xs text-slate-600 bg-slate-50 rounded-lg p-2 font-mono break-all">
+                      {log.details || formatChanges(log.oldData, log.newData)}
+                    </p>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop Table (>= 768px) */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader className="bg-slate-50/50">
                 <TableRow>

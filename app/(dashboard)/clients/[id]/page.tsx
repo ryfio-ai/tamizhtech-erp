@@ -75,38 +75,38 @@ export default function ClientProfilePage({ params }: { params: { id: string } }
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-brand/5 rounded-bl-full -z-10" />
         
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div className="flex items-start gap-6">
-            <div className="w-20 h-20 bg-navy text-white rounded-2xl flex items-center justify-center text-3xl font-bold shadow-md">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+          <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6 w-full">
+            <div className="w-14 h-14 sm:w-20 sm:h-20 bg-navy text-white rounded-2xl flex items-center justify-center text-2xl sm:text-3xl font-bold shadow-md shrink-0">
               {client.name.charAt(0)}
             </div>
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-2xl font-bold text-navy tracking-tight">{client.name}</h1>
+            <div className="w-full">
+              <div className="flex flex-wrap items-center gap-2.5 mb-2">
+                <h1 className="text-xl sm:text-2xl font-bold text-navy tracking-tight">{client.name}</h1>
                 <StatusBadge status={client.status} />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 mt-4 text-sm text-gray-600">
-                <div className="flex items-center gap-2"><Phone className="w-4 h-4 text-gray-400" /> {client.phone}</div>
-                {client.email && <div className="flex items-center gap-2"><Mail className="w-4 h-4 text-gray-400" /> {client.email}</div>}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 mt-4 text-xs sm:text-sm text-gray-600">
+                <div className="flex items-center gap-2"><Phone className="w-4 h-4 text-gray-400 shrink-0" /> {client.phone}</div>
+                {client.email && <div className="flex items-center gap-2"><Mail className="w-4 h-4 text-gray-400 shrink-0" /> {client.email}</div>}
                 {client.company && <div className="flex items-center gap-2"><span className="text-xs font-semibold uppercase text-gray-400">Co:</span> {client.company}</div>}
                 {client.type && <div className="flex items-center gap-2"><span className="text-xs font-semibold uppercase text-gray-400">Type:</span> {client.type}</div>}
-                {client.city && <div className="flex items-center gap-2"><MapPin className="w-4 h-4 text-gray-400" /> {client.city}</div>}
+                {client.city && <div className="flex items-center gap-2"><MapPin className="w-4 h-4 text-gray-400 shrink-0" /> {client.city}</div>}
                 {client.address && <div className="flex items-center gap-2 text-xs text-gray-500 sm:col-span-2">{client.address}</div>}
-                {client.serviceType && <div className="flex items-center gap-2"><CheckSquare className="w-4 h-4 text-gray-400" /> {client.serviceType}</div>}
-                {client.createdAt && <div className="flex items-center gap-2 text-xs text-gray-400"><Calendar className="w-3.5 h-3.5" /> Created: {formatDate(client.createdAt)}</div>}
-                {client.updatedAt && <div className="flex items-center gap-2 text-xs text-gray-400"><Clock className="w-3.5 h-3.5" /> Updated: {formatDate(client.updatedAt)}</div>}
+                {client.serviceType && <div className="flex items-center gap-2"><CheckSquare className="w-4 h-4 text-gray-400 shrink-0" /> {client.serviceType}</div>}
+                {client.createdAt && <div className="flex items-center gap-2 text-xs text-gray-400"><Calendar className="w-3.5 h-3.5 shrink-0" /> Created: {formatDate(client.createdAt)}</div>}
+                {client.updatedAt && <div className="flex items-center gap-2 text-xs text-gray-400"><Clock className="w-3.5 h-3.5 shrink-0" /> Updated: {formatDate(client.updatedAt)}</div>}
               </div>
             </div>
           </div>
           
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
-             <Link href={`/invoices/new?client=${client.id}`}>
-               <Button className="bg-brand hover:bg-brand-dark text-white font-semibold shadow-sm">
+          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto shrink-0">
+             <Link href={`/invoices/new?client=${client.id}`} className="flex-1 sm:flex-initial">
+               <Button className="w-full bg-brand hover:bg-brand-dark text-white font-semibold shadow-sm">
                  + Create Bill
                </Button>
              </Link>
-             <Button variant="outline" className="border-gray-200 text-gray-700 hover:bg-gray-50 bg-white" onClick={() => setIsEditOpen(true)}>
-               <Edit className="w-4 h-4 mr-2" /> Edit
+             <Button variant="outline" className="border-gray-200 text-gray-700 hover:bg-gray-50 bg-white flex-1 sm:flex-initial" onClick={() => setIsEditOpen(true)}>
+               <Edit className="w-4 h-4 mr-1.5" /> Edit
              </Button>
              <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 bg-white" onClick={() => setIsDeleteOpen(true)}>
                <Trash2 className="w-4 h-4" />
@@ -123,22 +123,22 @@ export default function ClientProfilePage({ params }: { params: { id: string } }
           const outstandingBalance = invs.reduce((acc, i) => acc + (Number(i.balance) || 0), 0);
 
           return (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6 pt-6 border-t border-gray-100">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 mt-6 pt-6 border-t border-gray-100">
               <div className="p-3 bg-gray-50 rounded-lg">
-                <span className="text-xs text-gray-500 block">Total Bills</span>
-                <span className="text-lg font-bold text-navy">{invs.length}</span>
+                <span className="text-[11px] sm:text-xs text-gray-500 block truncate">Total Bills</span>
+                <span className="text-base sm:text-lg font-bold text-navy">{invs.length}</span>
               </div>
               <div className="p-3 bg-gray-50 rounded-lg">
-                <span className="text-xs text-gray-500 block">Total Invoiced</span>
-                <span className="text-lg font-bold text-navy">{formatCurrency(totalInvoiced)}</span>
+                <span className="text-[11px] sm:text-xs text-gray-500 block truncate">Total Invoiced</span>
+                <span className="text-base sm:text-lg font-bold text-navy">{formatCurrency(totalInvoiced)}</span>
               </div>
               <div className="p-3 bg-gray-50 rounded-lg">
-                <span className="text-xs text-gray-500 block">Total Paid</span>
-                <span className="text-lg font-bold text-green-700">{formatCurrency(totalPaid)}</span>
+                <span className="text-[11px] sm:text-xs text-gray-500 block truncate">Total Paid</span>
+                <span className="text-base sm:text-lg font-bold text-green-700">{formatCurrency(totalPaid)}</span>
               </div>
               <div className="p-3 bg-gray-50 rounded-lg">
-                <span className="text-xs text-gray-500 block">Outstanding Due</span>
-                <span className={`text-lg font-bold ${outstandingBalance > 0 ? "text-red-600" : "text-green-700"}`}>
+                <span className="text-[11px] sm:text-xs text-gray-500 block truncate">Outstanding</span>
+                <span className={`text-base sm:text-lg font-bold ${outstandingBalance > 0 ? "text-red-600" : "text-green-700"}`}>
                   {formatCurrency(outstandingBalance)}
                 </span>
               </div>
@@ -153,15 +153,15 @@ export default function ClientProfilePage({ params }: { params: { id: string } }
           <button
             key={tab}
             onClick={() => setActiveTab(tab as any)}
-            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap capitalize ${
+            className={`px-4 sm:px-6 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap capitalize ${
               activeTab === tab 
                 ? "border-brand text-brand bg-brand/5" 
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             }`}
           >
             {tab.replace("followups", "Follow-ups")}
-            {tab === "invoices" && relations?.invoices && <span className="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">{relations.invoices.length}</span>}
-            {tab === "payments" && relations?.payments && <span className="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">{relations.payments.length}</span>}
+            {tab === "invoices" && relations?.invoices && <span className="ml-1.5 sm:ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">{relations.invoices.length}</span>}
+            {tab === "payments" && relations?.payments && <span className="ml-1.5 sm:ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">{relations.payments.length}</span>}
           </button>
         ))}
       </div>
@@ -175,22 +175,24 @@ export default function ClientProfilePage({ params }: { params: { id: string } }
             {(!relations?.invoices || relations.invoices.length === 0) ? (
               <EmptyState title="No Invoices" description="This client doesn't have any invoices yet." actionLabel="Create Invoice" onAction={() => router.push(`/invoices/new?client=${client.id}`)} />
             ) : (
-              <table className="w-full text-sm text-left whitespace-nowrap">
-                <thead className="bg-gray-50 text-gray-500 font-medium">
-                  <tr><th className="p-4">Invoice No</th><th className="p-4">Date</th><th className="p-4">Total</th><th className="p-4">Balance</th><th className="p-4">Status</th></tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {relations.invoices.map(inv => (
-                    <tr key={inv.id} className="hover:bg-gray-50/50">
-                      <td className="p-4"><Link href={`/invoices/${inv.id}`} className="text-brand font-medium hover:underline">{inv.invoiceNo}</Link></td>
-                      <td className="p-4 text-gray-500">{formatDate(inv.date)}</td>
-                      <td className="p-4 font-medium">{formatCurrency(inv.total)}</td>
-                      <td className="p-4 text-red-600 font-medium">{inv.balance > 0 ? formatCurrency(inv.balance) : '-'}</td>
-                      <td className="p-4"><StatusBadge status={inv.status} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="w-full overflow-x-auto">
+                <table className="w-full text-sm text-left whitespace-nowrap min-w-[500px]">
+                  <thead className="bg-gray-50 text-gray-500 font-medium">
+                    <tr><th className="p-4">Invoice No</th><th className="p-4">Date</th><th className="p-4">Total</th><th className="p-4">Balance</th><th className="p-4">Status</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {relations.invoices.map(inv => (
+                      <tr key={inv.id} className="hover:bg-gray-50/50">
+                        <td className="p-4"><Link href={`/invoices/${inv.id}`} className="text-brand font-medium hover:underline">{inv.invoiceNo}</Link></td>
+                        <td className="p-4 text-gray-500">{formatDate(inv.date)}</td>
+                        <td className="p-4 font-medium">{formatCurrency(inv.total)}</td>
+                        <td className="p-4 text-red-600 font-medium">{inv.balance > 0 ? formatCurrency(inv.balance) : '-'}</td>
+                        <td className="p-4"><StatusBadge status={inv.status} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )}
@@ -201,22 +203,24 @@ export default function ClientProfilePage({ params }: { params: { id: string } }
             {(!relations?.payments || relations.payments.length === 0) ? (
               <EmptyState title="No Payments" description="No payments recorded for this client." />
             ) : (
-              <table className="w-full text-sm text-left whitespace-nowrap">
-                <thead className="bg-gray-50 text-gray-500 font-medium">
-                  <tr><th className="p-4">Receipt No</th><th className="p-4">Date</th><th className="p-4">Invoice</th><th className="p-4">Mode</th><th className="p-4">Amount</th></tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {relations.payments.map(pay => (
-                    <tr key={pay.id} className="hover:bg-gray-50/50">
-                      <td className="p-4 font-medium text-navy">{pay.paymentNo}</td>
-                      <td className="p-4 text-gray-500">{formatDate(pay.date)}</td>
-                      <td className="p-4 text-gray-500">{pay.invoiceId || "-"}</td>
-                      <td className="p-4"><StatusBadge status={pay.mode} /></td>
-                      <td className="p-4 font-medium text-green-700">+{formatCurrency(pay.amount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="w-full overflow-x-auto">
+                <table className="w-full text-sm text-left whitespace-nowrap min-w-[500px]">
+                  <thead className="bg-gray-50 text-gray-500 font-medium">
+                    <tr><th className="p-4">Receipt No</th><th className="p-4">Date</th><th className="p-4">Invoice</th><th className="p-4">Mode</th><th className="p-4">Amount</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {relations.payments.map(pay => (
+                      <tr key={pay.id} className="hover:bg-gray-50/50">
+                        <td className="p-4 font-medium text-navy">{pay.paymentNo}</td>
+                        <td className="p-4 text-gray-500">{formatDate(pay.date)}</td>
+                        <td className="p-4 text-gray-500">{pay.invoiceId || "-"}</td>
+                        <td className="p-4"><StatusBadge status={pay.mode} /></td>
+                        <td className="p-4 font-medium text-green-700">+{formatCurrency(pay.amount)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )}

@@ -181,7 +181,7 @@ export function PaymentTable({ data = [], loading }: PaymentTableProps) {
             messageText={message}
             variant="outline"
             size="sm"
-            className="w-full h-8 text-xs gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50 font-semibold"
+            className="w-full h-10 min-h-[40px] text-xs gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50 font-semibold"
             label="Send Receipt via WhatsApp"
           />
         </div>

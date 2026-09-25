@@ -105,18 +105,20 @@ export default function ApplicationsPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <ExportButton data={applications} filename="TamizhTech_Leads" columns={exportColumns} />
+        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+          <div className="flex-1 sm:flex-none">
+            <ExportButton data={applications} filename="TamizhTech_Leads" columns={exportColumns} />
+          </div>
           <Button 
             variant="outline"
-            className="text-gray-700 gap-2 border-gray-200 shadow-sm"
+            className="text-gray-700 gap-2 border-gray-200 shadow-sm min-h-[40px] flex-1 sm:flex-none"
             onClick={handleBroadcastEmail}
           >
             <Send className="w-4 h-4 text-brand" /> Blast Email
           </Button>
           <Button 
             onClick={() => setIsFormOpen(true)}
-            className="bg-brand hover:bg-brand-dark shadow-sm gap-2"
+            className="bg-brand hover:bg-brand-dark shadow-sm gap-2 min-h-[40px] flex-1 sm:flex-none"
           >
             <Plus className="w-4 h-4" /> Capture Lead
           </Button>

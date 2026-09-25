@@ -15,7 +15,8 @@ import {
   Banknote,
   LogOut,
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  Users
 } from "lucide-react";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
@@ -35,17 +36,28 @@ export function MobileMoreDrawer({ open, onOpenChange }: MobileMoreDrawerProps) 
 
   const menuSections = [
     {
-      title: "Daily Operations",
+      title: "Business & Sales",
       items: [
+        { label: "Quotations", href: "/quotations", icon: FileText, desc: "Estimates & cost proposals" },
+        { label: "Invoices & Bills", href: "/invoices", icon: FileText, desc: "GST tax invoices & billing" },
         { label: "Payments", href: "/payments", icon: CreditCard, desc: "Collections & ledger entries" },
-        { label: "Follow-ups", href: "/followups", icon: CalendarClock, desc: "Pending calls & visits" },
-        { label: "Projects", href: "/projects", icon: Briefcase, desc: "Active robotics work" },
-        { label: "Expenses", href: "/finance", icon: Banknote, desc: "Operational expenses" },
-        { label: "Documents", href: "/documents", icon: FileText, desc: "Agreements & files" },
+        { label: "Customers", href: "/clients", icon: Users, desc: "Client directory & balances" },
+        { label: "Website Leads", href: "/submissions", icon: Briefcase, desc: "Public website inquiries" },
+        { label: "Products & Stock", href: "/products", icon: Package, desc: "Catalog inventory & pricing" },
       ],
     },
     {
-      title: "Business Intelligence",
+      title: "Daily Operations",
+      items: [
+        { label: "Follow-ups", href: "/followups", icon: CalendarClock, desc: "Pending calls & visits" },
+        { label: "Projects", href: "/projects", icon: Briefcase, desc: "Active robotics work" },
+        { label: "Expenses", href: "/finance", icon: Banknote, desc: "Operational expenses & ledger" },
+        { label: "HR & Team", href: "/hr", icon: Users, desc: "Staff directory & payroll" },
+        { label: "Job Applications", href: "/applications", icon: FileText, desc: "Candidate applications" },
+      ],
+    },
+    {
+      title: "Intelligence & System",
       items: [
         { label: "Reports", href: "/reports", icon: BarChart3, desc: "Revenue & sales metrics" },
         ...(isSuperAdmin
@@ -84,7 +96,7 @@ export function MobileMoreDrawer({ open, onOpenChange }: MobileMoreDrawerProps) 
           </div>
 
           {/* Menu Sections List */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-6">
             {menuSections.map((section, sIdx) => (
               <div key={sIdx}>
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary px-2 mb-2">

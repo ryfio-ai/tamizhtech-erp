@@ -92,14 +92,14 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
+    <div className="p-3.5 sm:p-6 space-y-4 sm:space-y-6 max-w-5xl mx-auto">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-navy flex items-center gap-2.5">
-          <Settings className="w-7 h-7 text-primary" />
+        <h1 className="text-xl sm:text-2xl font-bold text-navy flex items-center gap-2.5">
+          <Settings className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
           System Settings & Business Configuration
         </h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-xs sm:text-sm text-gray-500 mt-1">
           Dynamic configuration for corporate branding, tax rates, bank payment details, and document terms.
         </p>
       </div>
@@ -120,7 +120,7 @@ export default function SettingsPage() {
 
       <form onSubmit={handleSave} className="space-y-6">
         {/* Company Profile */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
+        <div className="bg-white p-4 sm:p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
           <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
             <Building className="w-5 h-5 text-primary" />
             <h2 className="text-base font-bold text-navy">Corporate Profile & Identity</h2>
@@ -375,7 +375,7 @@ export default function SettingsPage() {
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-sm transition-all disabled:opacity-50"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-sm transition-all disabled:opacity-50 min-h-[44px]"
           >
             <Save className="w-4 h-4" />
             {saving ? "Saving Settings..." : "Save System Settings"}

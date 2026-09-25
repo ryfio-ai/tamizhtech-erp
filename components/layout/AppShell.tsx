@@ -72,8 +72,8 @@ export function AppShell({ children }: AppShellProps) {
         {/* Top Header */}
         <TopBar overdueCount={overdueCount} />
 
-        {/* Content Region: clean spacing, safe mobile bottom padding */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 md:pb-8 w-full max-w-7xl mx-auto">
+        {/* Content Region: clean spacing, safe mobile bottom clearance */}
+        <main className="flex-1 p-3.5 sm:p-6 lg:p-8 pb-32 md:pb-8 w-full max-w-7xl mx-auto">
           {children}
         </main>
       </div>

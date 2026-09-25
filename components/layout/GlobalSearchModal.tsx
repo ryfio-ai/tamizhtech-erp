@@ -113,7 +113,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <DialogPrimitive.Content
           onKeyDown={handleKeyDown}
-          className="fixed left-[50%] top-[15%] translate-x-[-50%] z-50 w-full max-w-xl bg-white rounded-xl shadow-2xl border border-border p-0 overflow-hidden focus:outline-none"
+          className="fixed left-[50%] top-[8%] sm:top-[15%] translate-x-[-50%] z-50 w-[92vw] sm:w-full max-w-xl bg-white rounded-2xl sm:rounded-xl shadow-2xl border border-border p-0 overflow-hidden focus:outline-none max-h-[84vh] flex flex-col"
         >
           {/* Search Header */}
           <div className="flex items-center px-4 border-b border-border bg-white">

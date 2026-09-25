@@ -96,8 +96,181 @@ export function InvoiceLineItems({ control, register, watch, setValue, errors }:
         </Button>
       </div>
 
-      {/* Standard Tabular Grid */}
-      <div className="overflow-x-auto">
+      {/* MOBILE VIEW (< 768px): Card-based Touch Editor */}
+      <div className="md:hidden divide-y divide-gray-100">
+        {fields.length === 0 && (
+          <div className="py-8 px-4 text-center bg-gray-50/50">
+            <Package className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+            <p className="font-semibold text-xs text-navy">No line items added</p>
+            <p className="text-[11px] text-gray-500 mt-0.5 mb-3">Add at least one item or service to create this bill.</p>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => append({ description: "", qty: 1, unitPrice: 0, productId: "", configurationNotes: "" })}
+              className="gap-1.5 bg-brand hover:bg-brand-dark text-white text-xs font-semibold h-8 shadow-xs"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Line Item
+            </Button>
+          </div>
+        )}
+
+        {fields.map((field, index) => {
+          const currentItem = watchItems[index];
+          const qty = Number(currentItem?.qty) || 0;
+          const price = Number(currentItem?.unitPrice) || 0;
+          const lineTotal = qty * price;
+          const selectedProduct = products.find((p) => p.id === currentItem?.productId);
+          const catalogPrice =
+            selectedProduct?.basePrice !== null && selectedProduct?.basePrice !== undefined
+              ? Number(selectedProduct.basePrice)
+              : null;
+
+          return (
+            <div key={field.id} className="p-4 space-y-3 bg-white">
+              {/* Card Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-brand/10 text-brand text-xs font-bold flex items-center justify-center">
+                    {index + 1}
+                  </span>
+                  <span className="text-xs font-semibold text-navy">Item #{index + 1}</span>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => remove(index)}
+                  className="h-8 px-2 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg gap-1 font-medium"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                  <span>Remove</span>
+                </Button>
+              </div>
+
+              {/* Product Catalog Picker */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-gray-600">Product Catalog</label>
+                <select
+                  value={currentItem?.productId || ""}
+                  onChange={(e) => handleProductSelect(index, e.target.value)}
+                  className="w-full h-9 px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-navy focus:outline-none focus:ring-1 focus:ring-brand focus:border-brand shadow-2xs"
+                >
+                  <option value="">✍️ Custom Item / Service (Manual)</option>
+                  {services.length > 0 && (
+                    <optgroup label="── Services ──">
+                      {services.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          [Service] {p.name} {p.basePrice ? `• ₹${p.basePrice}` : ""}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {finishedProducts.length > 0 && (
+                    <optgroup label="── Finished Products ──">
+                      {finishedProducts.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          [Finished] {p.name} ({p.sku || "No SKU"}) • {p.stockQuantity} in stock
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {rawMaterials.length > 0 && (
+                    <optgroup label="── Raw Materials ──">
+                      {rawMaterials.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          [Raw Material] {p.name} • {p.stockQuantity} {p.unit || "units"}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {components.length > 0 && (
+                    <optgroup label="── Components ──">
+                      {components.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          [Component] {p.name} • {p.stockQuantity} in stock
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {consumables.length > 0 && (
+                    <optgroup label="── Consumables ──">
+                      {consumables.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          [Consumable] {p.name} • {p.stockQuantity} in stock
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+                {selectedProduct && selectedProduct.type !== "SERVICE" && (
+                  <p className="text-[10px] text-emerald-700 font-medium">
+                    Stock: {selectedProduct.stockQuantity} {selectedProduct.unit || "units"} available
+                  </p>
+                )}
+              </div>
+
+              {/* Title & Notes */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-gray-600">Description & Notes</label>
+                <Input
+                  {...register(`items.${index}.description`)}
+                  placeholder="Item name / Title (required)"
+                  className="h-9 text-xs bg-white font-medium"
+                />
+                <Input
+                  {...register(`items.${index}.configurationNotes`)}
+                  placeholder="Specifications, notes (optional)"
+                  className="h-7 text-[11px] bg-gray-50 border-gray-200 text-gray-600 placeholder:text-gray-400"
+                />
+                {errors?.items?.[index]?.description && (
+                  <p className="text-[10px] text-red-500">{errors.items[index].description.message}</p>
+                )}
+              </div>
+
+              {/* Quantity, Rate & Total Row */}
+              <div className="grid grid-cols-3 gap-2 pt-1 border-t border-gray-100">
+                <div>
+                  <label className="text-[10px] uppercase text-gray-500 font-semibold block mb-0.5">Qty</label>
+                  <Input
+                    type="number"
+                    min="1"
+                    step="1"
+                    {...register(`items.${index}.qty`, { valueAsNumber: true })}
+                    className="h-8 text-center text-xs bg-white font-semibold"
+                  />
+                  {errors?.items?.[index]?.qty && (
+                    <p className="text-[9px] text-red-500">{errors.items[index].qty.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="text-[10px] uppercase text-gray-500 font-semibold block mb-0.5">Rate (₹)</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    {...register(`items.${index}.unitPrice`, { valueAsNumber: true })}
+                    className="h-8 text-right text-xs bg-white font-semibold"
+                  />
+                  {errors?.items?.[index]?.unitPrice && (
+                    <p className="text-[9px] text-red-500">{errors.items[index].unitPrice.message}</p>
+                  )}
+                </div>
+
+                <div className="text-right">
+                  <label className="text-[10px] uppercase text-gray-500 font-semibold block mb-0.5">Total</label>
+                  <div className="h-8 flex items-center justify-end font-bold text-navy text-xs">
+                    ₹{lineTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* DESKTOP VIEW (>= 768px): Standard Tabular Grid */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50/80 text-[11px] font-bold text-gray-600 uppercase tracking-wider">

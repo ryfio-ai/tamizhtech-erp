@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     padding: 6,
     alignItems: "center",
     justifyContent: "space-between",
-    minHeight: 145,
+    minHeight: 165,
   },
   signatureCompanyText: {
     fontSize: 8,
@@ -359,15 +359,15 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   signatureImage: {
-    width: 320,
-    height: 130, // Extra enlarged signature size
+    width: 360,
+    height: 150, // Substantially enlarged signature size
     objectFit: "contain",
   },
   signatureSpace: {
-    height: 90,
+    height: 110,
   },
   signatureLine: {
-    fontSize: 7.2,
+    fontSize: 7.5,
     fontFamily: "Helvetica",
     color: "#6B7280",
     borderTopWidth: 1,

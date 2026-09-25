@@ -268,3 +268,28 @@ export async function allocateSubmissionNo(
   });
 }
 
+/**
+ * Transaction-safe official Delivery Challan / Gate Pass Number allocation.
+ * Concurrency-safe atomic generation backed by BusinessSequence.
+ * Format: TTRC-DC-YYYY-XXXX (e.g. TTRC-DC-2026-0001)
+ */
+export async function allocateChallanNoTx(tx: any, year?: number): Promise<string> {
+  const currentYear = year ?? new Date().getFullYear();
+  const prefix = `TTRC-DC-${currentYear}`;
+  const seqName = `CHALLAN_${currentYear}`;
+  const number = await allocateSequentialNumberTx(tx, seqName, prefix, currentYear);
+  return `${prefix}-${String(number).padStart(4, "0")}`;
+}
+
+export async function allocateChallanNo(year?: number): Promise<string> {
+  return prisma.$transaction(async (tx) => {
+    return allocateChallanNoTx(tx, year);
+  });
+}
+
+export function generateDraftChallanNo(): string {
+  const year = new Date().getFullYear();
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  return `DRAFT-DC-${year}-${rand}`;
+}
+

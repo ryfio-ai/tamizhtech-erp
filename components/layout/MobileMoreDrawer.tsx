@@ -16,7 +16,9 @@ import {
   LogOut,
   ChevronRight,
   ShieldCheck,
-  Users
+  Users,
+  Cpu,
+  Truck
 } from "lucide-react";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
@@ -49,6 +51,8 @@ export function MobileMoreDrawer({ open, onOpenChange }: MobileMoreDrawerProps) 
     {
       title: "Daily Operations",
       items: [
+        { label: "BOM / Assemblies", href: "/bom", icon: Cpu, desc: "Robotics kits & recipe assembly" },
+        { label: "Delivery Challans", href: "/challans", icon: Truck, desc: "Gate passes & dispatches" },
         { label: "Follow-ups", href: "/followups", icon: CalendarClock, desc: "Pending calls & visits" },
         { label: "Projects", href: "/projects", icon: Briefcase, desc: "Active robotics work" },
         { label: "Expenses", href: "/finance", icon: Banknote, desc: "Operational expenses & ledger" },

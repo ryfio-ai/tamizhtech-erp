@@ -21,7 +21,9 @@ import {
   ShieldCheck,
   FileCheck,
   BarChart3,
-  Inbox
+  Inbox,
+  Cpu,
+  Truck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -58,9 +60,16 @@ export function Sidebar({
         { name: "Website Leads", href: "/submissions", icon: Inbox },
         { name: "Customers", href: "/clients", icon: Users },
         { name: "Quotations", href: "/quotations", icon: FileCheck },
-        { name: "Products & Stock", href: "/products", icon: Package },
         { name: "Bills", href: "/invoices", icon: FileText },
         { name: "Payments", href: "/payments", icon: CreditCard },
+      ],
+    },
+    {
+      title: "OPERATIONS",
+      items: [
+        { name: "Products & Stock", href: "/products", icon: Package },
+        { name: "BOM / Assemblies", href: "/bom", icon: Cpu },
+        { name: "Delivery Challans", href: "/challans", icon: Truck },
       ],
     },
     {

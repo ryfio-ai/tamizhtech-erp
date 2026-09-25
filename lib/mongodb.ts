@@ -54,7 +54,7 @@ export async function getMongoClient(): Promise<MongoClient> {
 
 export async function getMongoDb(): Promise<Db> {
   const connectedClient = await getMongoClient();
-  return connectedClient.db(dbName);
+  return connectedClient.db();
 }
 
 export default clientPromise;

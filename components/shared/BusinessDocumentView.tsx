@@ -309,6 +309,30 @@ export function BusinessDocumentView({
               </p>
             </div>
 
+            {/* Scan & Pay via UPI */}
+            {isInvoice && (
+              <div className="flex items-center gap-3.5 p-2 bg-slate-50/90 border border-slate-200 rounded-sm">
+                <div className="w-20 h-20 bg-white p-1 border border-slate-200 rounded shrink-0 flex items-center justify-center shadow-xs">
+                  <img
+                    src={data.qrSrc || "/qr.jpg"}
+                    alt="UPI QR Code"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <div className="space-y-0.5">
+                  <span className="inline-flex items-center gap-1 font-bold text-[#1B2A4A] uppercase text-[9.5px]">
+                    Scan & Pay via UPI
+                  </span>
+                  <p className="text-[10px] text-slate-700 font-medium">
+                    UPI ID: <span className="font-bold text-slate-900 select-all">ta9387643@okicici</span>
+                  </p>
+                  <p className="text-[9px] text-slate-500 leading-tight">
+                    Accepts Google Pay, PhonePe, Paytm, BHIM, or any banking UPI App.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Notes */}
             {notes && (
               <div>

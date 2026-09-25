@@ -240,6 +240,43 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica-Bold",
     color: "#111827",
   },
+  upiBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F9FAFB",
+    padding: 5,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    marginBottom: 6,
+    borderRadius: 2,
+  },
+  upiQrImage: {
+    width: 48,
+    height: 48,
+    objectFit: "contain",
+    marginRight: 8,
+  },
+  upiDetails: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  upiTitle: {
+    fontSize: 7.2,
+    fontFamily: "Helvetica-Bold",
+    color: "#1B2A4A",
+    textTransform: "uppercase",
+    marginBottom: 2,
+  },
+  upiId: {
+    fontSize: 7.5,
+    fontFamily: "Helvetica-Bold",
+    color: "#111827",
+    marginBottom: 1.5,
+  },
+  upiSub: {
+    fontSize: 6.2,
+    color: "#6B7280",
+  },
   notesBox: {
     marginBottom: 6,
   },
@@ -367,6 +404,7 @@ export function BusinessDocumentPDFTemplate({ data }: BusinessDocumentPDFTemplat
     terms,
     logoSrc,
     signatureSrc,
+    qrSrc,
   } = data;
 
   const isInvoice = data.docType === "INVOICE";
@@ -521,6 +559,18 @@ export function BusinessDocumentPDFTemplate({ data }: BusinessDocumentPDFTemplat
                 <Text style={styles.sectionLabel}>Total In Words</Text>
                 <Text style={styles.wordsText}>{financials.totalInWords}</Text>
               </View>
+
+              {/* Scan & Pay via UPI */}
+              {isInvoice && qrSrc ? (
+                <View style={styles.upiBox}>
+                  <Image src={qrSrc} style={styles.upiQrImage} />
+                  <View style={styles.upiDetails}>
+                    <Text style={styles.upiTitle}>Scan & Pay via UPI</Text>
+                    <Text style={styles.upiId}>UPI ID: ta9387643@okicici</Text>
+                    <Text style={styles.upiSub}>Google Pay • PhonePe • Paytm • BHIM • Any UPI App</Text>
+                  </View>
+                </View>
+              ) : null}
 
               {notes ? (
                 <View style={styles.notesBox}>

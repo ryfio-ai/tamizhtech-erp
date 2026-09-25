@@ -64,4 +64,5 @@ export interface BusinessDocumentModel {
   terms: string[];
   logoSrc: string;
   signatureSrc?: string;
+  qrSrc?: string;
 }

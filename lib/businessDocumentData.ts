@@ -3,7 +3,7 @@ import { getCompanySettings, CompanySettings } from "@/lib/company";
 import { getCanonicalInvoiceFinancials } from "@/lib/invoiceService";
 import { fromPaise, roundMoney } from "@/lib/money";
 import { numberToWords } from "@/lib/numToWords";
-import { getServerLogoDataUri, getServerSignatureDataUri } from "@/lib/serverLogo";
+import { getServerLogoDataUri, getServerSignatureDataUri, getServerQrDataUri } from "@/lib/serverLogo";
 import {
   DocumentParty,
   DocumentItem,
@@ -200,6 +200,7 @@ export async function getNormalizedInvoiceData(invoiceId: string): Promise<Busin
 
   const logoSrc = getServerLogoDataUri();
   const signatureSrc = getServerSignatureDataUri();
+  const qrSrc = getServerQrDataUri();
   const placeOfSupply = resolvePlaceOfSupply(invoice.client?.gstin, invoice.client?.state);
   const isIntraState = placeOfSupply.stateCode === "33"; // Tamil Nadu company base
 
@@ -314,6 +315,7 @@ export async function getNormalizedInvoiceData(invoiceId: string): Promise<Busin
     terms: parseTerms(invoice.terms || defaultTerms),
     logoSrc,
     signatureSrc,
+    qrSrc,
   };
 }
 
@@ -456,5 +458,6 @@ export async function getNormalizedQuotationData(quotationId: string): Promise<B
     terms: parseTerms(quotation.terms || defaultTerms),
     logoSrc,
     signatureSrc,
+    qrSrc: getServerQrDataUri(),
   };
 }

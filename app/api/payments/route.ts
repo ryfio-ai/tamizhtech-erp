@@ -22,7 +22,9 @@ export async function GET(req: NextRequest) {
       ...p,
       amount: fromPaise(p.amount),
       clientName: p.client?.name || "N/A",
+      clientPhone: p.client?.phone || null,
       invoiceNo: p.invoice?.invoiceNo || "N/A",
+      remainingBalance: p.invoice?.balance !== undefined ? fromPaise(p.invoice.balance) : 0,
       createdAt: p.createdAt.toISOString(),
     }));
 

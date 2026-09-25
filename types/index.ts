@@ -45,6 +45,10 @@ export interface Invoice {
   issuedAt?: string | null
   cancelledAt?: string | null
   sentAt?: string | null
+  clientPhone?: string | null
+  clientEmail?: string | null
+  clientCity?: string | null
+  client?: any
   createdAt: string
   updatedAt: string
   items?: LineItem[]
@@ -70,12 +74,19 @@ export interface Payment {
   id: string
   paymentNo: string
   invoiceId: string | null
+  invoiceNo?: string | null
   clientId: string
+  clientName?: string | null
+  clientPhone?: string | null
+  client?: any
+  invoice?: any
+  remainingBalance?: number | null
   amount: number
   date: string
   mode: string
   status: string
   transactionId: string | null
+  referenceNo?: string | null
   createdAt: string
 }
 

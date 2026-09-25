@@ -560,17 +560,47 @@ export function BusinessDocumentPDFTemplate({ data }: BusinessDocumentPDFTemplat
                 <Text style={styles.wordsText}>{financials.totalInWords}</Text>
               </View>
 
-              {/* Scan & Pay via UPI */}
-              {isInvoice && qrSrc ? (
-                <View style={styles.upiBox}>
-                  <Image src={qrSrc} style={styles.upiQrImage} />
-                  <View style={styles.upiDetails}>
-                    <Text style={styles.upiTitle}>Scan & Pay via UPI</Text>
-                    <Text style={styles.upiId}>UPI ID: ta9387643@okicici</Text>
-                    <Text style={styles.upiSub}>Google Pay • PhonePe • Paytm • BHIM • Any UPI App</Text>
-                  </View>
-                </View>
-              ) : null}
+              {/* Scan & Pay via Dynamic UPI or Payment Status */}
+              {isInvoice && (
+                <>
+                  {data.dynamicUpi?.isPaidInFull ? (
+                    <View style={[styles.upiBox, { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" }]}>
+                      <View style={styles.upiDetails}>
+                        <Text style={[styles.upiTitle, { color: "#166534" }]}>Paid in Full</Text>
+                        <Text style={[styles.upiSub, { color: "#15803D" }]}>No outstanding amount remains on this invoice.</Text>
+                      </View>
+                    </View>
+                  ) : data.dynamicUpi?.isConfigured === false ? (
+                    <View style={[styles.upiBox, { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" }]}>
+                      <View style={styles.upiDetails}>
+                        <Text style={[styles.upiTitle, { color: "#92400E" }]}>UPI Payment Unavailable</Text>
+                        <Text style={[styles.upiSub, { color: "#B45309" }]}>UPI payment details have not been configured.</Text>
+                      </View>
+                    </View>
+                  ) : (data.dynamicUpi?.isPayable && (data.dynamicUpi.qrDataUri || qrSrc)) ? (
+                    <View style={styles.upiBox}>
+                      <Image src={data.dynamicUpi.qrDataUri || qrSrc} style={styles.upiQrImage} />
+                      <View style={styles.upiDetails}>
+                        <Text style={styles.upiTitle}>Payment Information</Text>
+                        <Text style={[styles.upiId, { color: "#047857" }]}>
+                          Outstanding Amount: ₹{data.dynamicUpi.amountFormatted}
+                        </Text>
+                        <Text style={styles.upiId}>UPI ID: {data.dynamicUpi.vpa}</Text>
+                        <Text style={styles.upiSub}>Scan to pay using any supported UPI app</Text>
+                      </View>
+                    </View>
+                  ) : qrSrc ? (
+                    <View style={styles.upiBox}>
+                      <Image src={qrSrc} style={styles.upiQrImage} />
+                      <View style={styles.upiDetails}>
+                        <Text style={styles.upiTitle}>Scan & Pay via UPI</Text>
+                        <Text style={styles.upiId}>UPI ID: ta9387643@okicici</Text>
+                        <Text style={styles.upiSub}>Google Pay • PhonePe • Paytm • BHIM • Any UPI App</Text>
+                      </View>
+                    </View>
+                  ) : null}
+                </>
+              )}
 
               {notes ? (
                 <View style={styles.notesBox}>

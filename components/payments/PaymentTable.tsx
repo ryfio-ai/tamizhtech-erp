@@ -5,6 +5,8 @@ import { Payment } from "@/types";
 import { DataTable, ColumnDef } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import Link from "next/link";
+import { WhatsAppShareButton } from "@/components/shared/WhatsAppShareButton";
+import { buildPaymentWhatsAppMessage } from "@/lib/whatsapp";
 
 interface PaymentTableProps {
   data: Payment[];
@@ -81,13 +83,66 @@ export function PaymentTable({ data = [], loading }: PaymentTableProps) {
       className: "text-right",
       cell: (row) => <StatusBadge status={row.status || "COMPLETED"} />,
     },
+    {
+      header: "Action",
+      accessorKey: "id",
+      className: "text-right",
+      cell: (row) => {
+        const customerName = (row as any).client?.name || row.clientName || "Customer";
+        const customerPhone = (row as any).client?.phone || row.clientPhone || null;
+        const clientId = row.clientId || (row as any).client?.id;
+        const paymentNo = (row as any).paymentNo || (row as any).paymentId || "PAY";
+        const invoiceNo = (row as any).invoice?.invoiceNo || (row as any).invoiceNo || "N/A";
+        const remainingBalance = (row as any).remainingBalance ?? 0;
+
+        const message = buildPaymentWhatsAppMessage({
+          customerName,
+          paymentNo,
+          invoiceNo,
+          amount: row.amount,
+          paymentDate: row.date || row.createdAt,
+          remainingBalance,
+        });
+
+        return (
+          <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+            <WhatsAppShareButton
+              customerPhone={customerPhone}
+              customerName={customerName}
+              clientId={clientId}
+              entityType="PAYMENT"
+              entityId={row.id}
+              documentNo={paymentNo}
+              messageText={message}
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-xs gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+              label="Share Receipt"
+            />
+          </div>
+        );
+      },
+    },
   ];
 
   // Mobile App Card (< 768px)
   const renderMobileCard = (p: Payment) => {
     const paymentNo = (p as any).paymentNo || (p as any).paymentId || "PAY";
     const customer = (p as any).client?.name || (p as any).clientName || "Customer";
+    const customerPhone = (p as any).client?.phone || p.clientPhone || null;
+    const clientId = p.clientId || (p as any).client?.id;
+    const invoiceNo = (p as any).invoice?.invoiceNo || (p as any).invoiceNo || "N/A";
+    const remainingBalance = (p as any).remainingBalance ?? 0;
     const ref = (p as any).referenceNo || (p as any).transactionId || "";
+
+    const message = buildPaymentWhatsAppMessage({
+      customerName: customer,
+      paymentNo,
+      invoiceNo,
+      amount: p.amount,
+      paymentDate: p.date || p.createdAt,
+      remainingBalance,
+    });
 
     return (
       <div className="bg-white border border-border rounded-xl p-4 shadow-sm space-y-2.5">
@@ -113,6 +168,22 @@ export function PaymentTable({ data = [], loading }: PaymentTableProps) {
         <div className="pt-2 border-t border-border flex items-center justify-between text-xs text-ink-secondary">
           <span>Mode: <strong className="text-ink-primary uppercase">{p.mode || "UPI"}</strong></span>
           {ref && <span className="font-mono text-[11px] truncate max-w-[160px]">Ref: {ref}</span>}
+        </div>
+
+        <div className="pt-1 flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+          <WhatsAppShareButton
+            customerPhone={customerPhone}
+            customerName={customer}
+            clientId={clientId}
+            entityType="PAYMENT"
+            entityId={p.id}
+            documentNo={paymentNo}
+            messageText={message}
+            variant="outline"
+            size="sm"
+            className="w-full h-8 text-xs gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50 font-semibold"
+            label="Send Receipt via WhatsApp"
+          />
         </div>
       </div>
     );

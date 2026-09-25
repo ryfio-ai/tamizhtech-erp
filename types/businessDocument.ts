@@ -65,4 +65,5 @@ export interface BusinessDocumentModel {
   logoSrc: string;
   signatureSrc?: string;
   qrSrc?: string;
+  dynamicUpi?: import("@/lib/upi").UpiValidationResult;
 }

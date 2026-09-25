@@ -260,7 +260,7 @@ export default function SettingsPage() {
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg font-semibold text-navy"
               />
               <p className="text-[11px] text-gray-500 mt-1">
-                Calculates the default "Valid Until" date when creating new quotations.
+                Calculates the default &quot;Valid Until&quot; date when creating new quotations.
               </p>
             </div>
           </div>

@@ -38,7 +38,7 @@ export const DEFAULT_SYSTEM_SETTINGS: SystemSettingsMap = {
   BANK_ACCOUNT_NO: "50200012345678",
   BANK_IFSC: "HDFC0001234",
   BANK_BRANCH: "Coimbatore",
-  UPI_ID: "tamizhtech@hdfcbank",
+  UPI_ID: "ta9387643@okicici",
   QUOTATION_VALIDITY_DAYS: 30,
   DEFAULT_QUOTATION_TERMS:
     "1. All prices are inclusive of GST / taxes as applicable.\n2. Work will resume after 100% Advance Payment or approved Purchase Order.\n3. In the case of a Purchase Order, payment is due as per agreed terms.\n4. HSN/Tax rates are subject to government statutory amendments.\n5. Standard delivery time for in-stock items is approximately 3-5 working days.\n6. Customized robotics/automation orders require 15-20 working days.\n7. Goods once sold are subject to standard manufacturer warranty policies.",

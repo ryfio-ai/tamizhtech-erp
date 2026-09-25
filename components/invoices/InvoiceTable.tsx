@@ -5,11 +5,13 @@ import { Invoice } from "@/types";
 import { DataTable, ColumnDef } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { FileText, Download, CreditCard, ChevronRight, Edit, Trash2, Mail, CheckCircle2 } from "lucide-react";
+import { FileText, Download, CreditCard, ChevronRight, Edit, Trash2, Mail, CheckCircle2, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { toast } from "sonner";
+import { WhatsAppShareButton } from "@/components/shared/WhatsAppShareButton";
+import { buildInvoiceWhatsAppMessage } from "@/lib/whatsapp";
 
 interface InvoiceTableProps {
   data: Invoice[];
@@ -144,6 +146,27 @@ export function InvoiceTable({ data = [], loading, onDelete }: InvoiceTableProps
               Edit
             </Button>
           </Link>
+          <WhatsAppShareButton
+            customerPhone={row.clientPhone || (row as any).client?.phone}
+            customerName={row.clientName || (row as any).client?.name}
+            clientId={row.clientId}
+            entityType="INVOICE"
+            entityId={row.id}
+            documentNo={row.invoiceNo}
+            messageText={buildInvoiceWhatsAppMessage({
+              customerName: row.clientName || (row as any).client?.name || "Valued Customer",
+              invoiceNo: row.invoiceNo,
+              invoiceDate: row.date || row.createdAt,
+              total: row.total,
+              paidAmount: row.paidAmount || 0,
+              balance: row.balance ?? (row.total - (row.paidAmount || 0)),
+            })}
+            variant="ghost"
+            size="sm"
+            iconOnly={true}
+            className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+            label="Send via WhatsApp"
+          />
           <a href={`/api/invoices/${row.id}/pdf`} target="_blank" rel="noreferrer">
             <Button variant="outline" size="sm" className="h-8 px-2 text-xs gap-1">
               <Download className="w-3 h-3 text-ink-secondary" />
@@ -202,6 +225,27 @@ export function InvoiceTable({ data = [], loading, onDelete }: InvoiceTableProps
         </div>
 
         <div className="pt-1 flex flex-wrap items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
+          <WhatsAppShareButton
+            customerPhone={inv.clientPhone || (inv as any).client?.phone}
+            customerName={inv.clientName || (inv as any).client?.name}
+            clientId={inv.clientId}
+            entityType="INVOICE"
+            entityId={inv.id}
+            documentNo={inv.invoiceNo}
+            messageText={buildInvoiceWhatsAppMessage({
+              customerName: inv.clientName || (inv as any).client?.name || "Valued Customer",
+              invoiceNo: inv.invoiceNo,
+              invoiceDate: inv.date || inv.createdAt,
+              total: inv.total,
+              paidAmount: inv.paidAmount || 0,
+              balance: bal,
+            })}
+            variant="outline"
+            size="sm"
+            className="flex-1 h-9 text-xs gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50 font-semibold"
+            label="WhatsApp"
+          />
+
           <Link href={`/invoices/${inv.id}/edit`} className="flex-1">
             <Button variant="outline" size="sm" className="w-full h-9 text-xs gap-1.5 text-brand border-brand/30 hover:bg-brand/5 font-semibold">
               <Edit className="w-3.5 h-3.5" />

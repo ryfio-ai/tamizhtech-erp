@@ -174,7 +174,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
               </div>
             ) : query.trim() ? (
               <div className="p-8 text-center text-xs text-ink-muted">
-                No matching results for "{query}".
+                No matching results for &quot;{query}&quot;.
               </div>
             ) : (
               <div className="p-6 text-center text-xs text-ink-muted">

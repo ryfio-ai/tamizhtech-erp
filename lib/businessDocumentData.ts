@@ -4,6 +4,7 @@ import { getCanonicalInvoiceFinancials } from "@/lib/invoiceService";
 import { fromPaise, roundMoney } from "@/lib/money";
 import { numberToWords } from "@/lib/numToWords";
 import { getServerLogoDataUri, getServerSignatureDataUri, getServerQrDataUri } from "@/lib/serverLogo";
+import { generateInvoiceDynamicUpi } from "@/lib/upi";
 import {
   DocumentParty,
   DocumentItem,
@@ -243,6 +244,13 @@ export async function getNormalizedInvoiceData(invoiceId: string): Promise<Busin
   const balanceAmount = financials?.outstandingBalance ? financials.outstandingBalance : fromPaise(invoice.balance);
   const totalInWords = numberToWords(grandTotal);
 
+  // Generate dynamic UPI QR strictly from real outstanding balance and settings
+  const dynamicUpi = await generateInvoiceDynamicUpi({
+    invoiceNo: invoice.invoiceNo,
+    status: invoice.status,
+    balanceAmount,
+  });
+
   let cgstRate = 0;
   let cgstAmount = 0;
   let sgstRate = 0;
@@ -315,7 +323,8 @@ export async function getNormalizedInvoiceData(invoiceId: string): Promise<Busin
     terms: parseTerms(invoice.terms || defaultTerms),
     logoSrc,
     signatureSrc,
-    qrSrc,
+    qrSrc: dynamicUpi.isPayable ? dynamicUpi.qrDataUri : undefined,
+    dynamicUpi,
   };
 }
 

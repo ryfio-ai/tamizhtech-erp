@@ -20,8 +20,13 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status") || undefined;
     const search = searchParams.get("search") || undefined;
 
-    const suppliers = await listSuppliers({ status, search });
-    return NextResponse.json({ success: true, data: suppliers });
+    const result = await listSuppliers({ status, search });
+    return NextResponse.json({
+      success: true,
+      data: result.suppliers,
+      suppliers: result.suppliers,
+      total: result.total,
+    });
   } catch (error: any) {
     console.error("GET /api/suppliers error:", error);
     return NextResponse.json(

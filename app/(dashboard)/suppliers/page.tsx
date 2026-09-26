@@ -70,7 +70,14 @@ export default function SuppliersPage() {
       const res = await fetch(`/api/suppliers?${params.toString()}`);
       const data = await res.json();
       if (data.success) {
-        setSuppliers(data.data || []);
+        const list = Array.isArray(data.data)
+          ? data.data
+          : Array.isArray(data.data?.suppliers)
+          ? data.data.suppliers
+          : Array.isArray(data.suppliers)
+          ? data.suppliers
+          : [];
+        setSuppliers(list);
       } else {
         toast.error(data.error || "Failed to load suppliers");
       }
@@ -159,8 +166,9 @@ export default function SuppliersPage() {
     }
   };
 
-  const activeCount = suppliers.filter((s) => s.status === "ACTIVE").length;
-  const inactiveCount = suppliers.filter((s) => s.status === "INACTIVE").length;
+  const safeSuppliers = Array.isArray(suppliers) ? suppliers : [];
+  const activeCount = safeSuppliers.filter((s) => s.status === "ACTIVE").length;
+  const inactiveCount = safeSuppliers.filter((s) => s.status === "INACTIVE").length;
 
   return (
     <div className="space-y-6 pb-12">
@@ -208,7 +216,7 @@ export default function SuppliersPage() {
         <div className="bg-white p-4 rounded-xl border border-border shadow-sm flex items-center justify-between">
           <div>
             <div className="text-xs font-medium text-ink-muted">Total Suppliers</div>
-            <div className="text-2xl font-bold text-ink-primary mt-1">{suppliers.length}</div>
+            <div className="text-2xl font-bold text-ink-primary mt-1">{safeSuppliers.length}</div>
           </div>
           <Building2 className="w-8 h-8 text-brand/20" />
         </div>
@@ -264,7 +272,7 @@ export default function SuppliersPage() {
           <RefreshCw className="w-8 h-8 animate-spin text-brand mx-auto mb-3" />
           <p className="text-sm text-ink-muted">Loading authoritative supplier records...</p>
         </div>
-      ) : suppliers.length === 0 ? (
+      ) : safeSuppliers.length === 0 ? (
         <div className="bg-white p-12 rounded-2xl border border-dashed border-border text-center max-w-lg mx-auto">
           <Building2 className="w-12 h-12 text-ink-muted/40 mx-auto mb-4" />
           <h3 className="text-base font-semibold text-ink-primary mb-1">No suppliers yet.</h3>
@@ -293,7 +301,7 @@ export default function SuppliersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {suppliers.map((s) => (
+                {safeSuppliers.map((s) => (
                   <tr key={s.id} className="hover:bg-ink-faint/20 transition-colors">
                     <td className="py-3 px-4">
                       <Link
@@ -355,7 +363,7 @@ export default function SuppliersPage() {
 
           {/* Mobile Card View */}
           <div className="md:hidden space-y-3">
-            {suppliers.map((s) => (
+            {safeSuppliers.map((s) => (
               <div
                 key={s.id}
                 onClick={() => router.push(`/suppliers/${s.id}`)}

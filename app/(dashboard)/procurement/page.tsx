@@ -159,7 +159,14 @@ function ProcurementPageInner() {
         projRes.json(),
       ]);
 
-      if (supData.success) setSuppliers(supData.data || []);
+      if (supData.success) {
+        const supList = Array.isArray(supData.data)
+          ? supData.data
+          : Array.isArray(supData.data?.suppliers)
+          ? supData.data.suppliers
+          : [];
+        setSuppliers(supList);
+      }
       if (prodData.success) setProducts(prodData.data || []);
       if (projData.success) setProjects(projData.data || []);
     } catch {}

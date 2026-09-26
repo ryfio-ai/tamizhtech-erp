@@ -36,6 +36,7 @@ export function InvoiceForm({ initialData, clients, onSubmit, onCancel, isLoadin
       items: [{ description: "", qty: 1, unitPrice: 0, productId: "" }],
       gstPercent: 18,
       discountPercent: 0,
+      shippingCharge: 0,
       paymentMethod: "UPI",
       notes: "Thank you for your business with Tamizh Tech Robotics Company!",
       status: "ISSUED"
@@ -45,12 +46,14 @@ export function InvoiceForm({ initialData, clients, onSubmit, onCancel, isLoadin
   const watchItems = (watch("items") as Array<{ description?: string; qty?: number; unitPrice?: number }>) || [];
   const watchGst = Number(watch("gstPercent")) || 0;
   const watchDiscount = Number(watch("discountPercent")) || 0;
+  const watchShipping = Number(watch("shippingCharge")) || 0;
 
   // Real-time calculation
   const subtotal = watchItems.reduce((acc, item) => acc + ((Number(item?.qty) || 0) * (Number(item?.unitPrice) || 0)), 0);
-  const gstAmount = subtotal * (watchGst / 100);
   const discountAmount = subtotal * (watchDiscount / 100);
-  const grandTotal = Math.max(0, subtotal + gstAmount - discountAmount);
+  const taxableAmount = Math.max(0, subtotal - discountAmount);
+  const gstAmount = taxableAmount * (watchGst / 100);
+  const grandTotal = Math.max(0, taxableAmount + gstAmount + watchShipping);
 
   const activeClients = clients.filter(c => c.status !== "Blacklisted");
 
@@ -129,7 +132,7 @@ export function InvoiceForm({ initialData, clients, onSubmit, onCancel, isLoadin
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-5">
           <h3 className="text-base font-semibold text-navy">Tax & Notes</h3>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {/* GST Section */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -206,6 +209,45 @@ export function InvoiceForm({ initialData, clients, onSubmit, onCancel, isLoadin
                 ))}
               </div>
             </div>
+
+            {/* Shipping / Delivery Charge Section */}
+            <div className="space-y-2 sm:col-span-2 lg:col-span-1">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-gray-700">Shipping Charge (₹)</label>
+                <span className="text-[11px] font-bold text-sky-700">
+                  {watchShipping > 0 ? `+${formatCurrency(watchShipping)}` : "Free"}
+                </span>
+              </div>
+              <Input 
+                type="number" 
+                step="any" 
+                min="0"
+                {...register("shippingCharge", { valueAsNumber: true })} 
+                placeholder="0"
+              />
+              <div className="flex flex-wrap gap-1 pt-1">
+                {[
+                  { label: "Free (₹0)", val: 0 },
+                  { label: "₹50", val: 50 },
+                  { label: "₹100", val: 100 },
+                  { label: "₹200", val: 200 },
+                  { label: "₹500", val: 500 },
+                ].map((item) => (
+                  <button
+                    key={item.val}
+                    type="button"
+                    onClick={() => setValue("shippingCharge", item.val)}
+                    className={`px-2 py-0.5 rounded text-[11px] font-semibold border transition-all ${
+                      watchShipping === item.val
+                        ? "bg-sky-600 text-white border-sky-600"
+                        : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -250,6 +292,13 @@ export function InvoiceForm({ initialData, clients, onSubmit, onCancel, isLoadin
                {watchGst === 0 ? "₹0.00 (Exempt)" : `+${formatCurrency(gstAmount)}`}
              </span>
            </div>
+
+           {watchShipping > 0 ? (
+             <div className="flex justify-between items-center text-sm text-sky-700">
+               <span>Shipping Charge</span>
+               <span className="font-semibold">+{formatCurrency(watchShipping)}</span>
+             </div>
+           ) : null}
 
            <div className="pt-3 mt-1 border-t border-brand/20 flex justify-between items-center">
              <span className="text-base font-bold text-navy">Grand Total</span>

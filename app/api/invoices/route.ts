@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import clientPromise from "@/lib/mongodb";
+import { ObjectId } from "mongodb";
 import { InvoiceFormValues, invoiceSchema } from "@/lib/validations";
 import { allocateInvoiceNoTx, generateDraftInvoiceNo } from "@/lib/sequence";
 import { deductStockForIssuedInvoice } from "@/lib/stockService";
@@ -57,11 +59,34 @@ export async function GET(req: NextRequest) {
       ...(offsetParam ? { skip: Math.max(0, parseInt(offsetParam, 10) || 0) } : {}),
     });
 
+    const shippingMap = new Map<string, number>();
+    if (invoices.length > 0) {
+      try {
+        const client = await clientPromise;
+        const invoiceIds = invoices.map(i => new ObjectId(i.id));
+        const rawInvoices = await client.db().collection("Invoice").find(
+          { _id: { $in: invoiceIds } },
+          { projection: { _id: 1, shippingCharge: 1, shippingAmount: 1 } }
+        ).toArray();
+
+        for (const raw of rawInvoices) {
+          if (raw.shippingCharge !== undefined && raw.shippingCharge !== null) {
+            shippingMap.set(raw._id.toString(), fromPaise(Number(raw.shippingCharge) || 0));
+          } else if (raw.shippingAmount !== undefined && raw.shippingAmount !== null) {
+            shippingMap.set(raw._id.toString(), Number(raw.shippingAmount) || 0);
+          }
+        }
+      } catch (err) {
+        console.warn("Could not batch load shipping charges from MongoDB:", err);
+      }
+    }
+
     const formatted = invoices.map(i => ({
       ...i,
       subtotal: fromPaise(i.subtotal),
       gstAmount: fromPaise(i.gstAmount),
       discountAmount: fromPaise(i.discountAmount),
+      shippingCharge: shippingMap.get(i.id) || 0,
       total: fromPaise(i.total),
       paidAmount: fromPaise(i.paidAmount),
       balance: fromPaise(i.balance),
@@ -115,13 +140,16 @@ export async function POST(req: NextRequest) {
       };
     });
 
+    const shippingChargeRupees = Math.max(0, Number(validated.shippingCharge) || 0);
+    const shippingChargePaise = toPaise(shippingChargeRupees);
+
     const subtotalPaise = processedItems.reduce((sum, it) => sum + it.amount, 0);
     const gstPercent = validated.gstPercent !== undefined && validated.gstPercent !== null && String(validated.gstPercent).trim() !== "" ? Number(validated.gstPercent) : 18;
     const discountPercent = Number(validated.discountPercent) || 0;
     const discountAmountPaise = roundToPaise(subtotalPaise * (discountPercent / 100));
     const taxablePaise = Math.max(0, subtotalPaise - discountAmountPaise);
     const gstAmountPaise = roundToPaise(taxablePaise * (gstPercent / 100));
-    const totalPaise = Math.max(0, taxablePaise + gstAmountPaise);
+    const totalPaise = Math.max(0, taxablePaise + gstAmountPaise + shippingChargePaise);
 
     const initialStatus = (validated.status as any) || "DRAFT";
 
@@ -165,6 +193,19 @@ export async function POST(req: NextRequest) {
       });
     });
 
+    // Persist shipping charge directly in MongoDB Invoice document
+    if (shippingChargePaise > 0) {
+      try {
+        const client = await clientPromise;
+        await client.db().collection("Invoice").updateOne(
+          { _id: new ObjectId(newInvoice.id) },
+          { $set: { shippingCharge: shippingChargePaise } }
+        );
+      } catch (err) {
+        console.warn("Failed to set shippingCharge in MongoDB:", err);
+      }
+    }
+
     // Lock 1: Draft bills do NOT deduct stock. Only ISSUED bills deduct stock.
     if (initialStatus === "ISSUED") {
       await deductStockForIssuedInvoice(newInvoice.id);
@@ -178,6 +219,7 @@ export async function POST(req: NextRequest) {
       subtotal: fromPaise(newInvoice.subtotal),
       gstAmount: fromPaise(newInvoice.gstAmount),
       discountAmount: fromPaise(newInvoice.discountAmount),
+      shippingCharge: shippingChargeRupees,
       total: fromPaise(newInvoice.total),
       paidAmount: fromPaise(newInvoice.paidAmount),
       balance: fromPaise(newInvoice.balance),

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
+import { clearBrowserQueryCache } from "@/app/get-query-client";
 import { 
   LayoutDashboard, 
   Users, 
@@ -219,7 +220,10 @@ export function Sidebar({
         </div>
 
         <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={() => {
+            clearBrowserQueryCache();
+            signOut({ callbackUrl: "/login" });
+          }}
           title={collapsed ? "Sign Out" : undefined}
           className={cn(
             "w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-gray-400 rounded-md hover:bg-navy-light hover:text-red-400 transition-colors",

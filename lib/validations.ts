@@ -54,6 +54,7 @@ export const invoiceSchema = z.object({
   items: z.array(lineItemSchema).min(1, "At least one item is required"),
   gstPercent: z.coerce.number().default(18),
   discountPercent: z.coerce.number().default(0),
+  shippingCharge: z.coerce.number().min(0, "Shipping charge cannot be negative").default(0),
   paymentMethod: z.string().optional(),
   notes: z.string().optional(),
   status: z.string().default("DRAFT"),

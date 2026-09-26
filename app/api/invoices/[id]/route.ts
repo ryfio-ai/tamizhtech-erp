@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import clientPromise from "@/lib/mongodb";
+import { ObjectId } from "mongodb";
 import { toPaise, fromPaise, roundToPaise } from "@/lib/money";
 import { getAuthoritativeInvoiceFinancials } from "@/lib/invoiceService";
 import { getNormalizedInvoiceData } from "@/lib/businessDocumentData";
@@ -25,11 +27,28 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       getNormalizedInvoiceData(params.id),
     ]);
 
+    let rawShippingPaise = 0;
+    try {
+      const client = await clientPromise;
+      const raw = await client.db().collection("Invoice").findOne(
+        { _id: new ObjectId(params.id) },
+        { projection: { shippingCharge: 1, shippingAmount: 1 } }
+      );
+      if (raw?.shippingCharge !== undefined && raw.shippingCharge !== null) {
+        rawShippingPaise = Number(raw.shippingCharge) || 0;
+      } else if (raw?.shippingAmount !== undefined && raw.shippingAmount !== null) {
+        rawShippingPaise = toPaise(Number(raw.shippingAmount) || 0);
+      }
+    } catch (mongoErr) {
+      console.warn("MongoDB shipping charge read note:", mongoErr);
+    }
+
     const formatted = {
       ...invoice,
       subtotal: fromPaise(invoice.subtotal),
       gstAmount: fromPaise(invoice.gstAmount),
       discountAmount: fromPaise(invoice.discountAmount),
+      shippingCharge: fromPaise(rawShippingPaise),
       total: fromPaise(invoice.total),
       paidAmount: fromPaise(invoice.paidAmount),
       balance: fromPaise(invoice.balance),
@@ -77,6 +96,26 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       }
     }
 
+    let shippingChargePaise = 0;
+    if (body.shippingCharge !== undefined && body.shippingCharge !== null) {
+      shippingChargePaise = Math.max(0, toPaise(Number(body.shippingCharge) || 0));
+    } else {
+      try {
+        const client = await clientPromise;
+        const raw = await client.db().collection("Invoice").findOne(
+          { _id: new ObjectId(params.id) },
+          { projection: { shippingCharge: 1, shippingAmount: 1 } }
+        );
+        if (raw?.shippingCharge !== undefined && raw.shippingCharge !== null) {
+          shippingChargePaise = Number(raw.shippingCharge) || 0;
+        } else if (raw?.shippingAmount !== undefined && raw.shippingAmount !== null) {
+          shippingChargePaise = toPaise(Number(raw.shippingAmount) || 0);
+        }
+      } catch (mongoErr) {
+        console.warn("MongoDB shipping charge read note:", mongoErr);
+      }
+    }
+
     const hadItems = Array.isArray(body.items) && body.items.length > 0;
     let subtotalPaise = current.subtotal;
     let discountAmountPaise = current.discountAmount;
@@ -116,7 +155,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       discountAmountPaise = roundToPaise(subtotalPaise * (discountPercent / 100));
       const taxablePaise = Math.max(0, subtotalPaise - discountAmountPaise);
       gstAmountPaise = roundToPaise(taxablePaise * (gstPercent / 100));
-      totalPaise = Math.max(0, taxablePaise + gstAmountPaise);
+      totalPaise = Math.max(0, taxablePaise + gstAmountPaise + shippingChargePaise);
+    } else if (body.shippingCharge !== undefined) {
+      const taxablePaise = Math.max(0, subtotalPaise - discountAmountPaise);
+      totalPaise = Math.max(0, taxablePaise + gstAmountPaise + shippingChargePaise);
     }
 
     // Ledger payment reconciliation
@@ -179,6 +221,19 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       });
     });
 
+    // Update shipping charge directly in MongoDB document
+    if (body.shippingCharge !== undefined && body.shippingCharge !== null) {
+      try {
+        const client = await clientPromise;
+        await client.db().collection("Invoice").updateOne(
+          { _id: new ObjectId(params.id) },
+          { $set: { shippingCharge: shippingChargePaise } }
+        );
+      } catch (err) {
+        console.warn("Failed to update shippingCharge in MongoDB:", err);
+      }
+    }
+
     // Stock adjustment and reconciliation
     if (nextStatus === "CANCELLED" && current.status !== "CANCELLED") {
       await reverseStockForCancelledInvoice(params.id);
@@ -209,6 +264,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         subtotal: fromPaise(updated.subtotal),
         gstAmount: fromPaise(updated.gstAmount),
         discountAmount: fromPaise(updated.discountAmount),
+        shippingCharge: fromPaise(shippingChargePaise),
         total: fromPaise(updated.total),
         paidAmount: fromPaise(updated.paidAmount),
         balance: fromPaise(updated.balance),

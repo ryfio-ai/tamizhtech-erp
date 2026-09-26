@@ -30,18 +30,27 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
+import { useSuppliers, useCreateSupplier } from "@/lib/hooks/useSuppliers";
+
 export default function SuppliersPage() {
   const router = useRouter();
-  const [suppliers, setSuppliers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
 
   // Filters
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
+  // TanStack Query hook
+  const { data: rawSuppliers = [], isLoading: loading, refetch: fetchSuppliers } = useSuppliers({
+    search: search.trim(),
+    status: statusFilter,
+  });
+
+  const suppliers = Array.isArray(rawSuppliers) ? rawSuppliers : [];
+  const createSupplierMutation = useCreateSupplier();
+
   // Create Modal
   const [modalOpen, setModalOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const saving = createSupplierMutation.isPending;
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
@@ -59,38 +68,6 @@ export default function SuppliersPage() {
     bankDetailsReference: "",
     notes: "",
   });
-
-  const fetchSuppliers = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (statusFilter !== "ALL") params.append("status", statusFilter);
-      if (search.trim()) params.append("search", search.trim());
-
-      const res = await fetch(`/api/suppliers?${params.toString()}`);
-      const data = await res.json();
-      if (data.success) {
-        const list = Array.isArray(data.data)
-          ? data.data
-          : Array.isArray(data.data?.suppliers)
-          ? data.data.suppliers
-          : Array.isArray(data.suppliers)
-          ? data.suppliers
-          : [];
-        setSuppliers(list);
-      } else {
-        toast.error(data.error || "Failed to load suppliers");
-      }
-    } catch {
-      toast.error("Network error loading suppliers");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchSuppliers();
-  }, [statusFilter]);
 
   // Check duplicate on blur
   const handleDuplicateCheck = async () => {
@@ -127,17 +104,8 @@ export default function SuppliersPage() {
       return;
     }
 
-    setSaving(true);
-    try {
-      const res = await fetch("/api/suppliers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        toast.success(`Supplier ${data.data.supplierCode} created successfully!`);
+    createSupplierMutation.mutate(formData, {
+      onSuccess: () => {
         setModalOpen(false);
         setFormData({
           legalName: "",
@@ -155,15 +123,8 @@ export default function SuppliersPage() {
           notes: "",
         });
         setDuplicateWarning(null);
-        fetchSuppliers();
-      } else {
-        toast.error(data.error || "Failed to create supplier");
-      }
-    } catch {
-      toast.error("Error creating supplier");
-    } finally {
-      setSaving(false);
-    }
+      },
+    });
   };
 
   const safeSuppliers = Array.isArray(suppliers) ? suppliers : [];
@@ -194,7 +155,7 @@ export default function SuppliersPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={fetchSuppliers}
+            onClick={() => fetchSuppliers()}
             disabled={loading}
             className="h-10"
           >
@@ -329,7 +290,7 @@ export default function SuppliersPage() {
                       {!s.phone && !s.email && "—"}
                     </td>
                     <td className="py-3 px-4 font-mono text-xs text-ink-muted">
-                      {s.GSTIN || "—"}
+                      {s.gstin || (s as any).GSTIN || "—"}
                     </td>
                     <td className="py-3 px-4 text-ink-muted text-xs">
                       {s.paymentTerms || "Net 30"}
@@ -396,7 +357,7 @@ export default function SuppliersPage() {
                       <Phone className="w-3 h-3" /> {s.phone}
                     </div>
                   )}
-                  {s.GSTIN && <div><span className="font-medium">GSTIN:</span> {s.GSTIN}</div>}
+                  {(s.gstin || (s as any).GSTIN) && <div><span className="font-medium">GSTIN:</span> {s.gstin || (s as any).GSTIN}</div>}
                   <div><span className="font-medium">Terms:</span> {s.paymentTerms || "Net 30"}</div>
                 </div>
               </div>

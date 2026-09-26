@@ -38,7 +38,9 @@ export interface Invoice {
   date: string
   dueDate: string
   subtotal: number
+  discountAmount?: number
   gstAmount: number
+  shippingCharge?: number
   total: number
   paidAmount: number
   balance: number

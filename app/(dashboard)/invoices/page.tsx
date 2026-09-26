@@ -1,84 +1,96 @@
-"use client";
-
-import React, { useEffect, Suspense } from "react";
-import { useInvoices } from "@/hooks/useInvoices";
-import { InvoiceTable } from "@/components/invoices/InvoiceTable";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { StatCard } from "@/components/shared/StatCard";
-import { IndianRupee, FileText, CheckCircle2, AlertTriangle } from "lucide-react";
-import { useSearchParams, useRouter } from "next/navigation";
+import React, { Suspense } from "react";
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { getQueryClient } from "@/app/get-query-client";
+import { InvoicesClientView } from "./InvoicesClientView";
+import { queryKeys } from "@/lib/queryKeys";
+import prisma from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
+import { fromPaise } from "@/lib/money";
 
-function InvoicesContent() {
-  const { invoices = [], loading, fetchInvoices } = useInvoices();
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const urlClient = searchParams.get("client");
+export const dynamic = "force-dynamic";
 
-  useEffect(() => {
-    fetchInvoices();
-  }, [fetchInvoices]);
+export default async function InvoicesPage({
+  searchParams,
+}: {
+  searchParams: { search?: string; status?: string; client?: string };
+}) {
+  const queryClient = getQueryClient();
+  const session = await getServerSession(authOptions);
 
-  let filteredInvoices = invoices;
-  if (urlClient) {
-    filteredInvoices = filteredInvoices.filter((inv) => inv.clientId === urlClient);
+  const filters = {
+    search: searchParams?.search,
+    status: searchParams?.status,
+    clientId: searchParams?.client,
+    limit: 50,
+  };
+
+  // Server prefetch if session is authenticated (eliminates request waterfalls)
+  if (session?.user) {
+    try {
+      await queryClient.prefetchQuery({
+        queryKey: queryKeys.invoices.list(filters),
+        queryFn: async () => {
+          const where: any = {};
+          if (filters.clientId) where.clientId = filters.clientId;
+          if (filters.status && filters.status !== "ALL") where.status = filters.status;
+          if (filters.search) {
+            const safe = filters.search.replace(/[.*+?^${}()|[\]\\]/g, "").trim();
+            where.OR = [
+              { invoiceNo: { contains: safe, mode: "insensitive" } },
+              { client: { name: { contains: safe, mode: "insensitive" } } },
+            ];
+          }
+
+          const invoices = await prisma.invoice.findMany({
+            where,
+            include: {
+              client: true,
+              items: {
+                include: { product: true },
+              },
+            },
+            orderBy: { createdAt: "desc" },
+            take: 50,
+          });
+
+          return JSON.parse(
+            JSON.stringify(
+              invoices.map((i) => ({
+                ...i,
+                subtotal: fromPaise(i.subtotal),
+                gstAmount: fromPaise(i.gstAmount),
+                discountAmount: fromPaise(i.discountAmount),
+                total: fromPaise(i.total),
+                paidAmount: fromPaise(i.paidAmount),
+                balance: fromPaise(i.balance),
+                date: i.issuedAt,
+                clientName: i.client.name,
+                clientPhone: i.client.phone,
+                clientEmail: i.client.email,
+                clientCity: i.client.city || "",
+                createdAt: i.createdAt.toISOString(),
+                items: i.items.map((item) => ({
+                  ...item,
+                  unitPrice: fromPaise(item.unitPrice),
+                  amount: fromPaise(item.amount),
+                })),
+              }))
+            )
+          );
+        },
+      });
+    } catch (e) {
+      console.error("Error prefetching invoices on server:", e);
+    }
   }
 
-  // Calculate high level summaries
-  const totalBilled = filteredInvoices.reduce((acc, inv) => acc + (inv.total || 0), 0);
-  const totalPaid = filteredInvoices.reduce((acc, inv) => acc + (inv.paidAmount || 0), 0);
-  const totalOutstanding = filteredInvoices.reduce(
-    (acc, inv) => acc + (inv.balance ?? (inv.total - (inv.paidAmount || 0))),
-    0
-  );
-
   return (
-    <div className="space-y-6 w-full max-w-7xl mx-auto">
-      {/* 1. Standard Page Header */}
-      <PageHeader
-        title="Invoices"
-        description="Track customer billing, payment status, and outstanding receivables."
-        actionLabel="Create Invoice"
-        actionHref="/invoices/new"
-      />
-
-      {/* 2. Top Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        <StatCard
-          title="Total Invoiced"
-          value={`₹${Number(totalBilled).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
-          subtitle={`${filteredInvoices.length} invoices issued`}
-          icon={FileText}
-        />
-
-        <StatCard
-          title="Total Collected"
-          value={`₹${Number(totalPaid).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
-          subtitle="Settled in payment ledger"
-          icon={CheckCircle2}
-          badgeVariant="success"
-        />
-
-        <StatCard
-          title="Outstanding Balance"
-          value={`₹${Number(totalOutstanding).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
-          subtitle="Pending collections"
-          icon={AlertTriangle}
-          badge={totalOutstanding > 0 ? "Receivables" : "All Clear"}
-          badgeVariant={totalOutstanding > 0 ? "warning" : "success"}
-        />
-      </div>
-
-      {/* 3. Invoices Table & Mobile Cards */}
-      <InvoiceTable data={filteredInvoices} loading={loading} onDelete={fetchInvoices} />
-    </div>
-  );
-}
-
-export default function InvoicesPage() {
-  return (
-    <Suspense fallback={<LoadingSkeleton type="table" />}>
-      <InvoicesContent />
-    </Suspense>
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <Suspense fallback={<LoadingSkeleton type="table" />}>
+        <InvoicesClientView initialFilters={filters} />
+      </Suspense>
+    </HydrationBoundary>
   );
 }

@@ -92,6 +92,12 @@ export default function EditInvoicePage() {
         ? Math.round((invoice.discountAmount / invoice.subtotal) * 100)
         : 0,
     paymentMethod: invoice.paymentMethod || "UPI",
+    shippingCharge:
+      invoice.shippingCharge !== undefined && invoice.shippingCharge !== null
+        ? Number(invoice.shippingCharge)
+        : invoice.financials?.shippingAmount !== undefined
+        ? Number(invoice.financials.shippingAmount)
+        : 0,
     notes: invoice.notes || "",
     status: invoice.status || "ISSUED",
   };

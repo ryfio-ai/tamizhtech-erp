@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   description: "Production-ready management system for TamizhTech Robotics",
 };
 
+import QueryProvider from "@/components/providers/query-provider";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -27,8 +29,10 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <NextAuthSessionProvider>
-          {children}
-          <Toaster position="top-right" richColors />
+          <QueryProvider>
+            {children}
+            <Toaster position="top-right" richColors />
+          </QueryProvider>
         </NextAuthSessionProvider>
       </body>
     </html>

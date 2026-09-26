@@ -128,11 +128,11 @@ export function TopBar({ onMobileMenuClick, overdueCount = 0 }: TopBarProps) {
           {/* Global Search Button */}
           <button
             onClick={() => setSearchOpen(true)}
-            className="flex items-center gap-2 h-9 px-3 text-xs bg-surface border border-border text-ink-secondary hover:text-ink-primary hover:border-brand/40 rounded-lg transition-colors cursor-pointer"
+            className="flex items-center gap-2 h-9 px-3 text-xs bg-gray-50/90 hover:bg-white border border-gray-200 hover:border-brand/40 text-gray-500 hover:text-gray-900 rounded-xl transition-all duration-150 shadow-2xs group cursor-pointer"
           >
-            <Search className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Search...</span>
-            <kbd className="hidden sm:inline-block bg-white text-[10px] px-1.5 py-0.5 rounded border border-border text-ink-muted">
+            <Search className="w-3.5 h-3.5 text-gray-400 group-hover:text-brand transition-colors" />
+            <span className="hidden sm:inline font-medium text-gray-500 group-hover:text-gray-700">Search ERP...</span>
+            <kbd className="hidden sm:inline-flex items-center gap-0.5 bg-white text-[10px] font-medium px-1.5 py-0.5 rounded-md border border-gray-200 text-gray-400 group-hover:border-brand/30 group-hover:text-brand transition-colors shadow-2xs">
               Ctrl K
             </kbd>
           </button>

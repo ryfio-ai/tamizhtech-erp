@@ -225,7 +225,12 @@ export async function getNormalizedInvoiceData(invoiceId: string): Promise<Busin
   const discountAmount = financials?.discountAmount ? financials.discountAmount : fromPaise(invoice.discountAmount);
   const taxableAmount = Math.max(0, subtotal - discountAmount);
   const totalTaxAmount = financials?.totalGst ? financials.totalGst : fromPaise(invoice.gstAmount);
-  const shippingCharge = 0;
+  const shippingCharge =
+    financials?.shippingAmount !== undefined
+      ? financials.shippingAmount
+      : (invoice as any).shippingCharge
+      ? fromPaise((invoice as any).shippingCharge)
+      : (invoice as any).shippingAmount || 0;
   const grandTotal = financials?.totalAmount ? financials.totalAmount : fromPaise(invoice.total);
   const paidAmount = financials?.netPaidAmount ? financials.netPaidAmount : fromPaise(invoice.paidAmount);
   const balanceAmount = financials?.outstandingBalance ? financials.outstandingBalance : fromPaise(invoice.balance);

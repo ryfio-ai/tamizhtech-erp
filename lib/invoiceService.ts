@@ -1,8 +1,10 @@
 import prisma from "@/lib/prisma";
+import clientPromise from "@/lib/mongodb";
+import { ObjectId } from "mongodb";
 import { numberToWords } from "@/lib/numToWords";
 import { PaymentStatus, PaymentEntryType, InvoiceStatus } from "@prisma/client";
 import { CanonicalInvoiceFinancials } from "@/types";
-import { roundToPaise, fromPaise } from "@/lib/money";
+import { roundToPaise, fromPaise, toPaise } from "@/lib/money";
 
 export type { CanonicalInvoiceFinancials };
 
@@ -46,7 +48,21 @@ export async function getCanonicalInvoiceFinancials(
   const sgstAmountPaise = totalGstPaise - cgstAmountPaise;
 
   // 4. Shipping / Other Charges
-  const shippingAmountPaise = 0;
+  let shippingAmountPaise = 0;
+  try {
+    const client = await clientPromise;
+    const rawInvoice = await client.db().collection("Invoice").findOne(
+      { _id: new ObjectId(invoiceId) },
+      { projection: { shippingCharge: 1, shippingAmount: 1 } }
+    );
+    if (rawInvoice?.shippingCharge !== undefined && rawInvoice.shippingCharge !== null) {
+      shippingAmountPaise = Math.max(0, Number(rawInvoice.shippingCharge) || 0);
+    } else if (rawInvoice?.shippingAmount !== undefined && rawInvoice.shippingAmount !== null) {
+      shippingAmountPaise = Math.max(0, toPaise(Number(rawInvoice.shippingAmount) || 0));
+    }
+  } catch {
+    // Fallback if direct mongo query fails
+  }
 
   // 5. Total Amount in paise
   const totalAmountPaise = taxableAmountPaise + totalGstPaise + shippingAmountPaise;

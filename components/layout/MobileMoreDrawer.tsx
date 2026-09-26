@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
+import { clearBrowserQueryCache } from "@/app/get-query-client";
 import { cn } from "@/lib/utils";
 
 interface MobileMoreDrawerProps {
@@ -141,7 +142,10 @@ export function MobileMoreDrawer({ open, onOpenChange }: MobileMoreDrawerProps) 
             {/* Logout Row */}
             <div className="pt-2 border-t border-border">
               <button
-                onClick={() => signOut({ callbackUrl: "/login" })}
+                onClick={() => {
+                  clearBrowserQueryCache();
+                  signOut({ callbackUrl: "/login" });
+                }}
                 className="w-full flex items-center gap-3 p-3 rounded-xl text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors text-sm font-medium min-h-[48px]"
               >
                 <div className="p-2 rounded-lg bg-red-50 text-red-600">

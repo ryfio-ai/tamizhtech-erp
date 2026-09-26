@@ -79,6 +79,12 @@ export function InvoicePDFTemplate({
   const paidAmount = financials?.netPaidAmount ?? fromPaise(invoice.paidAmount);
   const balanceAmount = financials?.outstandingBalance ?? fromPaise(invoice.balance);
   const totalInWords = numberToWords(grandTotal);
+  const shippingCharge =
+    financials?.shippingAmount !== undefined
+      ? financials.shippingAmount
+      : (invoice as any).shippingCharge
+      ? fromPaise((invoice as any).shippingCharge)
+      : (invoice as any).shippingAmount || 0;
 
   let cgstRate = 0;
   let cgstAmount = 0;
@@ -133,7 +139,7 @@ export function InvoicePDFTemplate({
     financials: {
       subtotal,
       discountAmount,
-      shippingCharge: 0,
+      shippingCharge,
       taxableAmount,
       isIntraState,
       cgstRate,

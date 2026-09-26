@@ -50,22 +50,22 @@ export function StatCard({
     >
       <div className="flex items-start justify-between gap-1.5 sm:gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1 truncate">
+          <p className="text-[10.5px] sm:text-xs font-semibold uppercase tracking-normal text-ink-secondary mb-1 truncate" title={title}>
             {title}
           </p>
-          <p className="text-lg sm:text-2xl lg:text-3xl font-bold text-ink-primary tracking-tight truncate">
+          <p className="text-base sm:text-lg xl:text-2xl font-bold text-ink-primary tracking-tight truncate" title={String(value)}>
             {value}
           </p>
           {subtitle && (
-            <p className="text-[11px] sm:text-xs text-ink-secondary mt-1 font-normal line-clamp-1">
+            <p className="text-[11px] sm:text-xs text-ink-secondary mt-1 font-normal line-clamp-1" title={subtitle}>
               {subtitle}
             </p>
           )}
         </div>
 
         {Icon && (
-          <div className="p-2 sm:p-2.5 rounded-xl bg-surface border border-border shrink-0 text-brand">
-            <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+          <div className="p-1.5 sm:p-2 rounded-xl bg-surface border border-border shrink-0 text-brand ml-1">
+            <Icon className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
           </div>
         )}
       </div>

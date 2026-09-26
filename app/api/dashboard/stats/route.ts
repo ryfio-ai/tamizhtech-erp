@@ -31,37 +31,93 @@ export async function GET(req: NextRequest) {
       }),
     ]);
 
+    const { searchParams } = new URL(req.url);
+    const range = (searchParams.get("range") || "today").toLowerCase();
+    const customStart = searchParams.get("startDate");
+    const customEnd = searchParams.get("endDate");
+
     const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let startDate: Date;
+    let endDate: Date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    let rangeLabel = "Today";
 
-    // 1. Today's Bills
-    const todayInvoices = invoices.filter(i => new Date(i.createdAt) >= startOfToday);
-    const todayBillsCount = todayInvoices.length;
-    const todayBillsAmount = fromPaise(todayInvoices.reduce((sum, i) => sum + (Number(i.total) || 0), 0));
+    if (range === "7d") {
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      startDate.setHours(0, 0, 0, 0);
+      rangeLabel = "Last 7 Days";
+    } else if (range === "30d") {
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      startDate.setHours(0, 0, 0, 0);
+      rangeLabel = "Last 30 Days";
+    } else if (range === "6m") {
+      startDate = new Date(now);
+      startDate.setMonth(startDate.getMonth() - 6);
+      startDate.setHours(0, 0, 0, 0);
+      rangeLabel = "Last 6 Months";
+    } else if (range === "1y") {
+      startDate = new Date(now);
+      startDate.setFullYear(startDate.getFullYear() - 1);
+      startDate.setHours(0, 0, 0, 0);
+      rangeLabel = "Last 1 Year";
+    } else if (range === "custom") {
+      if (customStart) {
+        startDate = new Date(customStart);
+        startDate.setHours(0, 0, 0, 0);
+      } else {
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      }
+      if (customEnd) {
+        endDate = new Date(customEnd);
+        endDate.setHours(23, 59, 59, 999);
+      } else {
+        endDate = new Date(now);
+      }
+      rangeLabel = "Custom Range";
+    } else {
+      // Default: "today" (Daywise)
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      rangeLabel = "Today (Daywise)";
+    }
 
-    // 2. Today's Payments
-    const todayPaymentsList = payments.filter(p => new Date(p.createdAt) >= startOfToday);
-    const todayPaymentsAmount = fromPaise(todayPaymentsList.reduce((sum, p) => sum + (Number(p.amount) || 0), 0));
-
-    // 3. Today's Expenses
-    const todayExpensesList = expenses.filter(e => {
-      if (e.status === "REJECTED") return false;
-      const expDate = new Date(e.date || e.createdAt);
-      return expDate >= startOfToday;
+    // 1. Period Bills
+    const periodInvoices = invoices.filter(i => {
+      const d = new Date(i.date || i.createdAt);
+      return d >= startDate && d <= endDate;
     });
-    const todayExpensesCount = todayExpensesList.length;
-    const todayExpensesAmount = fromPaise(todayExpensesList.reduce((sum, e) => sum + (Number(e.amount) || 0), 0));
+    const periodBillsCount = periodInvoices.length;
+    const periodBillsAmount = fromPaise(periodInvoices.reduce((sum, i) => sum + (Number(i.total) || 0), 0));
 
-    // 3. Outstanding Balance across all invoices
+    // 2. Period Payments
+    const periodPaymentsList = payments.filter(p => {
+      const d = new Date(p.date || p.createdAt);
+      return d >= startDate && d <= endDate;
+    });
+    const periodPaymentsCount = periodPaymentsList.length;
+    const periodPaymentsAmount = fromPaise(periodPaymentsList.reduce((sum, p) => sum + (Number(p.amount) || 0), 0));
+
+    // 3. Period Expenses
+    const periodExpensesList = expenses.filter(e => {
+      if (e.status === "REJECTED") return false;
+      const d = new Date(e.date || e.createdAt);
+      return d >= startDate && d <= endDate;
+    });
+    const periodExpensesCount = periodExpensesList.length;
+    const periodExpensesAmount = fromPaise(periodExpensesList.reduce((sum, e) => sum + (Number(e.amount) || 0), 0));
+
+    // Net Cashflow
+    const netCashflow = periodPaymentsAmount - periodExpensesAmount;
+
+    // 4. Outstanding Balance across all invoices
     const totalOutstandingBalance = fromPaise(invoices.reduce((sum, i) => sum + (Number(i.balance) || 0), 0));
 
-    // 4. Low Stock Products
+    // 5. Low Stock Products
     const physicalProducts = products.filter(p => p.type === "PHYSICAL_PRODUCT");
     const lowStockProducts = physicalProducts.filter(p => (p.stockQuantity || 0) < (p.minStock || 5));
     const lowStockCount = lowStockProducts.length;
 
-    // 5. Recent Bills (Top 5)
-    const recentBills = invoices.slice(0, 5).map(i => ({
+    // 6. Recent Bills (Prefer period bills, fallback to global recent)
+    const recentBillsSource = periodInvoices.length > 0 ? periodInvoices : invoices;
+    const recentBills = recentBillsSource.slice(0, 5).map(i => ({
       id: i.id,
       invoiceNo: i.invoiceNo,
       clientName: i.client?.name || i.clientName || "Unknown",
@@ -72,7 +128,7 @@ export async function GET(req: NextRequest) {
       status: i.status,
     }));
 
-    // 6. Recent Customers (Top 5)
+    // 7. Recent Customers (Top 5)
     const recentCustomers = clients.slice(0, 5).map(c => ({
       id: c.id,
       clientCode: c.clientCode,
@@ -84,9 +140,9 @@ export async function GET(req: NextRequest) {
       status: c.status,
     }));
 
-    // 7. Pending Follow-ups (Top 5 upcoming)
+    // 8. Pending Follow-ups (Top 5 upcoming)
     const upcomingFollowUps = followups
-      .filter(f => f.status === "PENDING" && new Date(f.date) >= startOfToday)
+      .filter(f => f.status === "PENDING" && new Date(f.date) >= startDate)
       .slice(0, 5)
       .map(f => ({
         id: f.id,
@@ -99,12 +155,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        todayBillsCount,
-        todayBillsAmount,
-        todayPaymentsCount: todayPaymentsList.length,
-        todayPaymentsAmount,
-        todayExpensesCount,
-        todayExpensesAmount,
+        range,
+        rangeLabel,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        periodBillsCount,
+        periodBillsAmount,
+        periodPaymentsCount,
+        periodPaymentsAmount,
+        periodExpensesCount,
+        periodExpensesAmount,
+        netCashflow,
         totalOutstandingBalance,
         lowStockCount,
         totalProducts: products.length,
@@ -113,6 +174,14 @@ export async function GET(req: NextRequest) {
         lowStockProducts: lowStockProducts.slice(0, 5),
         recentCustomers,
         upcomingFollowUps,
+
+        // Backwards compatibility aliases
+        todayBillsCount: periodBillsCount,
+        todayBillsAmount: periodBillsAmount,
+        todayPaymentsCount: periodPaymentsCount,
+        todayPaymentsAmount: periodPaymentsAmount,
+        todayExpensesCount: periodExpensesCount,
+        todayExpensesAmount: periodExpensesAmount,
       },
     });
   } catch (error: any) {

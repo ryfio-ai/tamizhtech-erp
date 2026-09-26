@@ -23,7 +23,11 @@ import {
   BarChart3,
   Inbox,
   Cpu,
-  Truck
+  Truck,
+  Award,
+  ShoppingCart,
+  Building2,
+  ClipboardList
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -60,6 +64,7 @@ export function Sidebar({
         { name: "Website Leads", href: "/submissions", icon: Inbox },
         { name: "Customers", href: "/clients", icon: Users },
         { name: "Quotations", href: "/quotations", icon: FileCheck },
+        { name: "Sales Orders", href: "/orders", icon: ShoppingCart },
         { name: "Bills", href: "/invoices", icon: FileText },
         { name: "Payments", href: "/payments", icon: CreditCard },
       ],
@@ -68,8 +73,17 @@ export function Sidebar({
       title: "OPERATIONS",
       items: [
         { name: "Products & Stock", href: "/products", icon: Package },
+        { name: "Suppliers", href: "/suppliers", icon: Building2 },
+        { name: "Procurement / POs", href: "/procurement", icon: ClipboardList },
         { name: "BOM / Assemblies", href: "/bom", icon: Cpu },
         { name: "Delivery Challans", href: "/challans", icon: Truck },
+      ],
+    },
+    {
+      title: "EDUCATION",
+      items: [
+        { name: "Applications", href: "/applications", icon: Users },
+        { name: "Certificates", href: "/certificates", icon: Award },
       ],
     },
     {

@@ -3,12 +3,20 @@ import prisma from "@/lib/prisma";
 import { allocateQuotationNoTx, generateDraftQuotationNo } from "@/lib/sequence";
 import { getSystemSetting } from "@/lib/settings";
 import { roundMoney, safeAdd, toPaise, fromPaise } from "@/lib/money";
+import { requireAuth } from "@/lib/rbac";
 
 export async function GET(req: NextRequest) {
   try {
+    const auth = await requireAuth("quotation.read");
+    if (!auth.success) {
+      return auth.response;
+    }
+
     const { searchParams } = new URL(req.url);
     const clientId = searchParams.get("clientId");
     const status = searchParams.get("status");
+    const limitParam = searchParams.get("limit");
+    const offsetParam = searchParams.get("offset");
 
     const where: any = {};
     if (clientId) where.clientId = clientId;
@@ -16,6 +24,9 @@ export async function GET(req: NextRequest) {
 
     const quotations = await prisma.quotation.findMany({
       where,
+      orderBy: { createdAt: "desc" },
+      ...(limitParam ? { take: Math.max(1, Math.min(500, parseInt(limitParam, 10) || 50)) } : {}),
+      ...(offsetParam ? { skip: Math.max(0, parseInt(offsetParam, 10) || 0) } : {}),
       include: {
         client: {
           select: {
@@ -43,7 +54,6 @@ export async function GET(req: NextRequest) {
           },
         },
       },
-      orderBy: { createdAt: "desc" },
     });
 
     const formatted = quotations.map((q) => ({
@@ -71,6 +81,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireAuth("quotation.create");
+    if (!auth.success) {
+      return auth.response;
+    }
+
     const body = await req.json();
     const {
       clientId,

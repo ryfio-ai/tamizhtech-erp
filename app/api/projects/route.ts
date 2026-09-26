@@ -1,51 +1,63 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
-import { projectSchema } from "@/lib/validations";
-import { z } from "zod";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import {
+  createProject,
+  listProjects,
+  ProjectStatus,
+} from "@/lib/projectService";
 
 export const revalidate = 0;
 
 export async function GET(req: NextRequest) {
   try {
-    const projects = await prisma.project.findMany({
-      include: {
-        client: true,
-        tasks: true
-      },
-      orderBy: { createdAt: 'desc' }
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const clientId = searchParams.get("clientId") || undefined;
+    const orderId = searchParams.get("orderId") || undefined;
+    const status = (searchParams.get("status") as ProjectStatus) || undefined;
+    const search = searchParams.get("search") || undefined;
+
+    const projects = await listProjects({
+      clientId,
+      orderId,
+      status,
+      search,
     });
 
     return NextResponse.json({ success: true, data: projects });
   } catch (error: any) {
-    console.error("GET Projects Error:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error("GET /api/projects Error:", error);
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to fetch projects" },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const validated = projectSchema.parse(body);
-
-    const adminUser = await prisma.user.findFirst();
-    const newProject = await prisma.project.create({
-      data: {
-        name: validated.name,
-        clientId: validated.clientId,
-        status: (validated.status as any) || "PLANNING",
-        startDate: validated.startDate,
-        endDate: validated.endDate,
-        budget: validated.budget || 0,
-        createdById: adminUser?.id || "000000000000000000000000",
-      }
-    });
-
-    return NextResponse.json({ success: true, data: newProject }, { status: 201 });
-  } catch (error: any) {
-    console.error("POST Project Error:", error);
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ success: false, error: error.errors[0].message }, { status: 400 });
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+
+    const body = await req.json();
+    const project = await createProject(
+      body,
+      (session.user as any).id
+    );
+
+    return NextResponse.json({ success: true, data: project }, { status: 201 });
+  } catch (error: any) {
+    console.error("POST /api/projects Error:", error);
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to create project" },
+      { status: 400 }
+    );
   }
 }

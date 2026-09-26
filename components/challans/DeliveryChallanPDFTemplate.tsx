@@ -1,7 +1,7 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 import { DEFAULT_COMPANY_SETTINGS, CompanySettings } from "@/lib/companyProfile";
-import { formatDocumentDateTime } from "@/lib/businessDocumentData";
+import { formatDocumentDateTime } from "@/lib/dateFormat";
 
 const styles = StyleSheet.create({
   page: {

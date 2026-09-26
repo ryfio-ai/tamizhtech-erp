@@ -5,14 +5,22 @@ import { ApiResponse } from "@/types";
 import { allocateClientCodeTx } from "@/lib/sequence";
 import { normalizeMobile } from "@/lib/phone";
 import { fromPaise } from "@/lib/money";
+import { requireAuth } from "@/lib/rbac";
 import { z } from "zod";
 
 export const revalidate = 0; // Disable static caching for API
 
 export async function GET(req: NextRequest) {
   try {
+    const auth = await requireAuth("client.read");
+    if (!auth.success) {
+      return auth.response;
+    }
+
     const { searchParams } = new URL(req.url);
     const query = (searchParams.get("search") || searchParams.get("q") || "").trim();
+    const limitParam = searchParams.get("limit");
+    const offsetParam = searchParams.get("offset");
 
     let whereClause: any = {};
     if (query) {
@@ -45,6 +53,8 @@ export async function GET(req: NextRequest) {
     const clients = await prisma.client.findMany({
       where: whereClause,
       orderBy: { createdAt: "desc" },
+      ...(limitParam ? { take: Math.max(1, Math.min(500, parseInt(limitParam, 10) || 50)) } : {}),
+      ...(offsetParam ? { skip: Math.max(0, parseInt(offsetParam, 10) || 0) } : {}),
       include: {
         invoices: {
           select: { total: true, balance: true },
@@ -82,6 +92,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireAuth("client.create");
+    if (!auth.success) {
+      return auth.response;
+    }
+
     const body: ClientFormValues = await req.json();
     const validated = clientSchema.parse(body);
 

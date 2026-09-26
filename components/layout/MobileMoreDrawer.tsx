@@ -18,7 +18,11 @@ import {
   ShieldCheck,
   Users,
   Cpu,
-  Truck
+  Truck,
+  Award,
+  ShoppingCart,
+  Building2,
+  ClipboardList
 } from "lucide-react";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
@@ -41,6 +45,7 @@ export function MobileMoreDrawer({ open, onOpenChange }: MobileMoreDrawerProps) 
       title: "Business & Sales",
       items: [
         { label: "Quotations", href: "/quotations", icon: FileText, desc: "Estimates & cost proposals" },
+        { label: "Sales Orders", href: "/orders", icon: ShoppingCart, desc: "Order execution & fulfillment" },
         { label: "Invoices & Bills", href: "/invoices", icon: FileText, desc: "GST tax invoices & billing" },
         { label: "Payments", href: "/payments", icon: CreditCard, desc: "Collections & ledger entries" },
         { label: "Customers", href: "/clients", icon: Users, desc: "Client directory & balances" },
@@ -51,6 +56,8 @@ export function MobileMoreDrawer({ open, onOpenChange }: MobileMoreDrawerProps) 
     {
       title: "Daily Operations",
       items: [
+        { label: "Suppliers", href: "/suppliers", icon: Building2, desc: "Vendor directory & terms" },
+        { label: "Procurement & POs", href: "/procurement", icon: ClipboardList, desc: "Purchase orders & receipts" },
         { label: "BOM / Assemblies", href: "/bom", icon: Cpu, desc: "Robotics kits & recipe assembly" },
         { label: "Delivery Challans", href: "/challans", icon: Truck, desc: "Gate passes & dispatches" },
         { label: "Follow-ups", href: "/followups", icon: CalendarClock, desc: "Pending calls & visits" },
@@ -58,6 +65,7 @@ export function MobileMoreDrawer({ open, onOpenChange }: MobileMoreDrawerProps) 
         { label: "Expenses", href: "/finance", icon: Banknote, desc: "Operational expenses & ledger" },
         { label: "HR & Team", href: "/hr", icon: Users, desc: "Staff directory & payroll" },
         { label: "Job Applications", href: "/applications", icon: FileText, desc: "Candidate applications" },
+        { label: "Certificates", href: "/certificates", icon: Award, desc: "Student workshop certificates" },
       ],
     },
     {

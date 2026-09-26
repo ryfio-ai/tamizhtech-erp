@@ -6,9 +6,11 @@ import {
   BusinessDocumentModel,
   DocumentItem,
   DocumentParty,
+} from "@/types/businessDocument";
+import {
   resolvePlaceOfSupply,
   formatDocumentDate,
-} from "@/lib/businessDocumentData";
+} from "@/lib/dateFormat";
 import { DEFAULT_COMPANY_SETTINGS, CompanySettings } from "@/lib/companyProfile";
 import { fromPaise, roundMoney } from "@/lib/money";
 import { numberToWords } from "@/lib/numToWords";

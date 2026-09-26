@@ -19,6 +19,7 @@ import {
   Mail,
   RefreshCw,
   Trash2,
+  ShoppingCart,
 } from "lucide-react";
 import { formatINR } from "@/lib/money";
 import { formatISTDate } from "@/lib/time";
@@ -34,6 +35,7 @@ export default function QuotationDetailPage() {
   const [documentData, setDocumentData] = useState<BusinessDocumentModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [converting, setConverting] = useState(false);
+  const [convertingOrder, setConvertingOrder] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -80,6 +82,31 @@ export default function QuotationDetailPage() {
       console.error("Failed to update status:", err);
     } finally {
       setUpdatingStatus(false);
+    }
+  };
+
+  const handleConvertToSalesOrder = async () => {
+    if (!confirm("Are you sure you want to convert this quotation into a confirmed Sales Order?")) return;
+
+    setConvertingOrder(true);
+    try {
+      const res = await fetch(`/api/sales-orders/from-quotation/${quotationId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Successfully converted to Sales Order ${data.data.orderNo}!`);
+        router.push(`/orders/${data.data.id}`);
+      } else {
+        alert(data.error || "Conversion to Sales Order failed");
+      }
+    } catch (err) {
+      console.error("Error converting quotation to sales order:", err);
+      alert("An unexpected error occurred during order conversion.");
+    } finally {
+      setConvertingOrder(false);
     }
   };
 
@@ -246,6 +273,18 @@ export default function QuotationDetailPage() {
           >
             <Download className="w-3.5 h-3.5" /> A4 PDF
           </a>
+
+          {/* Convert to Sales Order */}
+          {quotation.status !== "CANCELLED" && (
+            <button
+              onClick={handleConvertToSalesOrder}
+              disabled={convertingOrder}
+              className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-4 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-colors disabled:opacity-50"
+            >
+              <ShoppingCart className="w-3.5 h-3.5 text-amber-400" />
+              {convertingOrder ? "Converting..." : "Convert to Sales Order"}
+            </button>
+          )}
 
           {/* Convert to Invoice */}
           {quotation.status !== "ACCEPTED" && quotation.status !== "CANCELLED" && (

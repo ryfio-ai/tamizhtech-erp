@@ -5,13 +5,45 @@ import { allocateInvoiceNoTx, generateDraftInvoiceNo } from "@/lib/sequence";
 import { deductStockForIssuedInvoice } from "@/lib/stockService";
 import { getAuthoritativeInvoiceFinancials } from "@/lib/invoiceService";
 import { toPaise, fromPaise, roundToPaise } from "@/lib/money";
+import { requireAuth } from "@/lib/rbac";
 import { z } from "zod";
 
 export const revalidate = 0;
 
 export async function GET(req: NextRequest) {
   try {
+    const auth = await requireAuth("invoice.read");
+    if (!auth.success) {
+      return auth.response;
+    }
+
+    const { searchParams } = new URL(req.url);
+    const search = searchParams.get("search")?.trim();
+    const status = searchParams.get("status")?.trim();
+    const clientId = searchParams.get("clientId")?.trim();
+    const limitParam = searchParams.get("limit");
+    const offsetParam = searchParams.get("offset");
+
+    const where: any = {};
+    if (clientId) {
+      where.clientId = clientId;
+    }
+    if (status && status !== "ALL") {
+      where.status = status;
+    }
+
+    if (search) {
+      const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "").trim();
+      where.OR = [
+        { invoiceNo: { contains: safeSearch || search, mode: "insensitive" } },
+        { client: { name: { contains: safeSearch || search, mode: "insensitive" } } },
+        { client: { company: { contains: safeSearch || search, mode: "insensitive" } } },
+        { client: { phone: { contains: safeSearch || search } } },
+      ];
+    }
+
     const invoices = await prisma.invoice.findMany({
+      where,
       include: { 
         client: true,
         items: {
@@ -20,7 +52,9 @@ export async function GET(req: NextRequest) {
           }
         }
       },
-      orderBy: { createdAt: "desc" }
+      orderBy: { createdAt: "desc" },
+      ...(limitParam ? { take: Math.max(1, Math.min(500, parseInt(limitParam, 10) || 50)) } : {}),
+      ...(offsetParam ? { skip: Math.max(0, parseInt(offsetParam, 10) || 0) } : {}),
     });
 
     const formatted = invoices.map(i => ({
@@ -52,6 +86,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireAuth("invoice.create");
+    if (!auth.success) {
+      return auth.response;
+    }
+
     const body: InvoiceFormValues = await req.json();
     const validated = invoiceSchema.parse(body);
 

@@ -3,18 +3,26 @@ import prisma from "@/lib/prisma";
 import { createProductWithStock, ProductClassificationType } from "@/lib/stockService";
 import { getProductRollingWACPaise } from "@/lib/costService";
 import { fromPaise, safeMultiplyQuantityByPaise } from "@/lib/money";
+import { requireAuth } from "@/lib/rbac";
 import { z } from "zod";
 
 export const revalidate = 0;
 
 export async function GET(req: NextRequest) {
   try {
+    const auth = await requireAuth("inventory.read");
+    if (!auth.success) {
+      return auth.response;
+    }
+
     const { searchParams } = new URL(req.url);
     const typeParam = searchParams.get("type");
     const category = searchParams.get("category");
     const saleableOnly = searchParams.get("saleable") === "true";
     const search = searchParams.get("search")?.trim();
     const includeValuation = searchParams.get("includeValuation") === "true";
+    const limitParam = searchParams.get("limit");
+    const offsetParam = searchParams.get("offset");
 
     const where: any = {};
 
@@ -60,6 +68,8 @@ export async function GET(req: NextRequest) {
     const products = await prisma.product.findMany({
       where,
       orderBy: { name: "asc" },
+      ...(limitParam ? { take: Math.max(1, Math.min(500, parseInt(limitParam, 10) || 50)) } : {}),
+      ...(offsetParam ? { skip: Math.max(0, parseInt(offsetParam, 10) || 0) } : {}),
       include: {
         _count: {
           select: { stockLedgerEntries: true },
@@ -99,6 +109,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireAuth("inventory.adjust");
+    if (!auth.success) {
+      return auth.response;
+    }
+
     const body = await req.json();
 
     if (!body.name || typeof body.name !== "string" || body.name.trim().length < 2) {

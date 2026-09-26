@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     const regex = { contains: q, mode: "insensitive" as const };
 
     // Search across core domains in parallel
-    const [clients, invoices, payments, products, projects, submissions, quotations] = await Promise.all([
+    const [clients, invoices, payments, products, projects, submissions, quotations, salesOrders, vendors, purchaseOrders] = await Promise.all([
       prisma.client.findMany({
         where: {
           OR: [{ name: regex }, { clientCode: regex }, { city: regex }, { mobileNormalized: regex }],
@@ -51,34 +51,56 @@ export async function GET(req: NextRequest) {
       }),
       prisma.project.findMany({
         where: {
-          OR: [{ name: regex }],
+          OR: [{ name: regex }, { projectCode: regex }],
         },
         take: 5,
-        select: { id: true, name: true, status: true },
+        select: { id: true, name: true, projectCode: true, status: true },
       }),
       prisma.inboundSubmission.findMany({
         where: {
-          OR: [
-            { submissionNo: regex },
-            { name: regex },
-            { email: regex },
-            { mobile: regex },
-            { company: regex },
-          ],
+          OR: [{ submissionNo: regex }, { name: regex }, { email: regex }, { mobile: regex }],
         },
         take: 5,
         select: { id: true, submissionNo: true, name: true, type: true, status: true },
       }),
       prisma.quotation.findMany({
         where: {
-          OR: [{ quotationNo: regex }],
+          OR: [{ quotationNo: regex }, { client: { name: regex } }],
         },
         take: 5,
-        select: { id: true, quotationNo: true, status: true, total: true, client: { select: { name: true } } },
+        select: { id: true, quotationNo: true, total: true, status: true, client: { select: { name: true } } },
+      }),
+      prisma.salesOrder.findMany({
+        where: {
+          OR: [{ orderNo: regex }, { client: { name: regex } }],
+        },
+        take: 5,
+        select: { id: true, orderNo: true, totalAmount: true, status: true, client: { select: { name: true } } },
+      }),
+      prisma.vendor.findMany({
+        where: {
+          OR: [{ name: regex }, { vendorCode: regex }, { contactPerson: regex }, { gstin: regex }],
+        },
+        take: 5,
+        select: { id: true, name: true, vendorCode: true, contactPerson: true },
+      }),
+      prisma.purchaseOrder.findMany({
+        where: {
+          OR: [{ poNo: regex }, { vendor: { name: regex } }],
+        },
+        take: 5,
+        select: { id: true, poNo: true, totalAmount: true, status: true, vendor: { select: { name: true } } },
       }),
     ]);
 
     const results = [
+      ...salesOrders.map((so) => ({
+        id: `so-${so.id}`,
+        title: so.orderNo,
+        subtitle: `${so.client?.name || "Customer"} • ₹${Math.round(so.totalAmount).toLocaleString("en-IN")} (${so.status})`,
+        category: "Order" as const,
+        href: `/orders/${so.id}`,
+      })),
       ...clients.map((c) => ({
         id: `client-${c.id}`,
         title: c.name,
@@ -127,6 +149,20 @@ export async function GET(req: NextRequest) {
         subtitle: `Project • ${pr.status}`,
         category: "Project" as const,
         href: `/projects`,
+      })),
+      ...vendors.map((v) => ({
+        id: `sup-${v.id}`,
+        title: v.name,
+        subtitle: `${v.vendorCode || "Supplier"} • ${v.contactPerson || "Vendor"}`,
+        category: "Supplier" as const,
+        href: `/suppliers/${v.id}`,
+      })),
+      ...purchaseOrders.map((po) => ({
+        id: `po-${po.id}`,
+        title: po.poNo,
+        subtitle: `${po.vendor?.name || "Supplier"} • ₹${Math.round(po.totalAmount).toLocaleString("en-IN")} (${po.status})`,
+        category: "Procurement" as const,
+        href: `/procurement/${po.id}`,
       })),
     ];
 

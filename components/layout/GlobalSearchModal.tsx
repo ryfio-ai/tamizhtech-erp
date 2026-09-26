@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Search, X, Users, FileText, CreditCard, Package, Briefcase, CalendarClock, ArrowRight, Inbox, FileCheck } from "lucide-react";
+import { Search, X, Users, FileText, CreditCard, Package, Briefcase, CalendarClock, ArrowRight, Inbox, FileCheck, ShoppingCart, Truck, ClipboardList } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +15,7 @@ interface SearchResultItem {
   id: string;
   title: string;
   subtitle: string;
-  category: "Customer" | "Invoice" | "Payment" | "Product" | "Project" | "Follow-up" | "Submission" | "Quotation";
+  category: "Customer" | "Invoice" | "Payment" | "Product" | "Project" | "Follow-up" | "Submission" | "Quotation" | "Order" | "Supplier" | "Procurement";
   href: string;
 }
 
@@ -94,6 +94,8 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
         return <Inbox className="w-4 h-4 text-indigo-600" />;
       case "Quotation":
         return <FileCheck className="w-4 h-4 text-teal-600" />;
+      case "Order":
+        return <ShoppingCart className="w-4 h-4 text-amber-600" />;
       case "Invoice":
         return <FileText className="w-4 h-4 text-brand" />;
       case "Payment":
@@ -102,6 +104,10 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
         return <Package className="w-4 h-4 text-purple-600" />;
       case "Project":
         return <Briefcase className="w-4 h-4 text-amber-600" />;
+      case "Supplier":
+        return <Truck className="w-4 h-4 text-emerald-600" />;
+      case "Procurement":
+        return <ClipboardList className="w-4 h-4 text-cyan-600" />;
       default:
         return <CalendarClock className="w-4 h-4 text-gray-500" />;
     }

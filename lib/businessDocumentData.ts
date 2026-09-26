@@ -5,6 +5,7 @@ import { fromPaise, roundMoney } from "@/lib/money";
 import { numberToWords } from "@/lib/numToWords";
 import { getServerLogoDataUri, getServerSignatureDataUri, getServerQrDataUri } from "@/lib/serverLogo";
 import { generateInvoiceDynamicUpi } from "@/lib/upi";
+import { formatDocumentDateTime } from "@/lib/dateFormat";
 import {
   DocumentParty,
   DocumentItem,
@@ -153,21 +154,7 @@ export function formatDocumentDate(date: Date | string | null | undefined): stri
   }).format(d);
 }
 
-export function formatDocumentDateTime(date: Date | string | null | undefined): string {
-  if (!date) return "-";
-  const d = typeof date === "string" ? new Date(date) : date;
-  if (isNaN(d.getTime())) return "-";
-  const formatted = new Intl.DateTimeFormat("en-IN", {
-    timeZone: "Asia/Kolkata",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  }).format(d);
-  return `${formatted} IST`;
-}
+export { formatDocumentDateTime };
 
 function parseTerms(termsStr?: string | null): string[] {
   if (!termsStr || !termsStr.trim()) return [];

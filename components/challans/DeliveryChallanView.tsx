@@ -17,7 +17,7 @@ import {
   AlertTriangle,
   CheckCircle2,
 } from "lucide-react";
-import { formatDocumentDateTime } from "@/lib/businessDocumentData";
+import { formatDocumentDateTime } from "@/lib/dateFormat";
 
 interface DeliveryChallanViewProps {
   challan: any;

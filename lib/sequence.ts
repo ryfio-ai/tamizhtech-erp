@@ -31,14 +31,37 @@ export async function allocateSequentialNumberTx(
   return seq.lastNumber;
 }
 
+export async function withTxRetry<T>(fn: () => Promise<T>, maxRetries = 5): Promise<T> {
+  let attempt = 0;
+  while (attempt < maxRetries) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      const isConflict =
+        err?.code === "P2034" ||
+        err?.message?.includes("write conflict") ||
+        err?.message?.includes("deadlock");
+      if (isConflict && attempt < maxRetries - 1) {
+        attempt++;
+        await new Promise((r) => setTimeout(r, 30 * Math.pow(2, attempt) + Math.random() * 25));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("Transaction failed after maximum retries");
+}
+
 export async function getNextSequenceNumber(
   sequenceName: string,
   prefix: string,
   year?: number
 ): Promise<number> {
-  return prisma.$transaction(async (tx) => {
-    return allocateSequentialNumberTx(tx, sequenceName, prefix, year);
-  });
+  return withTxRetry(() =>
+    prisma.$transaction(async (tx) => {
+      return allocateSequentialNumberTx(tx, sequenceName, prefix, year);
+    })
+  );
 }
 
 /**
@@ -292,4 +315,225 @@ export function generateDraftChallanNo(): string {
   const rand = Math.floor(1000 + Math.random() * 9000);
   return `DRAFT-DC-${year}-${rand}`;
 }
+
+/**
+ * Transaction-safe official Workshop / Training Certificate Number allocation.
+ * Concurrency-safe atomic generation backed by BusinessSequence.
+ * Format: TTRC-CERT-YYYY-XXXX (e.g. TTRC-CERT-2026-0001)
+ */
+export async function allocateCertificateNoTx(tx: any, year?: number): Promise<string> {
+  const docYear = year ?? new Date().getFullYear();
+  const prefix = `TTRC-CERT-${docYear}`;
+  const seqName = `CERTIFICATE_${docYear}`;
+  const number = await allocateSequentialNumberTx(tx, seqName, prefix, docYear);
+  return `${prefix}-${String(number).padStart(4, "0")}`;
+}
+
+export async function allocateCertificateNo(year?: number): Promise<string> {
+  return prisma.$transaction(async (tx) => {
+    return allocateCertificateNoTx(tx, year);
+  });
+}
+
+export function generateDraftCertificateNo(): string {
+  const year = new Date().getFullYear();
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  return `DRAFT-CERT-${year}-${rand}`;
+}
+
+/**
+ * Transaction-safe official Sales Order Number allocation.
+ * Concurrency-safe atomic generation backed by BusinessSequence.
+ * Format: TTRC-SO-YYYY-XXXX (e.g. TTRC-SO-2026-0001)
+ */
+export async function allocateSalesOrderNoTx(tx: any, year?: number): Promise<string> {
+  const currentYear = year ?? new Date().getFullYear();
+  const prefix = `TTRC-SO-${currentYear}`;
+  const seqName = `SALES_ORDER_${currentYear}`;
+  const number = await allocateSequentialNumberTx(tx, seqName, prefix, currentYear);
+  return `${prefix}-${String(number).padStart(4, "0")}`;
+}
+
+export async function allocateSalesOrderNo(year?: number): Promise<string> {
+  return prisma.$transaction(async (tx) => {
+    return allocateSalesOrderNoTx(tx, year);
+  });
+}
+
+export function generateDraftSalesOrderNo(): string {
+  const year = new Date().getFullYear();
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  return `DRAFT-SO-${year}-${rand}`;
+}
+
+/**
+ * Transaction-safe official Engineering Project Number allocation.
+ * Concurrency-safe atomic generation backed by BusinessSequence.
+ * Format: TTRC-PRJ-YYYY-XXXX (e.g. TTRC-PRJ-2026-0001)
+ */
+export async function allocateProjectNoTx(tx: any, year?: number): Promise<string> {
+  const currentYear = year ?? new Date().getFullYear();
+  const prefix = `TTRC-PRJ-${currentYear}`;
+  const seqName = `PROJECT_${currentYear}`;
+  const number = await allocateSequentialNumberTx(tx, seqName, prefix, currentYear);
+  return `${prefix}-${String(number).padStart(4, "0")}`;
+}
+
+export async function allocateProjectNo(year?: number): Promise<string> {
+  return prisma.$transaction(async (tx) => {
+    return allocateProjectNoTx(tx, year);
+  });
+}
+
+export function generateDraftProjectNo(): string {
+  const year = new Date().getFullYear();
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  return `DRAFT-PRJ-${year}-${rand}`;
+}
+
+/**
+ * Transaction-safe official Supplier Number allocation.
+ * Format: TTRC-SUP-YYYY-XXXX (e.g. TTRC-SUP-2026-0001)
+ */
+export async function allocateSupplierNoTx(tx: any, year?: number): Promise<string> {
+  const currentYear = year ?? new Date().getFullYear();
+  const prefix = `TTRC-SUP-${currentYear}`;
+  const seqName = `SUPPLIER_${currentYear}`;
+  const number = await allocateSequentialNumberTx(tx, seqName, prefix, currentYear);
+  return `${prefix}-${String(number).padStart(4, "0")}`;
+}
+
+export async function allocateSupplierNo(year?: number): Promise<string> {
+  return withTxRetry(() =>
+    prisma.$transaction(async (tx) => {
+      return allocateSupplierNoTx(tx, year);
+    })
+  );
+}
+
+export function generateDraftSupplierNo(): string {
+  const year = new Date().getFullYear();
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  return `DRAFT-SUP-${year}-${rand}`;
+}
+
+/**
+ * Transaction-safe official Purchase Order Number allocation.
+ * Format: TTRC-PO-YYYY-XXXX (e.g. TTRC-PO-2026-0001)
+ */
+export async function allocatePurchaseOrderNoTx(tx: any, year?: number): Promise<string> {
+  const currentYear = year ?? new Date().getFullYear();
+  const prefix = `TTRC-PO-${currentYear}`;
+  const seqName = `PURCHASE_ORDER_${currentYear}`;
+  const number = await allocateSequentialNumberTx(tx, seqName, prefix, currentYear);
+  return `${prefix}-${String(number).padStart(4, "0")}`;
+}
+
+export async function allocatePurchaseOrderNo(year?: number): Promise<string> {
+  return withTxRetry(() =>
+    prisma.$transaction(async (tx) => {
+      return allocatePurchaseOrderNoTx(tx, year);
+    })
+  );
+}
+
+export function generateDraftPurchaseOrderNo(): string {
+  const year = new Date().getFullYear();
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  return `DRAFT-PO-${year}-${rand}`;
+}
+
+/**
+ * Transaction-safe official Goods Receipt Note (GRN) Number allocation.
+ * Format: TTRC-GRN-YYYY-XXXX (e.g. TTRC-GRN-2026-0001)
+ */
+export async function allocateGoodsReceiptNoTx(tx: any, year?: number): Promise<string> {
+  const currentYear = year ?? new Date().getFullYear();
+  const prefix = `TTRC-GRN-${currentYear}`;
+  const seqName = `GOODS_RECEIPT_${currentYear}`;
+  const number = await allocateSequentialNumberTx(tx, seqName, prefix, currentYear);
+  return `${prefix}-${String(number).padStart(4, "0")}`;
+}
+
+export async function allocateGoodsReceiptNo(year?: number): Promise<string> {
+  return withTxRetry(() =>
+    prisma.$transaction(async (tx) => {
+      return allocateGoodsReceiptNoTx(tx, year);
+    })
+  );
+}
+
+export function generateDraftGoodsReceiptNo(): string {
+  const year = new Date().getFullYear();
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  return `DRAFT-GRN-${year}-${rand}`;
+}
+
+/**
+ * Transaction-safe official Procurement Request Number allocation.
+ * Format: TTRC-PR-YYYY-XXXX (e.g. TTRC-PR-2026-0001)
+ */
+export async function allocateProcurementRequestNoTx(tx: any, year?: number): Promise<string> {
+  const currentYear = year ?? new Date().getFullYear();
+  const prefix = `TTRC-PR-${currentYear}`;
+  const seqName = `PROCUREMENT_REQ_${currentYear}`;
+  const number = await allocateSequentialNumberTx(tx, seqName, prefix, currentYear);
+  return `${prefix}-${String(number).padStart(4, "0")}`;
+}
+
+export async function allocateProcurementRequestNo(year?: number): Promise<string> {
+  return withTxRetry(() =>
+    prisma.$transaction(async (tx) => {
+      return allocateProcurementRequestNoTx(tx, year);
+    })
+  );
+}
+
+export function generateDraftProcurementRequestNo(): string {
+  const year = new Date().getFullYear();
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  return `DRAFT-PR-${year}-${rand}`;
+}
+
+/**
+ * Transaction-safe official Supplier Bill internal reference Number allocation.
+ * Format: TTRC-SB-YYYY-XXXX (e.g. TTRC-SB-2026-0001)
+ */
+export async function allocateSupplierBillNoTx(tx: any, year?: number): Promise<string> {
+  const currentYear = year ?? new Date().getFullYear();
+  const prefix = `TTRC-SB-${currentYear}`;
+  const seqName = `SUPPLIER_BILL_${currentYear}`;
+  const number = await allocateSequentialNumberTx(tx, seqName, prefix, currentYear);
+  return `${prefix}-${String(number).padStart(4, "0")}`;
+}
+
+export async function allocateSupplierBillNo(year?: number): Promise<string> {
+  return withTxRetry(() =>
+    prisma.$transaction(async (tx) => {
+      return allocateSupplierBillNoTx(tx, year);
+    })
+  );
+}
+
+/**
+ * Transaction-safe official Supplier Payment Number allocation.
+ * Format: TTRC-SPAY-YYYY-XXXX (e.g. TTRC-SPAY-2026-0001)
+ */
+export async function allocateSupplierPaymentNoTx(tx: any, year?: number): Promise<string> {
+  const currentYear = year ?? new Date().getFullYear();
+  const prefix = `TTRC-SPAY-${currentYear}`;
+  const seqName = `SUPPLIER_PAY_${currentYear}`;
+  const number = await allocateSequentialNumberTx(tx, seqName, prefix, currentYear);
+  return `${prefix}-${String(number).padStart(4, "0")}`;
+}
+
+export async function allocateSupplierPaymentNo(year?: number): Promise<string> {
+  return withTxRetry(() =>
+    prisma.$transaction(async (tx) => {
+      return allocateSupplierPaymentNoTx(tx, year);
+    })
+  );
+}
+
+
 

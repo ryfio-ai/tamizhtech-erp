@@ -1,6 +1,6 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
-import { BusinessDocumentModel } from "@/lib/businessDocumentData";
+import { BusinessDocumentModel } from "@/types/businessDocument";
 
 // Visual layout styles strictly matching reference document TNBEST26-27161.pdf
 const styles = StyleSheet.create({

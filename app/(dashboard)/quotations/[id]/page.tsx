@@ -20,6 +20,7 @@ import {
   RefreshCw,
   Trash2,
   ShoppingCart,
+  Edit,
 } from "lucide-react";
 import { formatINR } from "@/lib/money";
 import { formatISTDate } from "@/lib/time";
@@ -273,6 +274,16 @@ export default function QuotationDetailPage() {
           >
             <Download className="w-3.5 h-3.5" /> A4 PDF
           </a>
+
+          {/* Edit Quotation */}
+          {quotation.status !== "CANCELLED" && (
+            <Link
+              href={`/quotations/${quotation.id}/edit`}
+              className="inline-flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 px-3.5 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-colors"
+            >
+              <Edit className="w-3.5 h-3.5" /> Edit Quotation
+            </Link>
+          )}
 
           {/* Convert to Sales Order */}
           {quotation.status !== "CANCELLED" && (

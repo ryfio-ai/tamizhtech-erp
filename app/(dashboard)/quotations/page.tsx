@@ -17,6 +17,7 @@ import {
   AlertCircle,
   RefreshCw,
   Trash2,
+  Edit,
 } from "lucide-react";
 import { formatINR } from "@/lib/money";
 import { formatISTDate } from "@/lib/time";
@@ -309,6 +310,15 @@ export default function QuotationsPage() {
                       View &rarr;
                     </Link>
 
+                    {q.status !== "CANCELLED" && (
+                      <Link
+                        href={`/quotations/${q.id}/edit`}
+                        className="flex-1 min-h-[38px] inline-flex items-center justify-center gap-1 text-xs text-navy bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg font-medium"
+                      >
+                        <Edit className="w-3.5 h-3.5 text-primary" /> Edit
+                      </Link>
+                    )}
+
                     <button
                       onClick={() => handleDeleteQuotation(q.id, q.quotationNo)}
                       disabled={deletingId === q.id}
@@ -393,6 +403,16 @@ export default function QuotationsPage() {
                         >
                           View &rarr;
                         </Link>
+
+                        {q.status !== "CANCELLED" && (
+                          <Link
+                            href={`/quotations/${q.id}/edit`}
+                            className="inline-flex items-center gap-1 text-xs text-navy hover:text-primary px-2 py-1 rounded border border-gray-200 hover:bg-gray-50 transition-colors font-medium"
+                            title="Edit Quotation"
+                          >
+                            <Edit className="w-3.5 h-3.5 text-primary" /> Edit
+                          </Link>
+                        )}
 
                         <button
                           onClick={() => handleDeleteQuotation(q.id, q.quotationNo)}

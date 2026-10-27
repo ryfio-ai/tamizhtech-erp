@@ -1,12 +1,48 @@
 import React from "react";
-import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, Image, Font } from "@react-pdf/renderer";
 import { BusinessDocumentModel } from "@/types/businessDocument";
+import path from "path";
+import fs from "fs";
+
+// Register TrueType fonts with full Indian Rupee (₹ U+20B9) support
+try {
+  const regularLocal = path.join(process.cwd(), "public", "fonts", "Roboto-Regular.ttf");
+  const boldLocal = path.join(process.cwd(), "public", "fonts", "Roboto-Bold.ttf");
+  const hasLocal = fs.existsSync(regularLocal) && fs.existsSync(boldLocal);
+
+  Font.register({
+    family: "Roboto",
+    fonts: [
+      {
+        src: hasLocal
+          ? regularLocal
+          : "https://github.com/googlefonts/roboto/raw/main/src/hinted/Roboto-Regular.ttf",
+        fontWeight: "normal",
+      },
+      {
+        src: hasLocal
+          ? boldLocal
+          : "https://github.com/googlefonts/roboto/raw/main/src/hinted/Roboto-Bold.ttf",
+        fontWeight: "bold",
+      },
+    ],
+  });
+
+  Font.register({
+    family: "Roboto-Bold",
+    src: hasLocal
+      ? boldLocal
+      : "https://github.com/googlefonts/roboto/raw/main/src/hinted/Roboto-Bold.ttf",
+  });
+} catch (e) {
+  console.warn("Could not register local Roboto font for PDF:", e);
+}
 
 // Visual layout styles strictly matching reference document TNBEST26-27161.pdf
 const styles = StyleSheet.create({
   page: {
     padding: 24, // Compact A4 margin
-    fontFamily: "Helvetica",
+    fontFamily: "Roboto",
     fontSize: 8,
     color: "#1A202C",
     lineHeight: 1.3,
@@ -43,7 +79,7 @@ const styles = StyleSheet.create({
   },
   companyTitle: {
     fontSize: 11,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Roboto-Bold",
     color: "#1B2A4A", // Deep Navy
     marginBottom: 2,
   },
@@ -59,7 +95,7 @@ const styles = StyleSheet.create({
   },
   companyGstin: {
     fontSize: 7.2,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Roboto-Bold",
     color: "#1B2A4A",
     marginTop: 1,
   },
@@ -71,13 +107,13 @@ const styles = StyleSheet.create({
   },
   docTitle: {
     fontSize: 16,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Roboto-Bold",
     color: "#1B2A4A", // TamizhTech Navy
     letterSpacing: 0.5,
   },
   docSubTitle: {
     fontSize: 8,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Roboto-Bold",
     color: "#FF6B00", // TamizhTech Orange
     marginTop: 2,
   },
@@ -104,7 +140,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   metaTextBold: {
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Roboto-Bold",
     color: "#111827",
   },
 
@@ -130,13 +166,13 @@ const styles = StyleSheet.create({
   },
   partyHeaderTitle: {
     fontSize: 7.5,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Roboto-Bold",
     color: "#1B2A4A",
     textTransform: "uppercase",
   },
   partyName: {
     fontSize: 8.5,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Roboto-Bold",
     color: "#111827",
     marginBottom: 2,
   },
@@ -147,7 +183,7 @@ const styles = StyleSheet.create({
   },
   partyGstin: {
     fontSize: 7.2,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Roboto-Bold",
     color: "#1B2A4A",
     marginTop: 2,
   },
@@ -168,7 +204,7 @@ const styles = StyleSheet.create({
   },
   tableHeaderCol: {
     fontSize: 7.2,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Roboto-Bold",
     color: "#1B2A4A",
     textTransform: "uppercase",
   },
@@ -196,7 +232,7 @@ const styles = StyleSheet.create({
 
   itemTitle: {
     fontSize: 7.5,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Roboto-Bold",
     color: "#111827",
   },
   itemNotes: {
@@ -223,7 +259,7 @@ const styles = StyleSheet.create({
   // Words & Terms
   sectionLabel: {
     fontSize: 7.2,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Roboto-Bold",
     color: "#1B2A4A",
     textTransform: "uppercase",
     marginBottom: 2,
@@ -237,7 +273,7 @@ const styles = StyleSheet.create({
   },
   wordsText: {
     fontSize: 7.5,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Roboto-Bold",
     color: "#111827",
   },
   upiBox: {
@@ -262,14 +298,14 @@ const styles = StyleSheet.create({
   },
   upiTitle: {
     fontSize: 7.2,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Roboto-Bold",
     color: "#1B2A4A",
     textTransform: "uppercase",
     marginBottom: 2,
   },
   upiId: {
     fontSize: 7.5,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Roboto-Bold",
     color: "#111827",
     marginBottom: 1.5,
   },
@@ -322,7 +358,7 @@ const styles = StyleSheet.create({
   },
   totalsValue: {
     fontSize: 7.5,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Roboto-Bold",
     color: "#111827",
   },
   totalsRowGrand: {
@@ -336,12 +372,12 @@ const styles = StyleSheet.create({
   },
   grandTotalLabel: {
     fontSize: 8.5,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Roboto-Bold",
     color: "#1B2A4A",
   },
   grandTotalValue: {
     fontSize: 9,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Roboto-Bold",
     color: "#1B2A4A",
   },
 
@@ -353,7 +389,7 @@ const styles = StyleSheet.create({
   },
   signatureCompanyText: {
     fontSize: 8,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Roboto-Bold",
     color: "#1B2A4A",
     textAlign: "center",
     marginBottom: 2,
@@ -368,7 +404,7 @@ const styles = StyleSheet.create({
   },
   signatureLine: {
     fontSize: 7.5,
-    fontFamily: "Helvetica",
+    fontFamily: "Roboto",
     color: "#6B7280",
     borderTopWidth: 1,
     borderTopColor: "#9CA3AF",
@@ -544,7 +580,7 @@ export function BusinessDocumentPDFTemplate({ data }: BusinessDocumentPDFTemplat
                 <Text style={[styles.colRate, { fontSize: 7.2 }]}>{formatRupee(item.rate)}</Text>
                 <Text style={[styles.colTaxRate, { fontSize: 7.2 }]}>{item.taxPercent}%</Text>
                 <Text style={[styles.colTaxAmount, { fontSize: 7.2 }]}>{formatRupee(item.taxAmount)}</Text>
-                <Text style={[styles.colAmount, { fontSize: 7.2, fontFamily: "Helvetica-Bold" }]}>
+                <Text style={[styles.colAmount, { fontSize: 7.2, fontFamily: "Roboto-Bold" }]}>
                   {formatRupee(item.amount)}
                 </Text>
               </View>

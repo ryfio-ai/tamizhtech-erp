@@ -32,17 +32,17 @@ export function InvoiceTable({ data = [], loading, onDelete }: InvoiceTableProps
       const res = await fetch(`/api/invoices/${deletingInvoice.id}`, { method: "DELETE" });
       const json = await res.json();
       if (json.success) {
-        toast.success(json.message || `Bill ${deletingInvoice.invoiceNo} deleted successfully.`);
+        toast.success(json.message || `Bill ${deletingInvoice.invoiceNo} cancelled successfully.`);
         if (onDelete) {
           onDelete(deletingInvoice);
         } else {
           router.refresh();
         }
       } else {
-        toast.error(json.error || "Failed to delete bill");
+        toast.error(json.error || "Failed to cancel bill");
       }
     } catch (err: any) {
-      toast.error(err.message || "Failed to delete bill");
+      toast.error(err.message || "Failed to cancel bill");
     } finally {
       setIsDeleting(false);
       setDeletingInvoice(null);
@@ -188,16 +188,18 @@ export function InvoiceTable({ data = [], loading, onDelete }: InvoiceTableProps
               PDF
             </Button>
           </a>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setDeletingInvoice(row)}
-            className="h-8 px-2 text-xs text-gray-400 hover:text-red-600 hover:bg-red-50 gap-1 font-medium"
-            title="Delete Bill"
-          >
-            <Trash2 className="w-3 h-3 text-gray-400 hover:text-red-600" />
-            Delete
-          </Button>
+          {row.status !== "CANCELLED" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDeletingInvoice(row)}
+              className="h-8 px-2 text-xs text-gray-400 hover:text-red-600 hover:bg-red-50 gap-1 font-medium"
+              title="Cancel Bill (Void)"
+            >
+              <Trash2 className="w-3 h-3 text-gray-400 hover:text-red-600" />
+              Cancel
+            </Button>
+          )}
         </div>
       ),
     },
@@ -290,17 +292,19 @@ export function InvoiceTable({ data = [], loading, onDelete }: InvoiceTableProps
             </Button>
           </a>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setDeletingInvoice(inv)}
-            className="flex-1 h-9 text-xs gap-1.5 text-red-600 border-red-200 hover:bg-red-50 font-semibold"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Delete</span>
-          </Button>
+          {inv.status !== "CANCELLED" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDeletingInvoice(inv)}
+              className="flex-1 h-9 text-xs gap-1.5 text-red-600 border-red-200 hover:bg-red-50 font-semibold"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Cancel</span>
+            </Button>
+          )}
 
-          {bal > 0 && (
+          {bal > 0 && inv.status !== "CANCELLED" && (
             <Link href={`/payments/new?invoiceId=${inv.id}`} className="w-full">
               <Button size="sm" className="w-full h-9 text-xs gap-1.5 bg-green-600 hover:bg-green-700 text-white font-semibold">
                 <CreditCard className="w-3.5 h-3.5" />
@@ -331,8 +335,9 @@ export function InvoiceTable({ data = [], loading, onDelete }: InvoiceTableProps
       <ConfirmDialog
         open={!!deletingInvoice}
         onOpenChange={(open) => !open && setDeletingInvoice(null)}
-        title={`Delete Bill ${deletingInvoice?.invoiceNo}?`}
-        description={`Are you sure you want to permanently delete bill ${deletingInvoice?.invoiceNo}? This action is irreversible. If stock was deducted, it will be automatically restored to your inventory.`}
+        title={`Cancel Bill ${deletingInvoice?.invoiceNo}?`}
+        description={`Are you sure you want to cancel bill ${deletingInvoice?.invoiceNo}? It will be marked as CANCELLED (Void) and any deducted stock will be returned to inventory. The invoice number is preserved to avoid sequential numbering gaps.`}
+        destructive={true}
         onConfirm={handleConfirmDelete}
         loading={isDeleting}
       />

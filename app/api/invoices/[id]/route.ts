@@ -6,6 +6,7 @@ import { toPaise, fromPaise, roundToPaise } from "@/lib/money";
 import { getAuthoritativeInvoiceFinancials } from "@/lib/invoiceService";
 import { getNormalizedInvoiceData } from "@/lib/businessDocumentData";
 import { reconcileStockForUpdatedInvoice, reverseStockForCancelledInvoice, deductStockForIssuedInvoice } from "@/lib/stockService";
+import { allocateInvoiceNoTx } from "@/lib/sequence";
 
 export const revalidate = 0;
 
@@ -186,8 +187,18 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       }
     }
 
+    const isDraftPromotion =
+      current.invoiceNo.startsWith("DRAFT-") &&
+      nextStatus !== "DRAFT" &&
+      nextStatus !== "CANCELLED";
+    let officialInvoiceNo = current.invoiceNo;
+
     // Atomic update of line items & invoice
     await prisma.$transaction(async (tx) => {
+      if (isDraftPromotion) {
+        officialInvoiceNo = await allocateInvoiceNoTx(tx);
+      }
+
       if (hadItems) {
         await tx.invoiceItem.deleteMany({ where: { invoiceId: params.id } });
         await tx.invoiceItem.createMany({ data: processedItems });
@@ -209,10 +220,17 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           paidAmount: netPaidAmountPaise,
           balance: balancePaise,
           status: nextStatus,
-          issuedAt:
-            nextStatus === "ISSUED" && !current.issuedAt
-              ? new Date()
-              : current.issuedAt,
+          ...(isDraftPromotion
+            ? {
+                invoiceNo: officialInvoiceNo,
+                issuedAt: current.issuedAt || new Date(),
+              }
+            : {
+                issuedAt:
+                  nextStatus === "ISSUED" && !current.issuedAt
+                    ? new Date()
+                    : current.issuedAt,
+              }),
           cancelledAt:
             nextStatus === "CANCELLED" && !current.cancelledAt
               ? new Date()
@@ -242,7 +260,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       if (hadItems) {
         await reconcileStockForUpdatedInvoice(params.id);
       }
-    } else if (current.status === "DRAFT" && nextStatus === "ISSUED") {
+    } else if ((current.status === "DRAFT" || isDraftPromotion) && (nextStatus === "ISSUED" || nextStatus === "PAID" || nextStatus === "PARTIALLY_PAID")) {
       await deductStockForIssuedInvoice(params.id);
     }
 
@@ -290,47 +308,24 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     });
     if (!invoice) return NextResponse.json({ success: false, error: "Invoice not found" }, { status: 404 });
 
-    // 1. If stock was deducted (ISSUED invoice), safely restore physical inventory
-    const sales = await prisma.stockLedgerEntry.findMany({
-      where: { referenceType: "INVOICE", referenceId: params.id, type: "SALE" },
-    });
-
-    if (sales.length > 0) {
-      for (const entry of sales) {
-        const qtyToRestore = Math.abs(entry.quantitySigned);
-        const minorToRestore = entry.quantitySignedMinor
-          ? Math.abs(entry.quantitySignedMinor)
-          : qtyToRestore;
-        await prisma.product.update({
-          where: { id: entry.productId },
-          data: {
-            stockQuantity: { increment: qtyToRestore },
-            stockQuantityMinor: { increment: minorToRestore },
-          },
-        });
-      }
+    // 1. If physical inventory was deducted, safely return it to stock
+    if (invoice.status !== "DRAFT" && invoice.status !== "CANCELLED") {
+      await reverseStockForCancelledInvoice(params.id);
     }
 
-    // 2. Cascade delete all linked records inside atomic transaction
-    await prisma.$transaction([
-      prisma.stockLedgerEntry.deleteMany({
-        where: { referenceType: "INVOICE", referenceId: params.id },
-      }),
-      prisma.payment.deleteMany({
-        where: { invoiceId: params.id },
-      }),
-      prisma.invoiceItem.deleteMany({
-        where: { invoiceId: params.id },
-      }),
-      prisma.invoice.delete({
-        where: { id: params.id },
-      }),
-    ]);
+    // 2. Mark invoice as CANCELLED (Void) preserving audit number continuity
+    await prisma.invoice.update({
+      where: { id: params.id },
+      data: {
+        status: "CANCELLED",
+        cancelledAt: new Date(),
+      },
+    });
 
     return NextResponse.json({
       success: true,
       data: null,
-      message: `Bill ${invoice.invoiceNo} removed from database successfully`,
+      message: `Bill ${invoice.invoiceNo} marked as CANCELLED (Void). Sequential number is preserved for audit continuity.`,
     });
   } catch (error: any) {
     console.error("DELETE Invoice Error:", error);

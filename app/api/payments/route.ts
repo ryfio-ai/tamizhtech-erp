@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { CreatePaymentInput } from "@/types";
-import { generatePaymentNo } from "@/lib/sequence";
+import { generatePaymentNo, allocateInvoiceNoTx } from "@/lib/sequence";
 import { toPaise, fromPaise } from "@/lib/money";
+import { deductStockForIssuedInvoice } from "@/lib/stockService";
 import React from "react";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { BusinessDocumentPDFTemplate } from "@/components/shared/BusinessDocumentPDFTemplate";
@@ -72,6 +73,11 @@ export async function POST(req: NextRequest) {
     // Generate Payment Receipt No atomically from BusinessSequence
     const paymentId = await generatePaymentNo();
 
+    // Determine if this draft bill should be auto-promoted to official TTRC-BILL-YYYY-XXXX
+    const shouldPromoteDraft =
+      invoice.invoiceNo.startsWith("DRAFT-") || invoice.status === "DRAFT";
+    let officialInvoiceNo = invoice.invoiceNo;
+
     // Transaction to ensure data consistency
     const result = await prisma.$transaction(async (tx) => {
       // 1. Create Payment - do NOT provide id, let MongoDB auto-generate valid ObjectId
@@ -90,7 +96,12 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // 2. Update Invoice
+      // 2. Allocate official invoice sequence number if draft
+      if (shouldPromoteDraft) {
+        officialInvoiceNo = await allocateInvoiceNoTx(tx);
+      }
+
+      // 3. Update Invoice
       const newPaidAmount = invoice.paidAmount + amountInPaise;
       const newBalance = Math.max(0, invoice.total - newPaidAmount);
       let newStatus = "PARTIALLY_PAID";
@@ -103,11 +114,26 @@ export async function POST(req: NextRequest) {
           paidAmount: newPaidAmount,
           balance: newBalance,
           status: newStatus as any,
+          ...(shouldPromoteDraft
+            ? {
+                invoiceNo: officialInvoiceNo,
+                issuedAt: invoice.issuedAt || new Date(),
+              }
+            : {}),
         },
       });
 
       return payment;
     });
+
+    // 4. If draft was promoted to issued/paid, safely deduct physical inventory stock
+    if (shouldPromoteDraft) {
+      try {
+        await deductStockForIssuedInvoice(invoice.id);
+      } catch (stockErr) {
+        console.warn("[Payment Auto-Promote Stock Deduction Warning]:", stockErr);
+      }
+    }
 
     // Fetch related names for UI
     const finalPayment = await prisma.payment.findUnique({
@@ -133,7 +159,7 @@ export async function POST(req: NextRequest) {
             clientName: finalPayment?.client?.name || invoice.clientName || "Valued Customer",
             amount: fromPaise(finalPayment?.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 }),
             paymentNo: finalPayment?.paymentNo || paymentId,
-            invoiceNo: invoice.invoiceNo,
+            invoiceNo: finalPayment?.invoice?.invoiceNo || officialInvoiceNo,
             paymentDate: new Date(finalPayment?.date || Date.now()).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
             paymentMode: finalPayment?.mode || "UPI",
             referenceNo: finalPayment?.referenceNo || "",
